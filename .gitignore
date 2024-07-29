@@ -1,0 +1,16 @@
+/Manifest.toml
+
+sandbox/
+
+examples/Outputs/
+
+/build/*.dll
+/build/*.so
+.vscode/
+.JuliaFormatter.toml
+
+JuliaSysimage.dll
+
+docs/build/
+
+calib_config.toml
