@@ -108,7 +108,7 @@ function obj_func(
     north_lowest = argmin(north_obs)
     central_lowest = argmin(central_obs)
     south_lowest = argmin(south_obs)
-    trough_score = [north_perf_series[north_lowest], central_perf_series[central_lowest], south_perf_series[south_lowest]] .* 10.0
+    trough_score = [north_perf_series[north_lowest], central_perf_series[central_lowest], south_perf_series[south_lowest]] .* 100.0
 
     # Penalize poor performance at end of time series
     end_score = [north_perf_series[end], central_perf_series[end], south_perf_series[end]] .* 100.0
