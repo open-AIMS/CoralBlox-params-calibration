@@ -49,7 +49,7 @@ function construct_location_cover!(
     n_taxa::Int64 = 5
     # Calculate relative cover for each taxonomy and reuse location sample memory
     @views location_sample[2:(1 + n_taxa)] .*= (
-        location_sample[1] ./ sum(location_sample[1:(1 + n_taxa)])
+        location_sample[1] ./ sum(location_sample[2:(1 + n_taxa)])
     )
 
     # Calculate size class weightings for each taxonomy
@@ -59,7 +59,7 @@ function construct_location_cover!(
 
     # Multiply size class weightings and taxonomy relative cover to create cover for
     # location
-    preallocated .*= location_sample[2:(1 + n_taxa)]
+    preallocated .*= location_sample[2:(1 + n_taxa)]'
     return nothing
 end
 
