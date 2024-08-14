@@ -1,28 +1,29 @@
 using ADRIA
 
 """
-Average area of coral given a truncated exponential distribution. This is the expected value of
-the π r^2
+CDF of squared exponential distribution with X ~ π/4 * E^2. Where E is an exponential distributed
 """
-function average_area_expo(lambda::Float64, lower_bound::Float64, upper_bound::Float64)::Float64
-    lb_exp_term::Float64 = exp(-lambda * lower_bound)
-    ub_exp_term::Float64 = exp(-lambda * upper_bound)
+function squared_expo_cdf(lambda::Float64, x::Float64)::Float64
+    return 1 - exp(4 * lambda * sqrt(x) / π)
+end
 
-    lb::Float64  = lower_bound * lambda
-    lb2::Float64 = (lb)^2
-
-    ub::Float64  = upper_bound * lambda
-    ub2::Float64 = (ub)^2
-
-    normalisation::Float64 = (1 - ub_exp_term) - (1 - lb_exp_term)
-
-    return π / 4 * (ub_exp_term / lambda^2 * ( -ub2 + 2 * ( -ub - 1)) -
-                lb_exp_term / lambda^2 * ( -lb2 + 2 * ( -lb - 1))) / normalisation
+function size_class_proportion(
+    lambda::Float64,
+    lower_bound::Float64,
+    upper_bound::Float64
+)::Float64
+    return squared_expo_cdf(lambda, upper_bound) - squared_expo_cdf(lambda, lower_bound)
 end
 
 function size_class_distribution(lambda::Float64, bin_edges::AbstractVector{Float64})::Vector{Float64}
     # Calculate average area assuming a truncated exponential distribution = E[πr^2]
-    area_props::Vector{Float64} = average_area_expo.(lambda, bin_edges[1:end-1], bin_edges[2:end])
+    area_bounds::Vector{Float64} = (x -> π / 4 * x^2).(bin_edges)
+    area_props::Vector{Float64} = size_class_proportion.(
+        lambda,
+        area_bounds[1:end-1],
+        area_bounds[2:end]
+    )
+    # normalise to truncated distribution
     area_props = area_props ./ sum(area_props)
     return area_props
 end

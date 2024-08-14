@@ -2,28 +2,6 @@ using Test
 
 include("../cover_construction.jl")
 
-@testset "Exponential Average Area" begin
-    lower_bound::Float64 = 0.0
-    upper_bound::Float64 = 1.0
-
-    lambda::Float64 = 1.0
-    normalisation::Float64 = (1 - 1 / ℯ)
-
-    @test average_area_expo(
-        lambda, lower_bound, upper_bound
-    ) == π / 4 * (2 - 5 / ℯ) / normalisation
-
-    lower_bound = 1.0
-    upper_bound = 3.0
-
-    lambda = 2.0
-    normalisation = (1 - exp(- lambda * upper_bound)) - (1 - exp(- lambda * lower_bound))
-
-    @test average_area_expo(
-        lambda, lower_bound, upper_bound
-    ) == π / 2 * (5 / (4 * ℯ^2) - 25 / (4 * ℯ^6)) / normalisation
-end
-
 @testset "size class distribution" begin
     bounds::Vector{Float64} = [0.0, 1.0, 2.0, 3.0, 4.0]
     lambda = 1.0
@@ -41,11 +19,11 @@ end
         0.5,
         0.5,
         0.5,
-        1.0,  # Size distributions
-        1.0,
-        1.0,
-        1.0,
-        1.0,
+        0.25,  # Size distributions
+        0.25,
+        0.25,
+        0.25,
+        0.25,
     ]
 
     cover::Matrix{Float64} = zeros(Float64, 7, 5)
@@ -62,6 +40,7 @@ end
         location_sample,
         bin_edges
     )
+    @infiltrate
     @test sum(cover) ≈ 0.85
     @test all(cover[:, 1] .== cover[:, 2] .== cover[:, 3] .== cover[:, 4] .== cover[:, 5])
     @test all(sum(cover, dims=1) .≈ 0.85 / 5)
