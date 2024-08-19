@@ -1,4 +1,6 @@
+using BlackBoxOptim: init_rng!
 include("common.jl")
+include("cover_construction.jl")
 
 # Get coral parameter list
 coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
@@ -15,11 +17,14 @@ function obj_func(
     central_cover=ltmp_central[ltmp_central_period, [:lower, :response, :upper]],
     south_cover=ltmp_south[ltmp_south_period, [:lower, :response, :upper]],
     coral_params=coral_params[not_constant, :],
+    location_classification=location_classification.consecutive_classification,
+    n_loc_clusteres=n_classifications,
     start_year=start_year,
     end_year=end_year,
 )
-    n_cover_start = length(dom.init_coral_cover)
-    gen_init_cover = reshape(init_values[1:n_cover_start], size(dom.init_coral_cover)...)
+    n_cover_start = 11 * n_loc_clusteres
+    construct_cover!(dom, init_values, location_classification)
+    gen_init_cover = dom.init_coral_cover.data
 
     loc_k_areas = site_k_area(dom)
     loc_areas = site_area(dom)
@@ -67,11 +72,11 @@ function obj_func(
     scen[1, coral_params.fieldname] = coral_param_values
 
     res = nothing
-    try
+    #try
         res = ADRIA.run_model(dom2, scen[1, :])
-    catch err
-        return sum(start_score) + 5e5
-    end
+    #catch err
+    #    return sum(start_score) + 5e5
+    #end
 
     north_mean_cover = zeros(size(res.raw, 1))
     center_mean_cover = zeros(size(res.raw, 1))
@@ -116,15 +121,33 @@ function obj_func(
     return sum([north_perf, central_perf, south_perf]) + sum(trough_score) + sum(end_score)
 end
 
+base_location_vector = [
+    (0.0,  0.95), # habitable cover
+    (0.01, 1.0), # taxa weightings
+    (0.01, 1.0),
+    (0.01, 1.0),
+    (0.01, 1.0),
+    (0.01, 1.0),
+    (0.0,  5.0), # size distribution
+    (0.0,  5.0),
+    (0.0,  5.0),
+    (0.0,  5.0),
+    (0.0,  5.0),
+]
+
 # Define parameter space to scan over
-search_space = repeat([(0.0, 0.6)], prod(*, size(dom.init_coral_cover)))
+sample_bounds = repeat(base_location_vector, n_classifications)
 
 not_linear_ext = .!(occursin.("linear_extension", string.(coral_params.fieldname)))
 not_diam = .!(occursin.("mean_colony", string.(coral_params.fieldname)))
-selected_coral_params = not_constant .& not_linear_ext .& not_diam
+mort_param = (occursin.("mb_rate", string.(coral_params.fieldname)))
+selected_coral_params = not_constant .& not_linear_ext .& not_diam .&& (!).(mort_param)
 
 coral_params[selected_coral_params, :lower_bound] .= coral_params[selected_coral_params, :val] .* 0.05
 coral_params[selected_coral_params, :upper_bound] .= coral_params[selected_coral_params, :val] .* 10.0
+
+coral_params[mort_param, :lower_bound] .= 0.05
+coral_params[mort_param, :upper_bound] .= 0.95
 
 coral_params[(.!not_linear_ext .| .!not_diam), :lower_bound] .= coral_params[(.!not_linear_ext .| .!not_diam), :val] .* 0.05
 
@@ -135,16 +158,16 @@ coral_params[.!not_linear_ext, :upper_bound] .= coral_params[.!not_diam, :val]
 coral_params[.!not_diam, :upper_bound] .= coral_params[.!not_diam, :val]
 
 coral_bounds = Tuple.(eachrow(coral_params[not_constant, [:lower_bound, :upper_bound]]))
-append!(search_space, coral_bounds)
+append!(sample_bounds, coral_bounds)
 
 best_score_file = "Outputs/best_initial_state_w_coral_$(string(today())).dat"
 if !@isdefined(best_init_state) && isfile(best_score_file)
     best_init_state = deserialize(best_score_file)
+    @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
 else
-    best_init_state = Float64.(vcat(dom.init_coral_cover.data[:], coral_params[not_constant, :val]))
+    best_init_state = nothing
 end
 
-@assert all(first.(search_space) .<= best_init_state .<= last.(search_space)) "Initial state is out of bounds"
 
 if !@isdefined(best_init_state) || isnothing(best_init_state)
     # Include additional config if using BorgMOEA
@@ -152,7 +175,7 @@ if !@isdefined(best_init_state) || isnothing(best_init_state)
     # FitnessScheme=ParetoFitnessScheme{3}(is_minimizing=true),
     res = bboptimize(
         obj_func;
-        SearchRange=search_space,
+        SearchRange=sample_bounds,
         MaxSteps=1_000_000,
         NThreads=Threads.nthreads()-4
     );
@@ -160,7 +183,7 @@ elseif !isnothing(best_init_state)
     res = bboptimize(
         obj_func,
         best_init_state;  # provide an initial solution
-        SearchRange=search_space,
+        SearchRange=sample_bounds,
         MaxSteps=1_000_000,
         NThreads=Threads.nthreads()-4
     );
@@ -168,13 +191,13 @@ end
 
 best_fitness(res)
 best_init_state = best_candidate(res)
-n_cover_start = length(dom.init_coral_cover)
-best_init_cover = reshape(best_init_state[1:n_cover_start], size(dom.init_coral_cover))
-sum(best_init_cover, dims=1)
+n_cover_start = n_classifications * 11
 
 serialize(best_score_file, best_init_state)
 
-dom.init_coral_cover .= best_init_cover
+construct_cover!(
+    dom, best_init_state, location_classification.consecutive_classification
+)
 coral_param_values = best_init_state[n_cover_start+1:end]
 scens = ADRIA.param_table(dom)
 scens[1, coral_params[not_constant, :].fieldname] = coral_param_values

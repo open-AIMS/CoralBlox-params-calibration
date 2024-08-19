@@ -25,4 +25,5 @@ reefmod_domain = "<path to ReefMod dataset>"
 rme_domain = "<path to RME dataset>"
 ltmp_shp = "spatial_data/gbr_3Zone 2.shp"
 canonical_path = "spatial_data/canonical_gbr_2024-04-23.gpkg"
+classification_path = "spatial_data/location_classification_MPA.csv"
 ```

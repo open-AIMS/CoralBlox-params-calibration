@@ -49,7 +49,7 @@ function construct_location_cover!(
 )::Nothing
     n_taxa::Int64 = 5
     # Calculate relative cover for each taxonomy and reuse location sample memory
-    @views location_sample[2:(1 + n_taxa)] .*= (
+    taxonomy_covers::Vector{Float64} = location_sample[2:(1 + n_taxa)] .* (
         location_sample[1] ./ sum(location_sample[2:(1 + n_taxa)])
     )
 
@@ -60,7 +60,7 @@ function construct_location_cover!(
 
     # Multiply size class weightings and taxonomy relative cover to create cover for
     # location
-    preallocated .*= location_sample[2:(1 + n_taxa)]'
+    preallocated .*= taxonomy_covers'
     return nothing
 end
 
@@ -79,7 +79,7 @@ function construct_cover!(dom::Domain, vec_sample::Vector{Float64}, location_typ
     for loc_type in 1:n_location_types
         @views construct_location_cover!(
             temporary_cover,
-            vec_sample[(1 +kstride * (loc_type - 1)):(stride * loc_type)],
+            vec_sample[(1 + stride * (loc_type - 1)):(stride * loc_type)],
             bin_edges
         )
         location_mask .= location_types .== loc_type

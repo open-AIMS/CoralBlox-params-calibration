@@ -20,6 +20,10 @@ reefmod_domain_path = path_configs["reefmod_domain"]
 rme_domain_path = path_configs["rme_domain"]
 ltmp_shp = path_configs["ltmp_shp"]
 canonical_path = path_configs["canonical_path"]
+classification_path = path_configs["classification_path"]
+
+location_classification = CSV.read(classification_path, DataFrame)
+n_classifications = maximum(location_classification.consecutive_classification)
 
 start_year = 2008
 end_year = 2022
