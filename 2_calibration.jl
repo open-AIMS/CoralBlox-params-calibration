@@ -2,9 +2,91 @@ using BlackBoxOptim: init_rng!
 include("common.jl")
 include("cover_construction.jl")
 
-# Get coral parameter list
-coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
-not_constant = coral_params.is_constant .== false
+
+"""
+    average_class_cover(cover; loc_classes=location_classification.consecutive_classification)::Array{Float64}
+
+Calculate the average cover for each location classification.
+"""
+function average_class_cover(
+    cover;
+    loc_classes=location_classification.consecutive_classification
+)::Matrix{Float64}
+    classes = sort(unique(loc_classes))
+    n_tsteps, n_locs = size(cover)
+    class_cover::Matrix{Float64} = zeros(Float64, n_tsteps, length(classes))
+    class_mask::BitVector = Vector(repeat([true], n_locs))
+    for class in classes
+        class_mask .= loc_classes .== class
+        class_cover[:, class] .= dropdims(mean(cover[:, class_mask], dims=2), dims=2)
+    end
+
+    return class_cover
+end
+
+"""
+    class_error(cover; obs_class_data=manta_tow_classes)::Vector{Float64}
+
+Calculate the average class level error per year.
+"""
+function class_error(
+    cover;
+    manta_tow_mean=manta_tow_mean,
+    manta_tow_std=manta_tow_std
+)::Vector{Float64}
+    # Preallocations
+    err_series::Vector{Float64} = zeros(Float64, 15)
+    err_counts::Vector{Int64} = zeros(Int64, 15)
+    not_missing::BitVector = BitVector(repeat([true], 15))
+
+    # Dims ~ [timesteps ⋅ classes]
+    class_cover::Matrix{Float64} = average_class_cover(cover)
+
+    for (idx, class) in enumerate(manta_tow_mean.class)
+        if class == -1
+            continue
+        end
+        not_missing .= (!).(ismissing.(manta_tow_mean[idx, :]))
+        err_series[not_missing] .+= ((
+            manta_tow_mean[idx, not_missing] .- class_cover[not_missing, class]
+        ) ./ manta_tow_std[idx, not_missing]).^2
+        err_counts[not_missing] .+= 1
+    end
+    err_counts[err_counts .== 0] .= 1
+
+    return err_series ./ err_counts
+end
+
+"""
+    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
+
+Calculate the error between ltmp observations and the given cover array.
+"""
+function reef_error(
+    cover;
+    raw_ltmp_reef_data=raw_ltmp_reef_data,
+    ltmp_reefmod_idxs=ltmp_reefmod_idxs
+)::Vector{Float64}
+    err_series::Vector{Float64} = zeros(Float64, 15)
+    err_counts::Vector{Int64} = zeros(Int64, 15)
+    not_missing::BitVector = BitVector(repeat([true], 15))
+    for (row_idx, ltmp_row) in enumerate(eachrow(raw_ltmp_reef_data))
+        if ltmp_reefmod_idxs[row_idx] == -1
+            continue
+        end
+        not_missing .= (!).(ismissing.(ltmp_row))
+        err_series[not_missing] .+= (
+            cover[not_missing, ltmp_reefmod_idxs[row_idx]] .- ltmp_row[not_missing]
+        ).^2
+        err_counts[not_missing] .+= 1
+    end
+    if any(err_counts .== 0)
+        @warn "No reef level observation data for some years."
+        err_counts[err_counts .== 0] .= 1
+    end
+
+    return err_series ./ err_counts
+end
 
 """
 Model simulations end at 2022, so north/central/south obs argument ignores the last entry
@@ -16,7 +98,6 @@ function obj_func(
     north_cover=ltmp_north[ltmp_north_period, [:lower, :response, :upper]],
     central_cover=ltmp_central[ltmp_central_period, [:lower, :response, :upper]],
     south_cover=ltmp_south[ltmp_south_period, [:lower, :response, :upper]],
-    coral_params=coral_params[not_constant, :],
     location_classification=location_classification.consecutive_classification,
     n_loc_clusteres=n_classifications,
     start_year=start_year,
@@ -68,15 +149,13 @@ function obj_func(
     dom2.init_coral_cover.data .= gen_init_cover
 
     scen = ADRIA.param_table(dom2)
-    coral_param_values = init_values[n_cover_start+1:end]
-    scen[1, coral_params.fieldname] = coral_param_values
 
     res = nothing
-    #try
+    try
         res = ADRIA.run_model(dom2, scen[1, :])
-    #catch err
-    #    return sum(start_score) + 5e5
-    #end
+    catch err
+        return sum(start_score) + 5e5
+    end
 
     north_mean_cover = zeros(size(res.raw, 1))
     center_mean_cover = zeros(size(res.raw, 1))
@@ -109,16 +188,15 @@ function obj_func(
     central_perf = temporal_variability(central_perf_series)
     south_perf = temporal_variability(south_perf_series)
 
-    # Penalize poor performance at lowest trough
-    north_lowest = argmin(north_obs)
-    central_lowest = argmin(central_obs)
-    south_lowest = argmin(south_obs)
-    trough_score = [north_perf_series[north_lowest], central_perf_series[central_lowest], south_perf_series[south_lowest]] .* 100.0
+    loc_cover = dropdims(sum(res.raw, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
 
-    # Penalize poor performance at end of time series
-    end_score = [north_perf_series[end], central_perf_series[end], south_perf_series[end]] .* 100.0
+    class_error_series = class_error(loc_cover)
+    reef_error_series = reef_error(loc_cover)
 
-    return sum([north_perf, central_perf, south_perf]) + sum(trough_score) + sum(end_score)
+    class_perf = temporal_variability(class_error_series)
+    reef_perf = temporal_variability(reef_error_series)
+
+    return sum([north_perf, central_perf, south_perf]) / 3 + class_perf + reef_perf
 end
 
 base_location_vector = [
@@ -137,28 +215,6 @@ base_location_vector = [
 
 # Define parameter space to scan over
 sample_bounds = repeat(base_location_vector, n_classifications)
-
-not_linear_ext = .!(occursin.("linear_extension", string.(coral_params.fieldname)))
-not_diam = .!(occursin.("mean_colony", string.(coral_params.fieldname)))
-mort_param = (occursin.("mb_rate", string.(coral_params.fieldname)))
-selected_coral_params = not_constant .& not_linear_ext .& not_diam .&& (!).(mort_param)
-
-coral_params[selected_coral_params, :lower_bound] .= coral_params[selected_coral_params, :val] .* 0.05
-coral_params[selected_coral_params, :upper_bound] .= coral_params[selected_coral_params, :val] .* 10.0
-
-coral_params[mort_param, :lower_bound] .= 0.05
-coral_params[mort_param, :upper_bound] .= 0.95
-
-coral_params[(.!not_linear_ext .| .!not_diam), :lower_bound] .= coral_params[(.!not_linear_ext .| .!not_diam), :val] .* 0.05
-
-# Maximum linear extension is diameter of size class
-coral_params[.!not_linear_ext, :upper_bound] .= coral_params[.!not_diam, :val]
-
-# Diameters are already set to upper bound
-coral_params[.!not_diam, :upper_bound] .= coral_params[.!not_diam, :val]
-
-coral_bounds = Tuple.(eachrow(coral_params[not_constant, [:lower_bound, :upper_bound]]))
-append!(sample_bounds, coral_bounds)
 
 best_score_file = "Outputs/best_initial_state_w_coral_$(string(today())).dat"
 if !@isdefined(best_init_state) && isfile(best_score_file)
@@ -191,16 +247,13 @@ end
 
 best_fitness(res)
 best_init_state = best_candidate(res)
-n_cover_start = n_classifications * 11
 
 serialize(best_score_file, best_init_state)
 
 construct_cover!(
     dom, best_init_state, location_classification.consecutive_classification
 )
-coral_param_values = best_init_state[n_cover_start+1:end]
 scens = ADRIA.param_table(dom)
-scens[1, coral_params[not_constant, :].fieldname] = coral_param_values
 
 rs_raw = ADRIA.run_model(dom, scens[1, :])
 s_rac = (dropdims(sum(rs_raw.raw, dims=2), dims=2) .* site_k_area(dom)') ./ site_area(dom)'
@@ -227,7 +280,6 @@ south_mean_cover = south_mean_cover[comp_years_south]
 north_res = ADRIA.DataCube(s_rac[:, NORTH_MASK, :]; timesteps=ref_years, sites=1:count(NORTH_MASK), scenarios=1:1)
 central_res = ADRIA.DataCube(s_rac[:, CENTRAL_MASK, :]; timesteps=ref_years, sites=1:count(CENTRAL_MASK), scenarios=1:1)
 south_res = ADRIA.DataCube(s_rac[:, SOUTH_MASK, :]; timesteps=ref_years, sites=1:count(SOUTH_MASK), scenarios=1:1)
-
 
 f = Figure(; Dict{Symbol,Any}(:size => (1600, 1600))...)
 ax1 = plot_region(

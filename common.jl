@@ -9,7 +9,7 @@ using BlackBoxOptim
 
 using WGLMakie, GeoMakie, GraphMakie
 using ADRIA
-using ADRIA: GDF, AG
+using ADRIA: GDF, AG, DimensionalData
 
 
 config = TOML.parsefile("calib_config.toml")
@@ -21,9 +21,8 @@ rme_domain_path = path_configs["rme_domain"]
 ltmp_shp = path_configs["ltmp_shp"]
 canonical_path = path_configs["canonical_path"]
 classification_path = path_configs["classification_path"]
-
-location_classification = CSV.read(classification_path, DataFrame)
-n_classifications = maximum(location_classification.consecutive_classification)
+manta_tow_class_path = path_configs["manta_tow_path"]
+ltmp_reef_data_path = path_configs["ltmp_reef_data"]
 
 start_year = 2008
 end_year = 2022
@@ -43,6 +42,121 @@ if !@isdefined(OPTIONS)
     OPTIONS = true
 end
 
+function taxa_cover_proportions(raw_data)::Figure
+    cover = reshape(raw_data, (15, 7, 5, 3806))
+    cover = dropdims(sum(cover, dims=4), dims=4)
+    cover ./= sum(cover, dims=(2, 3))
+    cover = dropdims(sum(cover, dims=2), dims=2)
+    cover = permutedims(cover, (2, 1))
+    xs = 2008:2022
+
+    f = Figure(; size=(1200, 900))
+    ax = Axis(
+        f[1, 1];
+        xlabel="year",
+        ylabel="Cover Proportion",
+        title="Functional Group Cover Proportions",
+        limits=(nothing, nothing, 0, 1)
+    )
+    sr = series!(xs, cover, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
+    Legend(f[1, 2], ax, framevisible=false)
+    return f
+end
+
+
+function taxa_population_proportions(raw_data)::Figure
+    sc_mean_area = reshape(
+        permutedims(ADRIA.colony_areas()[2], (2, 1)),
+        (1, 35, 1)
+    )
+    population = raw_data ./ sc_mean_area
+    population = reshape(population, (15, 7, 5, 3806))
+    population = dropdims(sum(population, dims=4), dims=4)
+    population ./= sum(population, dims=(2, 3))
+    population = dropdims(sum(population, dims=2), dims=2)
+    population = permutedims(population, (2, 1))
+    xs = 2008:2022
+
+    f = Figure(; size=(1200, 900))
+    ax = Axis(
+        f[1, 1];
+        xlabel="year",
+        ylabel="Population Proportion",
+        title="Functional Group Population Proportions",
+        limits=(nothing, nothing, 0, 1)
+    )
+    sr = series!(xs, population, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
+    Legend(f[1, 2], ax, framevisible=false)
+    return f
+end
+
+"""
+    temporal_size_class_proportions(raw_data)
+
+Calculate the percentage of coral population occupied by each size class.
+"""
+function temporal_size_class_proportions(raw_data)::Figure
+    sc_mean_area = reshape(
+        permutedims(ADRIA.colony_areas()[2], (2, 1)),
+        (1, 35, 1)
+    )
+    population = raw_data ./ sc_mean_area
+    population = reshape(population, (15, 7, 5, 3806))
+    population = dropdims(sum(population, dims=4), dims=4)
+    population ./= sum(population, dims=2)
+    population = permutedims(population, (3, 2, 1))
+
+    fg_names = ADRIA.functional_group_names()
+    xs = 2008:2022
+    col = :PuBuGn_9
+
+    f = Figure(; size=(1600, 900))
+    ax = Axis(
+        f[1, 1];
+        xlabel="year",
+        ylabel="Population Proportion",
+        title=String(fg_names[1]),
+        limits=(nothing, nothing, 0, 1)
+    )
+    sr = series!(xs, population[1, :, :], color=col, labels="Size Class: " .* string.(1:7))
+    Axis(
+        f[1, 2];
+        xlabel="year",
+        ylabel="Population Proportion",
+        title=String(fg_names[2]),
+        limits=(nothing, nothing, 0, 1)
+    )
+    series!(xs, population[2, :, :], color=col)
+    Axis(
+        f[2, 1];
+        xlabel="year",
+        ylabel="Population Proportion",
+        title=String(fg_names[3]),
+        limits=(nothing, nothing, 0, 1)
+    )
+    series!(xs, population[3, :, :], color=col)
+    Axis(
+        f[2, 2];
+        xlabel="year",
+        ylabel="Population Proportion",
+        title=String(fg_names[4]),
+        limits=(nothing, nothing, 0, 1)
+    )
+    series!(xs, population[4, :, :], color=col)
+    Axis(
+        f[1, 3];
+        xlabel="year",
+        ylabel="Population Proportion",
+        title=String(fg_names[5]),
+        limits=(nothing, nothing, 0, 1)
+    )
+    series!(xs, population[5, :, :], color=col)
+    Legend(f[2, 3], ax, framevisible=false)
+    colsize!(f.layout, 3, Relative(1/3))
+    resize_to_layout!(f)
+    return f
+end
+
 """
     rmse(modelled, observed)
 
@@ -50,6 +164,10 @@ Calculate Root Mean Squared Error
 """
 function rmse(modelled, observed)
     return sqrt(mean((modelled .- observed).^2.0))
+end
+
+function bias(modelled, observed)
+    return mean(modelled .- observed)
 end
 
 """
@@ -147,8 +265,8 @@ function plot_region(
     confints = ADRIA.analysis.series_confint(mean_agg.data)
 
     xs::Vector{Float64} = collect(sim.timesteps)
-    ADRIA_band = band!(xs, confints[:, 1], confints[:, 3], color=(:red, 0.4))
-    ADRIA_line = lines!(xs, confints[:, 2], color=:red)
+    ADRIA_series = series!(xs, sim[:, :, 1].data[:, :]'; solid_color=(:red, 0.01), linewidth=1, labels=nothing)
+    ADRIA_line = lines!(xs, confints[:, 2], color=:red, linewidth=5)
 
     xs = obs.Year
     lower::Vector{Float64} = obs.lower
@@ -161,12 +279,76 @@ function plot_region(
     if showlegend
         Legend(
             f[legend_row, legend_col],
-            [[LTMP_line, LTMP_band], [ADRIA_line, ADRIA_band]],
-            ["LTMP", "ADRIAmod"]
+            [[LTMP_line, LTMP_band], [ADRIA_line, ADRIA_series]],
+            ["LTMP", "ReefMod"]
         )
     end
 
     return ax
+end
+
+function constant_error_statistics(
+    filename,
+    stat_func=mean
+)::DataFrame
+    north_ind::Int64 = findfirst(x -> x >= start_year, ltmp_north.Year)
+    central_ind::Int64 = findfirst(x -> x >= start_year, ltmp_central.Year)
+    south_ind::Int64 = findfirst(x -> x >= start_year, ltmp_south.Year)
+
+    north_end::Int64 = findfirst(x -> x >= end_year, ltmp_north.Year) - 1
+    central_end::Int64 = findfirst(x -> x >= end_year, ltmp_central.Year) -1
+    south_end::Int64 = findfirst(x -> x >= end_year, ltmp_south.Year) - 1
+
+    north_xs = ltmp_north.Year[north_ind:north_end]
+    central_xs = ltmp_central.Year[central_ind:central_end]
+    south_xs = ltmp_south.Year[south_ind:south_end]
+
+    north_resp = ltmp_north.response[north_ind:north_end]
+    central_resp = ltmp_central.response[central_ind:central_end]
+    south_resp = ltmp_south.response[south_ind:south_end]
+
+    north_stat = repeat([stat_func(north_resp)], length(north_xs))
+    central_stat = repeat([stat_func(central_resp)], length(central_xs))
+    south_stat = repeat([stat_func(south_resp)], length(south_xs))
+
+    rmse_north::Float64 = rmse(north_stat, north_resp)
+    rmse_central::Float64 = rmse(central_stat, central_resp)
+    rmse_south::Float64 = rmse(south_stat, south_resp)
+
+    @info "RMSE North: $(rmse_north), Central: $(rmse_central), South: $(rmse_south)"
+
+    # Coefficient of Determination
+    cc_north::Float64 = cor(north_stat, north_resp)
+    cc_central::Float64 = cor(central_stat, central_resp)
+    cc_south::Float64 = cor(south_stat, south_resp)
+
+    @info "Correlation Coefficient North: $(cc_north), Central: $(cc_central), South: $(cc_south)"
+
+    # MAEE
+    maee_north::Float64 = MAEE(north_stat, north_resp)
+    maee_central::Float64 = MAEE(central_stat, central_resp)
+    maee_south::Float64 = MAEE(south_stat, south_resp)
+
+    @info "Mean Absolute Exponential Error North: $(maee_north), Central: $(maee_central), South: $(maee_south)"
+
+    # bias
+    bias_north::Float64 = bias(north_stat, north_resp)
+    bias_central::Float64 = bias(central_stat, central_resp)
+    bias_south::Float64 = bias(south_stat, south_resp)
+
+    @info "Bias North: $(bias_north), Central: $(bias_central), South: $(bias_south)"
+
+    err_csv = DataFrame(
+        Regions=["North", "Central", "South"],
+        RMSE=[rmse_north, rmse_central, rmse_south],
+        R=[cc_north, cc_central, cc_south],
+        MAEE=[maee_north, maee_central, maee_south],
+        BIAS=[bias_north, bias_central, bias_south]
+    )
+
+    CSV.write(filename, err_csv, writeheader=true)
+
+    return err_csv
 end
 
 function create_error_statistics(filename::String)::DataFrame
@@ -205,10 +387,26 @@ function create_error_statistics(filename::String)::DataFrame
 
     @info "Correlation Coefficient North: $(cc_north), Central: $(cc_central), South: $(cc_south)"
 
+    # MAEE
+    maee_north::Float64 = MAEE(s_rac_north, north_resp)
+    maee_central::Float64 = MAEE(s_rac_central, central_resp)
+    maee_south::Float64 = MAEE(s_rac_south, south_resp)
+
+    @info "Mean Absolute Exponential Error North: $(maee_north), Central: $(maee_central), South: $(maee_south)"
+
+    # bias
+    bias_north::Float64 = bias(s_rac_north, north_resp)
+    bias_central::Float64 = bias(s_rac_central, central_resp)
+    bias_south::Float64 = bias(s_rac_south, south_resp)
+
+    @info "Bias North: $(bias_north), Central: $(bias_central), South: $(bias_south)"
+
     err_csv = DataFrame(
         Regions=["North", "Central", "South"],
         RMSE=[rmse_north, rmse_central, rmse_south],
-        R=[cc_north, cc_central, cc_south]
+        R=[cc_north, cc_central, cc_south],
+        MAEE=[maee_north, maee_central, maee_south],
+        BIAS=[bias_north, bias_central, bias_south]
     )
 
     CSV.write(filename, err_csv, writeheader=true)

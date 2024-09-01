@@ -121,18 +121,45 @@ if uniform_initial_cover
     uniform_initial_cover = false
 end
 
-# if !@isdefined(rs) && rerun
-#     @info "Running Scenarios"
-#     rs = ADRIA.run_scenarios(dom, scens, "45")
-
-#     # Compute total cover to compare with ltmp
-#     s_rac = ADRIA.metrics.total_absolute_cover(rs) ./ reshape(rs.site_area, (1, length(rs.site_area), 1))
-
-#     rerun = false
-# end
-
 if !@isdefined(north_res) && @isdefined(s_rac)
     north_res = s_rac[sites=NORTH_MASK]
     central_res = s_rac[sites=CENTRAL_MASK]
     south_res = s_rac[sites=SOUTH_MASK]
 end
+
+location_classification = CSV.read(classification_path, DataFrame)
+n_classifications = maximum(location_classification.consecutive_classification)
+
+# Load manta observations for reef location classes
+manta_tow_classes = open_dataset(manta_tow_class_path)
+
+# Force memory load
+manta_tow_mean = readcubedata(manta_tow_classes.mean)
+manta_tow_std = readcubedata(manta_tow_classes.std)
+
+# Load manta tow ltmp reef level data
+ltmp_reef_data = GDF.read(ltmp_reef_data_path)
+
+# Order year columns in ascending order
+ltmp_reef_years = parse.(Int64, names(ltmp_reef_data)[5:end])
+ltmp_reef_perm = sortperm(ltmp_reef_years) .+ 4
+
+ltmp_reef_data_names = names(ltmp_reef_data)
+ltmp_reef_data_names[5:end] .= ltmp_reef_data_names[ltmp_reef_perm]
+
+# Rorder columns
+ltmp_reef_data = select!(ltmp_reef_data, ltmp_reef_data_names...)
+
+# Rescale to be proportions
+ltmp_reef_data[:, 5:end] ./= 100
+first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
+raw_ltmp_reef_data = Matrix(ltmp_reef_data[:, first_yr_idx:end])
+
+ltmp_reefmod_idxs = [
+    ismissing(id) ? -1 : findfirst(
+        x -> x == id,
+        dom.site_data.UNIQUE_ID
+    ) for id in ltmp_reef_data.RME_UNIQUE_ID
+]
+
+ENV["ADRIA_DEBUG"] = false
