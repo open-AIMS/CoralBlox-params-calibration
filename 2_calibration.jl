@@ -188,6 +188,10 @@ function obj_func(
     central_perf = temporal_variability(central_perf_series)
     south_perf = temporal_variability(south_perf_series)
 
+    north_t_crp = temporal_correlation(north_perf_series)
+    central_t_crp = temporal_correlation(central_perf_series)
+    south_t_crp = temporal_correlation(south_perf_series)
+
     loc_cover = dropdims(sum(res.raw, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
 
     class_error_series = class_error(loc_cover)
@@ -196,7 +200,14 @@ function obj_func(
     class_perf = temporal_variability(class_error_series)
     reef_perf = temporal_variability(reef_error_series)
 
-    return sum([north_perf, central_perf, south_perf]) / 3 + class_perf + reef_perf
+    class_t_crp = temporal_correlation_penalty(series)
+    reef_t_crp = temporal_correlation_penalty(series)
+
+    return sum([
+        north_perf * north_t_crp,
+        central_perf * central_t_crp,
+        south_perf * south_t_crp
+    ]) / 3 + class_perf * class_t_crp + reef_perf * reef_t_crp
 end
 
 base_location_vector = [
@@ -249,66 +260,3 @@ best_fitness(res)
 best_init_state = best_candidate(res)
 
 serialize(best_score_file, best_init_state)
-
-construct_cover!(
-    dom, best_init_state, location_classification.consecutive_classification
-)
-scens = ADRIA.param_table(dom)
-
-rs_raw = ADRIA.run_model(dom, scens[1, :])
-s_rac = (dropdims(sum(rs_raw.raw, dims=2), dims=2) .* site_k_area(dom)') ./ site_area(dom)'
-
-ref_years = start_year:end_year
-north_mean_cover = zeros(size(rs_raw.raw, 1))
-center_mean_cover = zeros(size(rs_raw.raw, 1))
-south_mean_cover = zeros(size(rs_raw.raw, 1))
-comp_years_north = (ref_years .∈ [ltmp_north[ltmp_north.Year .>= start_year, :Year]])
-comp_years_center = (ref_years .∈ [ltmp_central[ltmp_central.Year .>= start_year, :Year]])
-comp_years_south = (ref_years .∈ [ltmp_south[ltmp_south.Year .>= start_year, :Year]])
-
-for ts in axes(rs_raw.raw, 1)
-    rac = vec(sum(rs_raw.raw[ts, :, :], dims=1) .* site_k_area(dom)') ./ site_area(dom)
-    north_mean_cover[ts] = mean(rac[NORTH_MASK])
-    center_mean_cover[ts] = mean(rac[CENTRAL_MASK])
-    south_mean_cover[ts] = mean(rac[SOUTH_MASK])
-end
-
-north_mean_cover = north_mean_cover[comp_years_north]
-center_mean_cover = center_mean_cover[comp_years_center]
-south_mean_cover = south_mean_cover[comp_years_south]
-
-north_res = ADRIA.DataCube(s_rac[:, NORTH_MASK, :]; timesteps=ref_years, sites=1:count(NORTH_MASK), scenarios=1:1)
-central_res = ADRIA.DataCube(s_rac[:, CENTRAL_MASK, :]; timesteps=ref_years, sites=1:count(CENTRAL_MASK), scenarios=1:1)
-south_res = ADRIA.DataCube(s_rac[:, SOUTH_MASK, :]; timesteps=ref_years, sites=1:count(SOUTH_MASK), scenarios=1:1)
-
-f = Figure(; Dict{Symbol,Any}(:size => (1600, 1600))...)
-ax1 = plot_region(
-    f,
-    1,
-    1,
-    "North GBR",
-    ltmp_north,
-    north_res
-)
-ax2 = plot_region(
-    f,
-    1,
-    2,
-    "Central GBR",
-    ltmp_central,
-    central_res
-)
-ax3 = plot_region(
-    f,
-    2,
-    1,
-    "South GBR",
-    ltmp_south,
-    south_res;
-    showlegend=true,
-    legend_row=2,
-    legend_col=2
-)
-linkyaxes!(ax1, ax2, ax3)
-
-resize_to_layout!(f)

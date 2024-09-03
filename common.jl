@@ -90,6 +90,15 @@ function taxa_population_proportions(raw_data)::Figure
     return f
 end
 
+function temporal_correlation(series)::Float64
+    return cor(1:length(series), series)
+end
+
+function temporal_correlation_penalty(series; threshold::Float64=0.3)::Float64
+    corr::Float64 = temporal_correlation(series)
+    return abs(corr) < threshold ? 1.0 : 2 * abs(corr) + 1.0
+end
+
 """
     temporal_size_class_proportions(raw_data)
 
@@ -280,7 +289,7 @@ function plot_region(
         Legend(
             f[legend_row, legend_col],
             [[LTMP_line, LTMP_band], [ADRIA_line, ADRIA_series]],
-            ["LTMP", "ReefMod"]
+            ["LTMP", "CoralBlox"]
         )
     end
 
