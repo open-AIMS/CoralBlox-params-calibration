@@ -128,12 +128,12 @@ function taxa_population_proportions(raw_data)::Figure
     return f
 end
 
-function temporal_correlation(series)::Float64
-    return cor(1:length(series), series)
+function temporal_correlation(err_series)::Float64
+    return cor(1:length(err_series), err_series)
 end
 
-function temporal_correlation_penalty(series; threshold::Float64=0.3)::Float64
-    corr::Float64 = temporal_correlation(series)
+function temporal_correlation_penalty(err_series; threshold::Float64=0.3)::Float64
+    corr::Float64 = temporal_correlation(err_series)
     return abs(corr) < threshold ? 1.0 : 2 * abs(corr) + 1.0
 end
 
@@ -227,14 +227,13 @@ Mean Absolute Exponential Error.
 
 Assign error that increases exponentially with distance to observed/"true" data.
 """
-function MAEE(sim, obs)
-    abs_err = abs.(sim .- obs)
-    mean(ℯ.^((abs_err ./ obs) .* (1.0 .+ abs_err ./ 1.0)) .- 1.0)
+function MAEE(sim, obs) abs_err = abs.(sim .- obs)
+    mean(ℯ.^((abs_err) .* (1.0 .+ abs_err ./ 1.0)) .- 1.0)
 end
 
 function MAEE_series(sim, obs)
     abs_err = abs.(sim .- obs)
-    return ℯ.^((abs_err ./ obs) .* (1.0 .+ abs_err / 1.0)) .- 1.0
+    return ℯ.^((abs_err) .* (1.0 .+ abs_err / 1.0)) .- 1.0
 end
 
 # """

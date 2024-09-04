@@ -200,14 +200,14 @@ function obj_func(
     class_perf = temporal_variability(class_error_series)
     reef_perf = temporal_variability(reef_error_series)
 
-    class_t_crp = temporal_correlation_penalty(series)
-    reef_t_crp = temporal_correlation_penalty(series)
+    class_t_crp = temporal_correlation_penalty(class_error_series)
+    reef_t_crp = temporal_correlation_penalty(reef_error_series)
 
     return sum([
         north_perf * north_t_crp,
         central_perf * central_t_crp,
         south_perf * south_t_crp
-    ]) / 3 + class_perf * class_t_crp + reef_perf * reef_t_crp
+    ]) / 3 + class_perf * class_t_crp + 2 * reef_perf * reef_t_crp
 end
 
 base_location_vector = [
@@ -243,7 +243,7 @@ if !@isdefined(best_init_state) || isnothing(best_init_state)
     res = bboptimize(
         obj_func;
         SearchRange=sample_bounds,
-        MaxSteps=1_000_000,
+        MaxSteps=2_000,
         NThreads=Threads.nthreads()-4
     );
 elseif !isnothing(best_init_state)
@@ -251,7 +251,7 @@ elseif !isnothing(best_init_state)
         obj_func,
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
-        MaxSteps=1_000_000,
+        MaxSteps=2_000,
         NThreads=Threads.nthreads()-4
     );
 end
