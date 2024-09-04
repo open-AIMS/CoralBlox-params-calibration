@@ -74,7 +74,6 @@ function reef_error(
         if ltmp_reefmod_idxs[row_idx] == -1
             continue
         end
-        @infiltrate
         not_missing .= (!).(ismissing.(ltmp_row))
         err_series[not_missing] .+= MAEE_series(
             cover[not_missing, ltmp_reefmod_idxs[row_idx]], ltmp_row[not_missing]
