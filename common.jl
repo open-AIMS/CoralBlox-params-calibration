@@ -42,6 +42,44 @@ if !@isdefined(OPTIONS)
     OPTIONS = true
 end
 
+function location_comparison(
+    raw_data,
+    ltmp_loc_idx;
+    obs_data=raw_ltmp_reef_data,
+    obs_idxs=ltmp_reefmod_idxs,
+    obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
+    loc_k_areas=site_k_area(dom),
+    loc_areas=site_area(dom)
+)::Figure
+    loc_cover = dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
+    if obs_idxs[ltmp_loc_idx] == -1
+        return Figure()
+    end
+
+    obs_loc_data = obs_data[ltmp_loc_idx, :]
+    not_missing_obs = (!).(ismissing.(obs_loc_data))
+    obs_tf = (2008:2022)[not_missing_obs]
+
+    if !any(not_missing_obs)
+        return Figure()
+    end
+
+    sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
+    reef_id = obs_loc_labels[ltmp_loc_idx]
+
+    f = Figure()
+    Axis(f[1, 1], xlabel="Year", ylabel="relative total area", title="Location $(reef_id)")
+    obs = scatter!(obs_tf, obs_loc_data[not_missing_obs], color=:transparent, strokewidth=2, strokecolor=:black, markersize=15)
+    sim = lines!(2008:2022, sim_data, color=:red)
+    Legend(
+        f[1, 2],
+        [obs, sim],
+        ["LTMP", "CoralBlox"]
+    )
+    save("Outputs/loc_plots/loc_$(reef_id).png", f)
+    return f
+end
+
 function taxa_cover_proportions(raw_data)::Figure
     cover = reshape(raw_data, (15, 7, 5, 3806))
     cover = dropdims(sum(cover, dims=4), dims=4)
@@ -88,6 +126,15 @@ function taxa_population_proportions(raw_data)::Figure
     sr = series!(xs, population, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
     Legend(f[1, 2], ax, framevisible=false)
     return f
+end
+
+function temporal_correlation(series)::Float64
+    return cor(1:length(series), series)
+end
+
+function temporal_correlation_penalty(series; threshold::Float64=0.3)::Float64
+    corr::Float64 = temporal_correlation(series)
+    return abs(corr) < threshold ? 1.0 : 2 * abs(corr) + 1.0
 end
 
 """
@@ -280,7 +327,7 @@ function plot_region(
         Legend(
             f[legend_row, legend_col],
             [[LTMP_line, LTMP_band], [ADRIA_line, ADRIA_series]],
-            ["LTMP", "ReefMod"]
+            ["LTMP", "CoralBlox"]
         )
     end
 
