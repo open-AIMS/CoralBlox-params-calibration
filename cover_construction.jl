@@ -68,7 +68,7 @@ end
 First Float describes relative habitable cover. Next 5 Floats describe Taxonomy weightings,
 next 5 descibe size class exponential paramterisation.
 """
-function construct_cover!(dom::Domain, vec_sample::Vector{Float64}, location_types::Vector{Int64})::Nothing
+function construct_cover!(dom::Domain, vec_sample::Vector{Float64}, location_types::AbstractVector{Int64})::Nothing
     n_location_types = maximum(location_types)
     temporary_cover::Matrix{Float64} = zeros(Float64, 7, 5)
     bin_edges::Matrix{Float64} = ADRIA.bin_edges()
