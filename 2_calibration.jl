@@ -47,9 +47,9 @@ function class_error(
             continue
         end
         not_missing .= (!).(ismissing.(manta_tow_mean[idx, :]))
-        err_series[not_missing] .+= ((
+        err_series[not_missing] .+= abs.((
             manta_tow_mean[idx, not_missing] .- class_cover[not_missing, class]
-        ) ./ manta_tow_std[idx, not_missing]).^2
+        ) ./ manta_tow_std[idx, not_missing])
         err_counts[not_missing] .+= 1
     end
     err_counts[err_counts .== 0] .= 1
@@ -74,10 +74,11 @@ function reef_error(
         if ltmp_reefmod_idxs[row_idx] == -1
             continue
         end
+        @infiltrate
         not_missing .= (!).(ismissing.(ltmp_row))
-        err_series[not_missing] .+= (
-            cover[not_missing, ltmp_reefmod_idxs[row_idx]] .- ltmp_row[not_missing]
-        ).^2
+        err_series[not_missing] .+= MAEE_series(
+            cover[not_missing, ltmp_reefmod_idxs[row_idx]], ltmp_row[not_missing]
+        )
         err_counts[not_missing] .+= 1
     end
     if any(err_counts .== 0)
