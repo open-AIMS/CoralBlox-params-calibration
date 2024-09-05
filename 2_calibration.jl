@@ -243,7 +243,7 @@ if !@isdefined(best_init_state) || isnothing(best_init_state)
     res = bboptimize(
         obj_func;
         SearchRange=sample_bounds,
-        MaxSteps=10_000,
+        MaxSteps=80_000,
         NThreads=Threads.nthreads()-1
     );
 elseif !isnothing(best_init_state)
@@ -251,7 +251,7 @@ elseif !isnothing(best_init_state)
         obj_func,
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
-        MaxSteps=10_000,
+        MaxSteps=80_000,
         NThreads=Threads.nthreads()-1
     );
 end
