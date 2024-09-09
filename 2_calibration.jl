@@ -206,8 +206,8 @@ function obj_func(
         north_perf_series[north_lowest],
         central_perf_series[central_lowest],
         south_perf_series[south_lowest],
-        class_perf[class_lowest],
-        reef_perf[reef_lowest]
+        class_error_series[class_lowest],
+        reef_error_series[reef_lowest]
     ]
 
     # Penalize poor performance at end of time series
@@ -215,8 +215,8 @@ function obj_func(
         north_perf_series[end],
         central_perf_series[end],
         south_perf_series[end],
-        class_perf[end],
-        reef_perf[end]
+        class_error_series[end],
+        reef_error_series[end]
     ]
 
     return sum([
