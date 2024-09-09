@@ -4,7 +4,7 @@ using ADRIA
 CDF of squared exponential distribution with X ~ π/4 * E^2. Where E is an exponential distributed
 """
 function squared_expo_cdf(lambda::Float64, x::Float64)::Float64
-    return 1 - exp(4 * lambda * sqrt(x) / π)
+    return 1 - exp(- 4 * lambda * sqrt(x) / π)
 end
 
 function size_class_proportion(
