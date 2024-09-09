@@ -188,10 +188,6 @@ function obj_func(
     central_perf = temporal_variability(central_perf_series)
     south_perf = temporal_variability(south_perf_series)
 
-    north_t_crp = temporal_correlation(north_perf_series)
-    central_t_crp = temporal_correlation(central_perf_series)
-    south_t_crp = temporal_correlation(south_perf_series)
-
     loc_cover = dropdims(sum(res.raw, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
 
     class_error_series = class_error(loc_cover)
@@ -200,14 +196,34 @@ function obj_func(
     class_perf = temporal_variability(class_error_series)
     reef_perf = temporal_variability(reef_error_series)
 
-    class_t_crp = temporal_correlation_penalty(class_error_series)
-    reef_t_crp = temporal_correlation_penalty(reef_error_series)
+    # Penalize poor performance at lowest trough
+    north_lowest = argmin(north_obs)
+    central_lowest = argmin(central_obs)
+    south_lowest = argmin(south_obs)
+    class_lowest = argmin(class_error_series)
+    reef_lowest = argmin(reef_error_series)
+    trough_score = [
+        north_perf_series[north_lowest],
+        central_perf_series[central_lowest],
+        south_perf_series[south_lowest],
+        class_perf[class_lowest],
+        reef_perf[reef_lowest]
+    ]
+
+    # Penalize poor performance at end of time series
+    end_score = [
+        north_perf_series[end],
+        central_perf_series[end],
+        south_perf_series[end],
+        class_perf[end],
+        reef_perf[end]
+    ]
 
     return sum([
-        north_perf * north_t_crp,
-        central_perf * central_t_crp,
-        south_perf * south_t_crp
-    ]) / 3 + class_perf * class_t_crp + 2 * reef_perf * reef_t_crp
+        north_perf,
+        central_perf,
+        south_perf
+    ]) + class_perf + reef_perf + sum(trough_score) + sum(end_score)
 end
 
 base_location_vector = [
