@@ -42,6 +42,41 @@ if !@isdefined(OPTIONS)
     OPTIONS = true
 end
 
+
+function plot_class_size_props(
+    init_cover,
+    class_idx
+)::Figure
+    class_state = init_cover[(class_idx - 1) * 11 + 1:class_idx * 11]
+    taxa_names = ADRIA.functional_group_names()
+    taxa_prop = class_state[7:11]
+    f = Figure(; size=(1200, 900))
+    ax = Axis(f[1, 1], xlabel="taxonomy", xticks=(1:5, String.(taxa_names)), ylabel="taxa size lambda", title="class: $(class_idx)")
+    barplot!(
+        ax,
+        1:5,
+        taxa_prop
+    )
+    return f
+end
+
+function plot_class_properties(
+    init_cover,
+    class_idx
+)::Figure
+    class_state = init_cover[(class_idx - 1) * 11 + 1:class_idx * 11]
+    taxa_names = ADRIA.functional_group_names()
+    taxa_prop = class_state[2:6] ./ sum(class_state[2:6])
+    f = Figure(; size=(1200, 900))
+    ax = Axis(f[1, 1], xlabel="taxonomy", xticks=(1:5, String.(taxa_names)), ylabel="taxa proportions", title="class: $(class_idx)")
+    barplot!(
+        ax,
+        1:5,
+        taxa_prop
+    )
+    return f
+end
+
 function location_comparison(
     raw_data,
     ltmp_loc_idx;
