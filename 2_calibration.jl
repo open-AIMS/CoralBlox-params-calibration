@@ -2,6 +2,70 @@ using BlackBoxOptim: init_rng!
 include("common.jl")
 include("cover_construction.jl")
 
+# ---- SETUP SAMPLE BOUNDS -------
+
+base_location_vector = [
+    (0.0,  0.95), # habitable cover
+    (0.01, 1.0), # taxa weightings
+    (0.01, 1.0),
+    (0.01, 1.0),
+    (0.01, 1.0),
+    (0.01, 1.0),
+    (0.0,  5.0), # size distribution
+    (0.0,  5.0),
+    (0.0,  5.0),
+    (0.0,  5.0),
+    (0.0,  5.0),
+]
+
+# Define parameter space to scan over
+sample_bounds = repeat(base_location_vector, n_classifications)
+
+taxa_names = ["tabular_Acropora", "corymbose_Acropora", "corymbose_non_Acropora", "small_massives", "large_massives"]
+szs = 1:7
+
+coral_p_names = []
+coral_bounds = []
+
+# Create growth bounds
+size_widths = ADRIA.bin_widths()
+for (t_idx, taxa) in enumerate(taxa_names)
+    for s in szs
+        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "linear_extension"))
+        push!(coral_bounds, (size_widths[t_idx, s] / 10, size_widths[t_idx, s]))
+    end
+end
+
+# add mortality bounds
+for (t_idx, taxa) in enumerate(taxa_names)
+    for s in szs
+        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "mb_rate"))
+        push!(coral_bounds, (0.01, 0.99))
+    end
+end
+
+
+# add fecundity bounds
+for (t_idx, taxa) in enumerate(taxa_names)
+    for s in 4:7
+        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "mb_rate"))
+        push!(coral_bounds, (Float64(1e4), Float64(1e6)))
+    end
+end
+coral_start_idx = length(sample_bounds) + 1
+append!(sample_bounds, coral_bounds)
+coral_end_idx = length(sample_bounds)
+
+n_taxa = 5
+n_limited_locs = length(limited_locations)
+n_factors = 3 # growth, mortality, fecundity
+
+location_coef = repeat([(0.05, 4.0)], n_taxa * n_limited_locs * n_factors)
+
+loc_coef_start_idx = coral_end_idx + 1
+append!(sample_bounds, location_coef)
+loc_coef_end_idx = length(sample_bounds)
+
 
 """
     average_class_cover(cover; loc_classes=location_classification.consecutive_classification)::Array{Float64}
@@ -58,6 +122,32 @@ function class_error(
 end
 
 """
+Calculate the functional group correlation and temporal correlation between aggregated ltmp
+data created for reefmod.
+"""
+function reef_taxa_error(
+    cover;
+    rm_ltmp_taxa=rm_ltmp_taxa,
+    dom_idxs=dom_idxs
+)
+    fg_corr::Float64 = 0.0
+    tmp_corr::Float64 = 0.0
+    for (j, idx) in enumerate(dom_idxs)
+        non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
+        for id in eachindex(2008:2022)[non_missing_mask]
+            @infiltrate ismissing(cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]))
+            @infiltrate ismissing(count(non_missing_mask))
+            fg_corr += cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j])^2 ./ count(non_missing_mask)
+        end
+        for fg in 1:5
+            @infiltrate ismissing(cor(cover[non_missing_mask, fg, idx], rm_ltmp_taxa[non_missing_mask, fg, j]))
+            tmp_corr += cor(cover[non_missing_mask, fg, idx], rm_ltmp_taxa[non_missing_mask, fg, j])^2 ./5
+        end
+    end
+    return fg_corr ./ length(dom_idxs), tmp_corr ./ length(dom_idxs)
+end
+
+"""
     reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
 
 Calculate the error between ltmp observations and the given cover array.
@@ -102,6 +192,8 @@ function obj_func(
     n_loc_clusteres=n_classifications,
     start_year=start_year,
     end_year=end_year,
+    coral_param_names=coral_p_names,
+    param_idxs=[coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx]
 )
     n_cover_start = 11 * n_loc_clusteres
     construct_cover!(dom, init_values, location_classification)
@@ -144,11 +236,15 @@ function obj_func(
         return sum(start_score)
     end
 
+    start_idx = 11 * n_loc_clusteres + 1
+
     # If initial cover pass constraint rules, assign them and run
     dom2 = deepcopy(dom)
     dom2.init_coral_cover.data .= gen_init_cover
 
     scen = ADRIA.param_table(dom2)
+    coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
+    scen[1, coral_param_names] = coral_param_values
 
     res = nothing
     try
@@ -226,22 +322,7 @@ function obj_func(
     ]) + class_perf + reef_perf + sum(trough_score) + sum(end_score)
 end
 
-base_location_vector = [
-    (0.0,  0.95), # habitable cover
-    (0.01, 1.0), # taxa weightings
-    (0.01, 1.0),
-    (0.01, 1.0),
-    (0.01, 1.0),
-    (0.01, 1.0),
-    (0.0,  5.0), # size distribution
-    (0.0,  5.0),
-    (0.0,  5.0),
-    (0.0,  5.0),
-    (0.0,  5.0),
-]
 
-# Define parameter space to scan over
-sample_bounds = repeat(base_location_vector, n_classifications)
 
 best_score_file = "Outputs/best_initial_state_w_coral_$(string(today())).dat"
 if !@isdefined(best_init_state) && isfile(best_score_file)

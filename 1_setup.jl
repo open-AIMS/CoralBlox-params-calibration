@@ -162,4 +162,28 @@ ltmp_reefmod_idxs = [
     ) for id in ltmp_reef_data.RME_UNIQUE_ID
 ]
 
+using Parquet
+
+raw_rm_ltmp = DataFrame(read_parquet("ltmp_data/LTMP_TRANSECT_MEANS.parquet"))
+raw_rm_ltmp[!, :YEAR_ROUND] .= floor.(raw_rm_ltmp.YEAR_Reefmod)
+
+# Calibration Locations
+limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
+dom_idxs = [findfirst(x->x==id, dom.site_data.UNIQUE_ID) for id in limited_locations]
+temporal_range = 2008:2022
+# [year ⋅ taxa ⋅ locs]
+rm_ltmp_taxa = Array{Union{Missing, Float64}}(missing, length(temporal_range), 5, 4)
+data_cols = 9:15
+for (j, idx) in enumerate(dom_idxs)
+    row_mask = raw_rm_ltmp.KarloID .== idx
+    yr_mask = raw_rm_ltmp.YEAR_ROUND .>= 2008
+    for yr in unique(raw_rm_ltmp[row_mask .&& yr_mask, :YEAR_ROUND])
+        idx = findfirst(x->x==yr, temporal_range)
+        yr_mask = raw_rm_ltmp.YEAR_ROUND .== yr
+        dt = Matrix(raw_rm_ltmp[row_mask .&& yr_mask, data_cols])
+        dt = dropdims(mean(dt, dims=1), dims=1)
+        rm_ltmp_taxa[idx, :, j] .= dt[3:end] ./ sum(dt[3:end]) .* dt[1] # evenly unused taxa 1 over other taxa
+    end
+end
+
 ENV["ADRIA_DEBUG"] = false
