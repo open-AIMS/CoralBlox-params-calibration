@@ -179,6 +179,52 @@ function reef_error(
 end
 
 """
+    validate_linear_extension_coefficients(linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Vector{Float64})::Bool
+
+Check that the sampled linear extension values and location coefficients guarentee values that
+do not exceed the size class bin widths.
+"""
+function validate_linear_extension_coefficients(
+    linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Matrix{Float64}
+)::Bool
+    size_class_bins::Matrix{Float64} = ADRIA.bin_widths()
+    n_locs::Int64 = size(linear_ext_coefs, 2)
+
+    for j in 1:n_locs
+        if any(
+            (linear_ext_vals .* linear_ext_coefs[:, j]) .>= size_class_bins
+        )
+            return false
+        end
+    end
+    return true
+end
+
+"""
+    validate_mortality_coefficients(mortality_vals::Matrix{Float64}, mortality_coefs::Vector{Float64})::Bool
+
+Ensure that the sampled mortality values and location coefficients guarentee values between
+0 and 1.
+"""
+function validate_mortality_coefficients(
+    mortality_vals::Matrix{Float64}, mortality_coefs::Matrix{Float64}
+)::Bool
+    n_locs::Int64 = size(mortality_coefs, 2)
+    survival_vals::Matrix{Float64} = 1 .- mortality_vals
+
+    for j in 1:n_locs
+        if !all(0.0 .< (survival_vals .* mortality_coefs[:, j]) .< 1.0)
+            return false
+        end
+    end
+    return true
+end
+
+function _to_group_size(flat_vec::Vector{Float64})::Matrix{Float64}
+    return permutedims(reshape(flat_vec, (7, 5)), (2, 1))
+end
+
+"""
 Model simulations end at 2022, so north/central/south obs argument ignores the last entry
 which is for 2023.
 """
@@ -245,6 +291,21 @@ function obj_func(
     scen = ADRIA.param_table(dom2)
     coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
     scen[1, coral_param_names] = coral_param_values
+    corals = ADRIA.to_coral_spec(scen[1, :])
+
+    scale_factors::Array{Float64, 3} = reshape(init_values[param_idxs[3]:param_idxs[4]], (5, 4, 3))
+
+    linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
+    survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
+
+    if !validate_linear_extension_coefficients(
+        linear_ext, init_values[param_idxs[3]:param_idxs[3] + 4 * 5 - 1]
+    ) ||
+        !validate_mortality_coefficients(
+        survival_r, init_values[param_idxs[3] + 4 * 5:param_idxs[3] + 8 * 5 - 1]
+    )
+        return sum(start_score) + 6e5
+    end
 
     res = nothing
     try
