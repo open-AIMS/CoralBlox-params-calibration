@@ -155,11 +155,16 @@ ltmp_reef_data[:, 5:end] ./= 100
 first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
 raw_ltmp_reef_data = Matrix(ltmp_reef_data[:, first_yr_idx:end])
 
+# Calibration Locations
+limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
+limited_loc_idxs = [findfirst(x->!ismissing(x) && x==id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
+raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
+
 ltmp_reefmod_idxs = [
     ismissing(id) ? -1 : findfirst(
         x -> x == id,
         dom.loc_data.UNIQUE_ID
-    ) for id in ltmp_reef_data.RME_UNIQUE_ID
+    ) for id in ltmp_reef_data.RME_UNIQUE_ID if !ismissing(id) && (id in limited_locations)
 ]
 
 using Parquet
@@ -167,8 +172,6 @@ using Parquet
 raw_rm_ltmp = DataFrame(read_parquet("ltmp_data/LTMP_TRANSECT_MEANS.parquet"))
 raw_rm_ltmp[!, :YEAR_ROUND] .= floor.(raw_rm_ltmp.YEAR_Reefmod)
 
-# Calibration Locations
-limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
 dom_idxs = [findfirst(x->x==id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
 temporal_range = 2008:2022
 # [year ⋅ taxa ⋅ locs]
@@ -185,5 +188,9 @@ for (j, idx) in enumerate(dom_idxs)
         rm_ltmp_taxa[idx, :, j] .= dt[3:end] ./ sum(dt[3:end]) .* dt[1] # evenly unused taxa 1 over other taxa
     end
 end
+
+rm_ltmp_taxa ./= 100
+
+dom.loc_data[!, :depth_med] .= canonical_gpkg.depth_med
 
 ENV["ADRIA_DEBUG"] = false

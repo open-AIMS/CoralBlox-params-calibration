@@ -83,8 +83,8 @@ function location_comparison(
     obs_data=raw_ltmp_reef_data,
     obs_idxs=ltmp_reefmod_idxs,
     obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
-    loc_k_areas=site_k_area(dom),
-    loc_areas=site_area(dom)
+    loc_k_areas=ADRIA.site_k_area(dom),
+    loc_areas=ADRIA.loc_area(dom)
 )::Figure
     loc_cover = dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
     if obs_idxs[ltmp_loc_idx] == -1
@@ -111,7 +111,7 @@ function location_comparison(
         [obs, sim],
         ["LTMP", "CoralBlox"]
     )
-    save("Outputs/loc_plots/loc_$(reef_id).png", f)
+    save("Outputs/growth_loc_plots/loc_$(reef_id).png", f)
     return f
 end
 
