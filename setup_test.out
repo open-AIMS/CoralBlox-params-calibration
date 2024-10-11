@@ -1,8 +1,0 @@
-julia version 1.10.5
-[ Info: Loading Canonical gpkg
-[ Info: Loading ReefModDomain
-┌ Warning: Initial cover exceeds habitable area, there is most likely an issue with the data package. Constraining to 1.0
-└ @ ADRIA ~/repos/ADRIA.jl/src/ExtInterface/ReefMod/ReefModDomain.jl:249
-[ Info: Attaching historic DHW
-[ Info: Loading default parameters
-[ Info: Forcing Results Rerun
