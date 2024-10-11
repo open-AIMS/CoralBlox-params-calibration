@@ -80,9 +80,9 @@ if !@isdefined(region_shps) || reload_shp
 end
 
 if !@isdefined(NORTH_MASK)
-    const NORTH_MASK = BitVector([AG.contains(region_shps.geometry[1], AG.centroid(polygn)) for polygn in dom.site_data.geom])  # .&& ltmp_loc_mask
-    const CENTRAL_MASK = BitVector([AG.contains(region_shps.geometry[2], AG.centroid(polygn)) for polygn in dom.site_data.geom])  # .&& ltmp_loc_mask
-    const SOUTH_MASK = BitVector([AG.contains(region_shps.geometry[3], AG.centroid(polygn)) for polygn in dom.site_data.geom])  # .&& ltmp_loc_mask
+    const NORTH_MASK = BitVector([AG.contains(region_shps.geometry[1], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
+    const CENTRAL_MASK = BitVector([AG.contains(region_shps.geometry[2], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
+    const SOUTH_MASK = BitVector([AG.contains(region_shps.geometry[3], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
     const NOT_CONTAINED = (!).(NORTH_MASK .|| CENTRAL_MASK .|| SOUTH_MASK)
 end
 
@@ -115,16 +115,16 @@ if uniform_initial_cover
         dom.init_coral_cover[locs=NOT_CONTAINED] .*= interp_cover ./ init_loc_cover[locs=NOT_CONTAINED]
     end
 
-    dom.init_coral_cover ./= dom.site_data.k'
+    dom.init_coral_cover ./= dom.loc_data.k'
     # Convert total cover to relative cover
 
     uniform_initial_cover = false
 end
 
 if !@isdefined(north_res) && @isdefined(s_rac)
-    north_res = s_rac[sites=NORTH_MASK]
-    central_res = s_rac[sites=CENTRAL_MASK]
-    south_res = s_rac[sites=SOUTH_MASK]
+    north_res = s_rac[locs=NORTH_MASK]
+    central_res = s_rac[locs=CENTRAL_MASK]
+    south_res = s_rac[locs=SOUTH_MASK]
 end
 
 location_classification = CSV.read(classification_path, DataFrame)
@@ -155,11 +155,42 @@ ltmp_reef_data[:, 5:end] ./= 100
 first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
 raw_ltmp_reef_data = Matrix(ltmp_reef_data[:, first_yr_idx:end])
 
+# Calibration Locations
+limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
+limited_loc_idxs = [findfirst(x->!ismissing(x) && x==id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
+raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
+
 ltmp_reefmod_idxs = [
     ismissing(id) ? -1 : findfirst(
         x -> x == id,
-        dom.site_data.UNIQUE_ID
-    ) for id in ltmp_reef_data.RME_UNIQUE_ID
+        dom.loc_data.UNIQUE_ID
+    ) for id in ltmp_reef_data.RME_UNIQUE_ID if !ismissing(id) && (id in limited_locations)
 ]
+
+using Parquet
+
+raw_rm_ltmp = DataFrame(read_parquet("ltmp_data/LTMP_TRANSECT_MEANS.parquet"))
+raw_rm_ltmp[!, :YEAR_ROUND] .= floor.(raw_rm_ltmp.YEAR_Reefmod)
+
+dom_idxs = [findfirst(x->x==id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
+temporal_range = 2008:2022
+# [year ⋅ taxa ⋅ locs]
+rm_ltmp_taxa = Array{Union{Missing, Float64}}(missing, length(temporal_range), 5, 4)
+data_cols = 9:15
+for (j, idx) in enumerate(dom_idxs)
+    row_mask = raw_rm_ltmp.KarloID .== idx
+    yr_mask = raw_rm_ltmp.YEAR_ROUND .>= 2008
+    for yr in unique(raw_rm_ltmp[row_mask .&& yr_mask, :YEAR_ROUND])
+        idx = findfirst(x->x==yr, temporal_range)
+        yr_mask = raw_rm_ltmp.YEAR_ROUND .== yr
+        dt = Matrix(raw_rm_ltmp[row_mask .&& yr_mask, data_cols])
+        dt = dropdims(mean(dt, dims=1), dims=1)
+        rm_ltmp_taxa[idx, :, j] .= dt[3:end] ./ sum(dt[3:end]) .* dt[1] # evenly unused taxa 1 over other taxa
+    end
+end
+
+rm_ltmp_taxa ./= 100
+
+dom.loc_data[!, :depth_med] .= canonical_gpkg.depth_med
 
 ENV["ADRIA_DEBUG"] = false

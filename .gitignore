@@ -3,6 +3,7 @@
 sandbox/
 
 examples/Outputs/
+slurm_scripts/*
 
 /build/*.dll
 /build/*.so
