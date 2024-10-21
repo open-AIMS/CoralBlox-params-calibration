@@ -155,10 +155,21 @@ ltmp_reef_data[:, 5:end] ./= 100
 first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
 raw_ltmp_reef_data = Matrix(ltmp_reef_data[:, first_yr_idx:end])
 
+all_ltmp_idxs = [
+    ismissing(id) ? -1 : findfirst(
+        x -> x == id,
+        dom.loc_data.UNIQUE_ID
+    ) for id in ltmp_reef_data.RME_UNIQUE_ID
+]
+all_ltmp_reef = copy(raw_ltmp_reef_data)
+
 # Calibration Locations
 limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
+location_names    = ["Mackay Reef", "Opal Reef", "Macgillivray Reef", "John Brewer Reef"]
 limited_loc_idxs = [findfirst(x->!ismissing(x) && x==id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
 raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
+
+composition_data = open_dataset(composition_path)
 
 ltmp_reefmod_idxs = [
     ismissing(id) ? -1 : findfirst(
@@ -176,20 +187,9 @@ dom_idxs = [findfirst(x->x==id, dom.loc_data.UNIQUE_ID) for id in limited_locati
 temporal_range = 2008:2022
 # [year ⋅ taxa ⋅ locs]
 rm_ltmp_taxa = Array{Union{Missing, Float64}}(missing, length(temporal_range), 5, 4)
-data_cols = 9:15
-for (j, idx) in enumerate(dom_idxs)
-    row_mask = raw_rm_ltmp.KarloID .== idx
-    yr_mask = raw_rm_ltmp.YEAR_ROUND .>= 2008
-    for yr in unique(raw_rm_ltmp[row_mask .&& yr_mask, :YEAR_ROUND])
-        idx = findfirst(x->x==yr, temporal_range)
-        yr_mask = raw_rm_ltmp.YEAR_ROUND .== yr
-        dt = Matrix(raw_rm_ltmp[row_mask .&& yr_mask, data_cols])
-        dt = dropdims(mean(dt, dims=1), dims=1)
-        rm_ltmp_taxa[idx, :, j] .= dt[3:end] ./ sum(dt[3:end]) .* dt[1] # evenly unused taxa 1 over other taxa
-    end
+for (j, loc_name) in enumerate(location_names)
+    rm_ltmp_taxa[:, :, j] .= composition_data.mean[location=At(loc_name)].data[(2008-1992+1):(2008-1992)+length(temporal_range), :]
 end
-
-rm_ltmp_taxa ./= 100
 
 dom.loc_data[!, :depth_med] .= canonical_gpkg.depth_med
 

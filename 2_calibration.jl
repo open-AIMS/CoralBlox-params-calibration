@@ -1,3 +1,4 @@
+using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!  
 include("common.jl")
 include("cover_construction.jl")
@@ -57,6 +58,23 @@ for (t_idx, taxa) in enumerate(taxa_names)
         push!(coral_bounds, (Float64(1e4), Float64(1e6)))
     end
 end
+
+# add dist_mean bounds
+for (t_idx, taxa) in enumerate(taxa_names)
+    for s in 1:7
+        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_mean"))
+        push!(coral_bounds, (2.0, 11.0))
+    end
+end
+
+# add dist_std bounds
+for (t_idx, taxa) in enumerate(taxa_names)
+    for s in 1:7
+        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_std"))
+        push!(coral_bounds, (1.0, 9.0))
+    end
+end
+
 coral_start_idx = length(sample_bounds) + 1
 append!(sample_bounds, coral_bounds)
 coral_end_idx = length(sample_bounds)
@@ -70,6 +88,9 @@ location_coef = repeat([(0.5, 2.0)], n_taxa * n_limited_locs * n_factors)
 loc_coef_start_idx = coral_end_idx + 1
 append!(sample_bounds, location_coef)
 loc_coef_end_idx = length(sample_bounds)
+
+# add bleaching threshold
+push!(sample_bounds, (0.0, 5.0))
 
 
 """
@@ -136,19 +157,14 @@ function reef_taxa_error(
     dom_idxs=dom_idxs
 )
     fg_corr::Float64 = 0.0
-    tmp_corr::Float64 = 0.0
     for (j, idx) in enumerate(dom_idxs)
         non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
         for id in eachindex(2008:2022)[non_missing_mask]
 
             fg_corr += cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
         end
-        for fg in 1:5
-
-            tmp_corr += cor(cover[non_missing_mask, fg, idx], rm_ltmp_taxa[non_missing_mask, fg, j]) ./5
-        end
     end
-    return fg_corr ./ length(dom_idxs), tmp_corr ./ length(dom_idxs)
+    return fg_corr ./ length(dom_idxs)
 end
 
 function insert_init_loc_cover!(
@@ -276,6 +292,7 @@ function obj_func(
 
 
     scale_factors::Array{Float64, 3} = reshape(init_values[param_idxs[3]:param_idxs[4]], (5, 4, 3))
+    bleaching_threshold::Float64 = init_values[end]
 
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
     survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
@@ -292,7 +309,7 @@ function obj_func(
 
     res = nothing
     try
-        res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs)
+        res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs, bleaching_threshold)
     catch err
         return 5e5 + sum(linear_ext) + sum(survival_r) + sum(scale_factors)
     end
@@ -356,15 +373,15 @@ function obj_func(
     # ]
 
     taxa_cover = dropdims(sum(permutedims(reshape(res.raw, (15, 7, 5, 3806)), (1, 3, 2, 4)), dims=3), dims=3)
-    fg_corr, tmp_corr = reef_taxa_error(taxa_cover)
+    fg_corr = reef_taxa_error(taxa_cover)
 
     last_non_zero = findlast(x->x!=0, reef_error_series)
     first_non_zero = findfirst(x->x!=0, reef_error_series)
-    @info "reef_perf: $(reef_perf), fg_corr: $(fg_corr), tmp_corr: $(tmp_corr)"
-    return 3.0 * (reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]) + ((1 - fg_corr) + (1 - tmp_corr)) * 0.5
+
+    return 3.0 * (reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]) + (1 - fg_corr)
 end
 
-init_state = deserialize("Outputs/init_cover.dat")
+init_state = deserialize("C:/Users/dtan/data/init_cover.dat")
 construct_cover!(dom, init_state, location_classification.consecutive_classification)
 
 insert_init_loc_cover!(dom)

@@ -23,6 +23,7 @@ canonical_path = path_configs["canonical_path"]
 classification_path = path_configs["classification_path"]
 manta_tow_class_path = path_configs["manta_tow_path"]
 ltmp_reef_data_path = path_configs["ltmp_reef_data"]
+composition_path = path_configs["composition_netcdf"]
 
 start_year = 2008
 end_year = 2022
@@ -79,9 +80,10 @@ end
 
 function location_comparison(
     raw_data,
-    ltmp_loc_idx;
-    obs_data=raw_ltmp_reef_data,
-    obs_idxs=ltmp_reefmod_idxs,
+    ltmp_loc_idx,
+    save_dir;
+    obs_data=all_ltmp_reef,
+    obs_idxs=all_ltmp_idxs,
     obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
     loc_k_areas=ADRIA.site_k_area(dom),
     loc_areas=ADRIA.loc_area(dom)
@@ -111,7 +113,7 @@ function location_comparison(
         [obs, sim],
         ["LTMP", "CoralBlox"]
     )
-    save("Outputs/growth_loc_plots/loc_$(reef_id).png", f)
+    save("$(save_dir)/loc_$(reef_id).png", f)
     return f
 end
 
