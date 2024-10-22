@@ -1,5 +1,5 @@
 using ADRIA: bleaching_mortality!
-using BlackBoxOptim: init_rng!  
+using BlackBoxOptim: init_rng!
 include("common.jl")
 include("cover_construction.jl")
 
@@ -22,6 +22,7 @@ include("cover_construction.jl")
 # Define parameter space to scan over
 # sample_bounds = repeat(base_location_vector, n_classifications)
 sample_bounds::Vector{Tuple{Float64, Float64}} = []
+coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
 
 taxa_names = ["tabular_Acropora", "corymbose_Acropora", "corymbose_non_Acropora", "small_massives", "large_massives"]
 szs = 1:7
@@ -62,16 +63,20 @@ end
 # add dist_mean bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in 1:7
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_mean"))
-        push!(coral_bounds, (2.0, 11.0))
+        tmp_nm = Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_mean")
+        tmp_val = coral_params[findfirst(x->x==tmp_nm, coral_params.fieldname), :val]
+        push!(coral_p_names, tmp_nm)
+        push!(coral_bounds, (tmp_val * 0.9, tmp_val * 1.1))
     end
 end
 
 # add dist_std bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in 1:7
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_std"))
-        push!(coral_bounds, (1.0, 9.0))
+        tmp_nm = Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_std")
+        tmp_val = coral_params[findfirst(x->x==tmp_nm, coral_params.fieldname), :val]
+        push!(coral_p_names, tmp_nm)
+        push!(coral_bounds, (tmp_val * 0.9, tmp_val * 1.1))
     end
 end
 
@@ -88,10 +93,6 @@ location_coef = repeat([(0.5, 2.0)], n_taxa * n_limited_locs * n_factors)
 loc_coef_start_idx = coral_end_idx + 1
 append!(sample_bounds, location_coef)
 loc_coef_end_idx = length(sample_bounds)
-
-# add bleaching threshold
-push!(sample_bounds, (0.0, 5.0))
-
 
 """
     average_class_cover(cover; loc_classes=location_classification.consecutive_classification)::Array{Float64}
@@ -173,11 +174,11 @@ function insert_init_loc_cover!(
     rm_ltmp_taxa=rm_ltmp_taxa,
     ltmp_reefmod_idxs=ltmp_reefmod_idxs
 )::Nothing
-    size_class_props = size_class_distribution(5.0, ADRIA.bin_edges()[1, :])
+    size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
     for (idx, row_idx) in enumerate(ltmp_reefmod_idxs)
         loc_cov = rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
-	tot_cov = raw_ltmp_reef_data[idx, findfirst(x->!ismissing(x), raw_ltmp_reef_data[idx, :])]
-	dom.init_coral_cover[:, row_idx] .= reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
+        tot_cov = raw_ltmp_reef_data[idx, findfirst(x->!ismissing(x), raw_ltmp_reef_data[idx, :])] ./ dom.loc_data.k[row_idx]
+        dom.init_coral_cover[:, row_idx] .= reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
     end
     return nothing
 end
@@ -231,7 +232,7 @@ function validate_linear_extension_coefficients(
     n_locs::Int64 = size(linear_ext_coefs, 2)
     dist_from_valid::Float64 = 0.0
     for j in 1:n_locs
-    	tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins 
+    	tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins
 	tmp[tmp .< 0] .= 0.0
 	dist_from_valid += sum(tmp)
     end
@@ -249,7 +250,7 @@ function validate_mortality_coefficients(
 )::Float64
     n_locs::Int64 = size(mortality_coefs, 2)
     survival_vals::Matrix{Float64} = 1 .- mortality_vals
-	
+
     dist_from_valid::Float64 = 0.0
     for j in 1:n_locs
     	tmp = survival_vals .* mortality_coefs[:, j] .- 1
@@ -270,11 +271,7 @@ which is for 2023.
 function obj_func(
     init_values;
     dom=dom,
-    north_cover=ltmp_north[ltmp_north_period, [:lower, :response, :upper]],
-    central_cover=ltmp_central[ltmp_central_period, [:lower, :response, :upper]],
-    south_cover=ltmp_south[ltmp_south_period, [:lower, :response, :upper]],
     location_classification=location_classification.consecutive_classification,
-    n_loc_clusteres=n_classifications,
     start_year=start_year,
     end_year=end_year,
     coral_param_names=coral_p_names,
@@ -290,7 +287,6 @@ function obj_func(
     loc_k_areas = ADRIA.site_k_area(dom)
     loc_areas = ADRIA.loc_area(dom)
 
-
     scale_factors::Array{Float64, 3} = reshape(init_values[param_idxs[3]:param_idxs[4]], (5, 4, 3))
     bleaching_threshold::Float64 = init_values[end]
 
@@ -301,7 +297,7 @@ function obj_func(
         linear_ext, scale_factors[:, :, 1]
     )
     mortality_validity = validate_mortality_coefficients(
-        survival_r, scale_factors[:, :, 2] 
+        survival_r, scale_factors[:, :, 2]
     )
     if mortality_validity + lin_ext_validity != 0.0
         return mortality_validity + lin_ext_validity + 6e5
@@ -309,7 +305,7 @@ function obj_func(
 
     res = nothing
     try
-        res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs, bleaching_threshold)
+        res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs, 4.0)
     catch err
         return 5e5 + sum(linear_ext) + sum(survival_r) + sum(scale_factors)
     end
@@ -378,15 +374,15 @@ function obj_func(
     last_non_zero = findlast(x->x!=0, reef_error_series)
     first_non_zero = findfirst(x->x!=0, reef_error_series)
 
-    return 3.0 * (reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]) + (1 - fg_corr)
+    return 6.0 * (reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]) + (1 - fg_corr)
 end
 
-init_state = deserialize("C:/Users/dtan/data/init_cover.dat")
+init_state = deserialize(init_cover_fn)
 construct_cover!(dom, init_state, location_classification.consecutive_classification)
 
 insert_init_loc_cover!(dom)
 
-best_score_file = "Outputs/best_initial_state.dat"
+best_score_file = init_guess_fn
 if !@isdefined(best_init_state) && isfile(best_score_file)
     best_init_state = deserialize(best_score_file)
     @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
@@ -395,7 +391,7 @@ else
 end
 
 function save_results_callback(oc)
-    out_fn = "Outputs/coral_p_calib_fixed.dat"
+    out_fn = "Outputs/coral_p_calib_fixeds.dat"
     best_state = best_candidate(oc)
     serialize(out_fn, best_state)
     @info "Saving"
@@ -416,6 +412,7 @@ if !@isdefined(best_init_state) || isnothing(best_init_state)
         CallbackInterval = 3600
     );
 elseif !isnothing(best_init_state)
+    @info "Using initial guess."
     res = bboptimize(
         obj_func,
         best_init_state;  # provide an initial solution
@@ -425,7 +422,7 @@ elseif !isnothing(best_init_state)
     );
 end
 
-out_fn = "Outputs/coral_p_calib_fixed.dat"
+out_fn = "Outputs/coral_p_calib_fixeddd.dat"
 
 best_fitness(res)
 best_init_state = best_candidate(res)

@@ -140,6 +140,7 @@ temporal_range = 2008:2014
 location_unique_id = "18075100104"
 limited_loc_pos = 4
 domain_loc_pos = findfirst(x->x==location_unique_id, dom.loc_data.UNIQUE_ID)
+ltmp_loc_pos = findfirst(x->!ismissing(x) && x==location_unique_id, ltmp_reef_data.RME_UNIQUE_ID)
 
 linear_ext = permutedims(reshape(corals.linear_extension, (7, 5)), (2, 1))
 linear_ext[:, 7] .= 0.0
@@ -154,7 +155,7 @@ grp = [(i - 1) % 5 + 1 for i in 1:35]
 
 flt_linear_ext = reshape(linear_ext, (35,))
 
-save_dir = "Outputs/Location_$(location_unique_id)"
+save_dir = "Outputs/calibrating_dhw/Location_$(location_unique_id)"
 
 mkpath(save_dir)
 
@@ -184,3 +185,5 @@ ys = dom.loc_data.Y_COORD[domain_loc_pos]
 f = ADRIA.viz.map(dom)
 scatter!([xs], [ys], color=(:black, 0.0), markersize = 20, strokecolor=:black, strokewidth=2, overdraw=true)
 save("$(save_dir)/loc_map.png", f)
+
+location_comparison(rs_raw.raw, ltmp_loc_pos, save_dir)

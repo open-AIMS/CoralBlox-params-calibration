@@ -34,6 +34,20 @@ for (t_idx, taxa) in enumerate(taxa_names)
     end
 end
 
+# add dist_mean bounds
+for (t_idx, taxa) in enumerate(taxa_names)
+    for s in 1:7
+        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_mean"))
+    end
+end
+
+# add dist_std bounds
+for (t_idx, taxa) in enumerate(taxa_names)
+    for s in 1:7
+        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_std"))
+    end
+end
+
 # ----- LOAD Initial Coral Cover -----
 function insert_init_loc_cover!(
     dom;
@@ -41,7 +55,7 @@ function insert_init_loc_cover!(
     rm_ltmp_taxa=rm_ltmp_taxa,
     ltmp_reefmod_idxs=ltmp_reefmod_idxs
 )::Nothing
-    size_class_props = size_class_distribution(0.5, ADRIA.bin_edges()[1, :])
+    size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
     for (idx, row_idx) in enumerate(ltmp_reefmod_idxs)
         loc_cov = rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
         tot_cov = raw_ltmp_reef_data[idx, findfirst(x->!ismissing(x), raw_ltmp_reef_data[idx, :])] ./ dom.loc_data.k[row_idx]
@@ -62,7 +76,7 @@ insert_init_loc_cover!(dom)
 
 # ----- LOAD CALIBRATED RESULTS -----
 
-coral_param_fn = "C:/Users/dtan/repos/coral_p_calib_fixed.dat"
+coral_param_fn = "Outputs/coral_p_calib_fixedd.dat"
 coral_params = deserialize(coral_param_fn)
 
 # Load values into scenario dataframe
@@ -71,9 +85,9 @@ coral_param_values = coral_params[1:length(coral_p_names)]
 scens[1, coral_p_names] = coral_param_values
 
 # Extract and format location scale factors
-scale_factors::Array{Float64, 3} = reshape(coral_params[length(coral_p_names)+1:end], (5, 4, 3))
+scale_factors::Array{Float64, 3} = reshape(coral_params[length(coral_p_names)+1:length(coral_p_names) + 60], (5, 4, 3))
 
-rs_raw = ADRIA.run_model(dom, scens[1, :], scale_factors, dom_idxs)
+rs_raw = ADRIA.run_model(dom, scens[1, :], scale_factors, dom_idxs, coral_params[end])
 
 s_rac = (dropdims(sum(rs_raw.raw, dims=2), dims=2) .* site_k_area(dom)') ./ loc_area(dom)'
 
@@ -133,7 +147,7 @@ linkyaxes!(ax1, ax2, ax3)
 
 resize_to_layout!(f)
 
-prefix = "corrected_growth_min_dhw"
+prefix = "calibrating_dhw"
 
 save_dir = "Outputs/$(prefix)"
 

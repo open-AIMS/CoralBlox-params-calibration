@@ -24,6 +24,8 @@ classification_path = path_configs["classification_path"]
 manta_tow_class_path = path_configs["manta_tow_path"]
 ltmp_reef_data_path = path_configs["ltmp_reef_data"]
 composition_path = path_configs["composition_netcdf"]
+init_cover_fn = path_configs["init_cover_fn"]
+init_guess_fn = path_configs["init_guess_fn"]
 
 start_year = 2008
 end_year = 2022
