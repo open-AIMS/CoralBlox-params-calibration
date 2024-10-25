@@ -22,60 +22,74 @@ include("./common/cover_construction.jl")
 
 # Define parameter space to scan over
 # sample_bounds = repeat(base_location_vector, n_classifications)
-sample_bounds::Vector{Tuple{Float64, Float64}} = []
+sample_bounds::Vector{Tuple{Float64,Float64}} = []
 coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
 
-taxa_names = ["tabular_Acropora", "corymbose_Acropora", "corymbose_non_Acropora", "small_massives", "large_massives"]
+taxa_names = [
+    "tabular_Acropora",
+    "corymbose_Acropora",
+    "corymbose_non_Acropora",
+    "small_massives",
+    "large_massives"
+]
 szs = 1:7
 
 coral_p_names::Vector{Symbol} = []
-coral_bounds::Vector{Tuple{Float64, Float64}} = []
+coral_bounds::Vector{Tuple{Float64,Float64}} = []
 
 # Create growth bounds
 size_widths = ADRIA.bin_widths()
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in szs
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "linear_extension"))
+        push!(
+            coral_p_names,
+            Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "linear_extension")
+        )
         push!(coral_bounds, (size_widths[t_idx, s] / 50, size_widths[t_idx, s] * 0.8))
     end
 end
 
-# add mortality bounds
+# Add mortality bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in szs
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "mb_rate"))
+        push!(
+            coral_p_names,
+            Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "mb_rate")
+        )
         if s < 4
-                push!(coral_bounds, (0.01, 0.6))
+            push!(coral_bounds, (0.01, 0.6))
         else
-                push!(coral_bounds, (0.01, t_idx > 3 ? 0.15 : 0.4))
+            push!(coral_bounds, (0.01, t_idx > 3 ? 0.15 : 0.4))
         end
     end
 end
 
-
-# add fecundity bounds
+# Add fecundity bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in 4:7
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "fecundity"))
+        push!(
+            coral_p_names,
+            Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "fecundity")
+        )
         push!(coral_bounds, (Float64(1e4), Float64(1e6)))
     end
 end
 
-# add dist_mean bounds
+# Add dist_mean bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in 1:7
         tmp_nm = Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_mean")
-        tmp_val = coral_params[findfirst(x->x==tmp_nm, coral_params.fieldname), :val]
+        tmp_val = coral_params[findfirst(x -> x == tmp_nm, coral_params.fieldname), :val]
         push!(coral_p_names, tmp_nm)
         push!(coral_bounds, (tmp_val * 0.9, tmp_val * 1.1))
     end
 end
 
-# add dist_std bounds
+# Add dist_std bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in 1:7
         tmp_nm = Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_std")
-        tmp_val = coral_params[findfirst(x->x==tmp_nm, coral_params.fieldname), :val]
+        tmp_val = coral_params[findfirst(x -> x == tmp_nm, coral_params.fieldname), :val]
         push!(coral_p_names, tmp_nm)
         push!(coral_bounds, (tmp_val * 0.9, tmp_val * 1.1))
     end
@@ -87,7 +101,7 @@ coral_end_idx = length(sample_bounds)
 
 n_taxa = 5
 n_limited_locs = length(limited_locations)
-n_factors = 3 # growth, mortality, fecundity
+n_factors = 3  # growth, mortality, fecundity
 
 location_coef = repeat([(0.5, 2.0)], n_taxa * n_limited_locs * n_factors)
 
@@ -110,10 +124,92 @@ function average_class_cover(
     class_mask::BitVector = Vector(repeat([true], n_locs))
     for class in classes
         class_mask .= loc_classes .== class
-        class_cover[:, class] .= dropdims(mean(cover[:, class_mask], dims=2), dims=2)
+        class_cover[:, class] .= dropdims(mean(cover[:, class_mask]; dims=2); dims=2)
     end
 
     return class_cover
+end
+
+function insert_init_loc_cover!(
+    dom;
+    raw_ltmp_reef_data=raw_ltmp_reef_data,
+    rm_ltmp_taxa=rm_ltmp_taxa,
+    target_dom_idxs=target_dom_idxs
+)::Nothing
+    size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
+    for (idx, row_idx) in enumerate(target_dom_idxs)
+        loc_cov =
+            rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
+        tot_cov =
+            raw_ltmp_reef_data[
+                idx, findfirst(x -> !ismissing(x), raw_ltmp_reef_data[idx, :])
+            ] ./ dom.loc_data.k[row_idx]
+        dom.init_coral_cover[:, row_idx] .=
+            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
+    end
+
+    return nothing
+end
+
+"""
+Calculate the functional group correlation and temporal correlation between aggregated ltmp
+data created for reefmod.
+"""
+function reef_taxa_error(
+    cover;
+    rm_ltmp_taxa=rm_ltmp_taxa,
+    dom_idxs=target_dom_idxs
+)
+    fg_corr::Float64 = 0.0
+    for (j, idx) in enumerate(dom_idxs)
+        non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
+        for id in eachindex(2008:2022)[non_missing_mask]
+            fg_corr +=
+                cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
+        end
+    end
+
+    return fg_corr ./ length(dom_idxs)
+end
+
+"""
+    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
+
+Calculate the error between ltmp observations and the given cover array.
+"""
+function reef_error(
+    cover;
+    ltmp_obs=raw_ltmp_reef_data,
+    target_dom_idxs=target_dom_idxs
+)::Vector{Float64}
+    err_series::Vector{Float64} = zeros(Float64, 15)
+    tmp_err::Vector{Float64} = zeros(Float64, 15)
+    err_counts::Vector{Int64} = zeros(Int64, 15)
+    not_missing::BitVector = BitVector(fill(true, 15))
+    for (row_idx, loc_obs) in enumerate(skipmissing.(eachrow(ltmp_obs)))
+        if target_dom_idxs[row_idx] == -1
+            continue
+        end
+
+        not_missing .= (!).(ismissing.(loc_obs))
+        min_arg = argmin(loc_obs[not_missing])
+        max_arg = argmax(loc_obs[not_missing])
+        tmp_err[not_missing] .= MAEE_series(
+            cover[not_missing, target_dom_idxs[row_idx]], loc_obs[not_missing]
+        )
+
+        # Apply double the weight on the peak/trough of the time series
+        tmp_err[not_missing][[min_arg, max_arg]] .*= 2.0
+        err_series[not_missing] .+= tmp_err[not_missing]
+        err_counts[not_missing] .+= 1.0
+    end
+
+    if any(err_counts .== 0)
+        @debug "No reef level observation data for some years."
+        err_counts[err_counts .== 0] .= 1
+    end
+
+    return err_series ./ err_counts
 end
 
 """
@@ -139,83 +235,15 @@ function class_error(
             continue
         end
         not_missing .= (!).(ismissing.(manta_tow_mean[idx, :]))
-        err_series[not_missing] .+= abs.((
-            manta_tow_mean[idx, not_missing] .- class_cover[not_missing, class]
-        ) ./ manta_tow_std[idx, not_missing])
+        err_series[not_missing] .+=
+            abs.(
+                (
+                    manta_tow_mean[idx, not_missing] .- class_cover[not_missing, class]
+                ) ./ manta_tow_std[idx, not_missing]
+            )
         err_counts[not_missing] .+= 1
     end
     err_counts[err_counts .== 0] .= 1
-
-    return err_series ./ err_counts
-end
-
-"""
-Calculate the functional group correlation and temporal correlation between aggregated ltmp
-data created for reefmod.
-"""
-function reef_taxa_error(
-    cover;
-    rm_ltmp_taxa=rm_ltmp_taxa,
-    dom_idxs=dom_idxs
-)
-    fg_corr::Float64 = 0.0
-    for (j, idx) in enumerate(dom_idxs)
-        non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
-        for id in eachindex(2008:2022)[non_missing_mask]
-
-            fg_corr += cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
-        end
-    end
-    return fg_corr ./ length(dom_idxs)
-end
-
-function insert_init_loc_cover!(
-    dom;
-    raw_ltmp_reef_data=raw_ltmp_reef_data,
-    rm_ltmp_taxa=rm_ltmp_taxa,
-    target_dom_idxs=target_dom_idxs
-)::Nothing
-    size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
-    for (idx, row_idx) in enumerate(target_dom_idxs)
-        loc_cov = rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
-        tot_cov = raw_ltmp_reef_data[idx, findfirst(x->!ismissing(x), raw_ltmp_reef_data[idx, :])] ./ dom.loc_data.k[row_idx]
-        dom.init_coral_cover[:, row_idx] .= reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
-    end
-    return nothing
-end
-
-"""
-    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
-
-Calculate the error between ltmp observations and the given cover array.
-"""
-function reef_error(
-    cover;
-    raw_ltmp_reef_data=raw_ltmp_reef_data,
-    target_dom_idxs=target_dom_idxs
-)::Vector{Float64}
-    err_series::Vector{Float64} = zeros(Float64, 15)
-    tmp_err::Vector{Float64} = zeros(Float64, 15)
-    err_counts::Vector{Int64} = zeros(Int64, 15)
-    not_missing::BitVector = BitVector(repeat([true], 15))
-    for (row_idx, ltmp_row) in enumerate(eachrow(raw_ltmp_reef_data))
-        if target_dom_idxs[row_idx] == -1
-            continue
-        end
-        not_missing .= (!).(ismissing.(ltmp_row))
-	min_arg = argmin(ltmp_row[not_missing])
-	max_arg = argmax(ltmp_row[not_missing])
-        tmp_err[not_missing] .= MAEE_series(
-            cover[not_missing, target_dom_idxs[row_idx]], ltmp_row[not_missing]
-        )
-	tmp_err[not_missing][[min_arg, max_arg]] .*= 2
-	err_series[not_missing] .+= tmp_err[not_missing]
-        err_counts[not_missing] .+= 1
-    end
-    if any(err_counts .== 0)
-        @debug "No reef level observation data for some years."
-        err_counts[err_counts .== 0] .= 1
-    end
 
     return err_series ./ err_counts
 end
@@ -232,11 +260,13 @@ function validate_linear_extension_coefficients(
     size_class_bins::Matrix{Float64} = ADRIA.bin_widths()
     n_locs::Int64 = size(linear_ext_coefs, 2)
     dist_from_valid::Float64 = 0.0
+
     for j in 1:n_locs
-    	tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins
-	tmp[tmp .< 0] .= 0.0
-	dist_from_valid += sum(tmp)
+        tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins
+        tmp[tmp .< 0] .= 0.0
+        dist_from_valid += sum(tmp)
     end
+
     return dist_from_valid
 end
 
@@ -254,10 +284,11 @@ function validate_mortality_coefficients(
 
     dist_from_valid::Float64 = 0.0
     for j in 1:n_locs
-    	tmp = survival_vals .* mortality_coefs[:, j] .- 1
-	tmp[tmp .< 0] .= 0.0
-	dist_from_valid += sum(tmp)
+        tmp = survival_vals .* mortality_coefs[:, j] .- 1
+        tmp[tmp .< 0] .= 0.0
+        dist_from_valid += sum(tmp)
     end
+
     return dist_from_valid
 end
 
@@ -277,9 +308,8 @@ function obj_func(
     end_year=end_year,
     coral_param_names=coral_p_names,
     param_idxs=[coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx],
-    loc_idxs=dom_idxs
+    loc_idxs=target_dom_idxs
 )
-
     scen = ADRIA.param_table(dom)
     coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
     scen[1, coral_param_names] = coral_param_values
@@ -288,8 +318,9 @@ function obj_func(
     loc_k_areas = ADRIA.site_k_area(dom)
     loc_areas = ADRIA.loc_area(dom)
 
-    scale_factors::Array{Float64, 3} = reshape(init_values[param_idxs[3]:param_idxs[4]], (5, 4, 3))
-    bleaching_threshold::Float64 = init_values[end]
+    scale_factors::Array{Float64,3} = reshape(
+        init_values[param_idxs[3]:param_idxs[4]], (5, 4, 3)
+    )
 
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
     survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
@@ -301,14 +332,32 @@ function obj_func(
         survival_r, scale_factors[:, :, 2]
     )
     if mortality_validity + lin_ext_validity != 0.0
-        return mortality_validity + lin_ext_validity + 6e5
+        return 1e6 + (2e6 * (mortality_validity + lin_ext_validity))
     end
 
     res = nothing
     try
-        res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs, 4.0)
+        res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs)
     catch err
-        return 5e5 + sum(linear_ext) + sum(survival_r) + sum(scale_factors)
+        if !(err isa MethodError)
+            rethrow(err)
+        end
+
+        # Symmetric error function, where result is 0 if x == y
+        # but as y moves further away from x in either positive or negative direction, then
+        # the value approaches 1.0 (result is ≈1.0 if the distance between x and y is 10)
+        err_func(x, y) = 2.0 / (1.0 + exp(-abs(x - y))) - 1.0
+
+        # Determine how far away from the "default" values these are
+        comp_params = ADRIA.component_params(dom.model, :Coral)
+        coral_fn = comp_params[:, :fieldname]
+        lin_ext_idx = contains.(string.(coral_fn), "linear_ext")
+        mbrate_idx = contains.(string.(coral_fn), "mb_rate")
+
+        linext_overage = err_func.(corals.linear_extension, replace(comp_params[lin_ext_idx, :val], 0.0 => 1.0))
+        mbrate_overage = err_func.(corals.mb_rate, replace(comp_params[mbrate_idx, :val], 0.0 => 1.0))
+
+        return 5e5 * (sum(linext_overage) + sum(mbrate_overage) + sum(scale_factors))
     end
 
     # north_mean_cover = zeros(size(res.raw, 1))
@@ -342,7 +391,7 @@ function obj_func(
     # central_perf = temporal_variability(central_perf_series)
     # south_perf = temporal_variability(south_perf_series)
 
-    loc_cover = dropdims(sum(res.raw, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
+    loc_cover = dropdims(sum(res.raw; dims=2); dims=2) .* loc_k_areas' ./ loc_areas'
 
     # class_error_series = class_error(loc_cover)
     reef_error_series = reef_error(loc_cover)
@@ -369,13 +418,18 @@ function obj_func(
         # reef_error_series[end] * 10
     # ]
 
-    taxa_cover = dropdims(sum(permutedims(reshape(res.raw, (15, 7, 5, 3806)), (1, 3, 2, 4)), dims=3), dims=3)
+    taxa_cover = dropdims(
+        sum(permutedims(reshape(res.raw, (15, 7, 5, 3806)), (1, 3, 2, 4)); dims=3); dims=3
+    )
     fg_corr = reef_taxa_error(taxa_cover)
 
-    last_non_zero = findlast(x->x!=0, reef_error_series)
-    first_non_zero = findfirst(x->x!=0, reef_error_series)
+    first_non_zero = findfirst(x -> x != 0, reef_error_series)
+    last_non_zero = findlast(x -> x != 0, reef_error_series)
 
-    return 6.0 * (reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]) + (1 - fg_corr)
+    score = reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]
+    score += (1 - fg_corr) * 2.0
+
+    return score
 end
 
 init_state = deserialize(init_cover_fn)
