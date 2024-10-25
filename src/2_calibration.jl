@@ -1,7 +1,8 @@
 using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
-include("common.jl")
-include("cover_construction.jl")
+
+include("./common/common.jl")
+include("./common/cover_construction.jl")
 
 # ---- SETUP SAMPLE BOUNDS -------
 

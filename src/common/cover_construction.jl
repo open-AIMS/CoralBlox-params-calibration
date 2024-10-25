@@ -1,5 +1,3 @@
-using ADRIA
-
 """
 CDF of squared exponential distribution with X ~ π/4 * E^2. Where E is an exponential distributed
 """

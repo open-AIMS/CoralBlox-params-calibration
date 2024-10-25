@@ -1,7 +1,7 @@
 using Test
 using Distributions, Statistics
 
-include("../cover_construction.jl")
+include("../src/common/cover_construction.jl")
 
 @testset "size class distribution" begin
     bounds::Vector{Float64} = [0.0, 1.0, 2.0, 3.0, 4.0]

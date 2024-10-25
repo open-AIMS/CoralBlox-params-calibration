@@ -1,5 +1,5 @@
-include("common.jl")
-include("cover_construction.jl")
+include("./common/common.jl")
+include("./common/cover_construction.jl")
 include("1_setup.jl")
 
 # ----- CONSTRUCT PARAMETER NAMES IN CORRECT ORDER AS USED -----

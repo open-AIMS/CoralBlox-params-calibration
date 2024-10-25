@@ -1,4 +1,4 @@
-include("common.jl")
+include("./common/common.jl")
 
 if !@isdefined(canonical_gpkg) || reload_canonical
     @info "Loading Canonical gpkg"
