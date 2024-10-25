@@ -28,6 +28,9 @@ canonical_path = "spatial_data/canonical_gbr_2024-04-23.gpkg"
 classification_path = "spatial_data/location_classification_MPA.csv" # location classes
 manta_tow_path = "ltmp_data\\manta_tow_mean_std.nc" # target data for location classes
 ltmp_reef_data = "ltmp_data\\manta_tow_data_reef_lvl.gpkg" # target data for ltmp locs
+composition_netcdf = "ltmp_data\\coral_composition.nc"
+init_cover_fn = "spatial\\init_cover.dat"
+init_guess_fn = "<path to initial guess>" # optional
 ```
 
 ## ADRIA  Branch
