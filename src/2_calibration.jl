@@ -445,11 +445,34 @@ else
     best_init_state = nothing
 end
 
-function save_results_callback(oc)
-    out_fn = "Outputs/coral_p_calib_fixeds.dat"
+"""
+    save_results_callback(
+        oc;
+        time_interv=3600,
+        step_interv=10_000,
+        result_fn="intermediate_coral_calib.dat"
+    )::Nothing
+
+Save intermediate results when at least one of the time or step interval is hit.
+"""
+function save_results_callback(
+    oc;
+    time_interv=3600,
+    step_interv=10_000,
+    result_fn="intermediate_coral_calib.dat"
+)::Nothing
+    is_save_point = oc.num_steps % step_interv == 0
+    elapsed = (oc.last_report_time - oc.start_time)
+    is_save_time = elapsed > 0 ? elapsed % time_interv == 0 : false
+
+    if !is_save_point && !is_save_time
+        return nothing
+    end
+
+    out_fn = joinpath(OUT_DIR, result_fn)
     best_state = best_candidate(oc)
     serialize(out_fn, best_state)
-    @info "Saving"
+    @info "Saved intermediate"
     return nothing
 end
 
@@ -462,10 +485,10 @@ if !@isdefined(best_init_state) || isnothing(best_init_state)
         obj_func;
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=Threads.nthreads()-1,
-        CallbackFunction = save_results_callback,
-        CallbackInterval = 3600
-    );
+        NThreads=Threads.nthreads() - 1,
+        CallbackFunction=save_results_callback,
+        CallbackInterval=0  # run at end of every step
+    )
 elseif !isnothing(best_init_state)
     @info "Using initial guess."
     res = bboptimize(
@@ -473,11 +496,11 @@ elseif !isnothing(best_init_state)
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=Threads.nthreads()-1
-    );
+        NThreads=Threads.nthreads() - 1
+    )
 end
 
-out_fn = "Outputs/coral_p_calib_fixeddd.dat"
+out_fn = joinpath(OUT_DIR, "coral_p_calib_last.dat")
 
 best_fitness(res)
 best_init_state = best_candidate(res)
