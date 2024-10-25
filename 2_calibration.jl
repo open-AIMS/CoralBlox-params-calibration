@@ -172,10 +172,10 @@ function insert_init_loc_cover!(
     dom;
     raw_ltmp_reef_data=raw_ltmp_reef_data,
     rm_ltmp_taxa=rm_ltmp_taxa,
-    ltmp_reefmod_idxs=ltmp_reefmod_idxs
+    target_dom_idxs=target_dom_idxs
 )::Nothing
     size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
-    for (idx, row_idx) in enumerate(ltmp_reefmod_idxs)
+    for (idx, row_idx) in enumerate(target_dom_idxs)
         loc_cov = rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
         tot_cov = raw_ltmp_reef_data[idx, findfirst(x->!ismissing(x), raw_ltmp_reef_data[idx, :])] ./ dom.loc_data.k[row_idx]
         dom.init_coral_cover[:, row_idx] .= reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
@@ -191,21 +191,21 @@ Calculate the error between ltmp observations and the given cover array.
 function reef_error(
     cover;
     raw_ltmp_reef_data=raw_ltmp_reef_data,
-    ltmp_reefmod_idxs=ltmp_reefmod_idxs
+    target_dom_idxs=target_dom_idxs
 )::Vector{Float64}
     err_series::Vector{Float64} = zeros(Float64, 15)
     tmp_err::Vector{Float64} = zeros(Float64, 15)
     err_counts::Vector{Int64} = zeros(Int64, 15)
     not_missing::BitVector = BitVector(repeat([true], 15))
     for (row_idx, ltmp_row) in enumerate(eachrow(raw_ltmp_reef_data))
-        if ltmp_reefmod_idxs[row_idx] == -1
+        if target_dom_idxs[row_idx] == -1
             continue
         end
         not_missing .= (!).(ismissing.(ltmp_row))
 	min_arg = argmin(ltmp_row[not_missing])
 	max_arg = argmax(ltmp_row[not_missing])
         tmp_err[not_missing] .= MAEE_series(
-            cover[not_missing, ltmp_reefmod_idxs[row_idx]], ltmp_row[not_missing]
+            cover[not_missing, target_dom_idxs[row_idx]], ltmp_row[not_missing]
         )
 	tmp_err[not_missing][[min_arg, max_arg]] .*= 2
 	err_series[not_missing] .+= tmp_err[not_missing]

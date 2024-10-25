@@ -53,10 +53,10 @@ function insert_init_loc_cover!(
     dom;
     raw_ltmp_reef_data=raw_ltmp_reef_data,
     rm_ltmp_taxa=rm_ltmp_taxa,
-    ltmp_reefmod_idxs=ltmp_reefmod_idxs
+    target_dom_idxs=target_dom_idxs
 )::Nothing
     size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
-    for (idx, row_idx) in enumerate(ltmp_reefmod_idxs)
+    for (idx, row_idx) in enumerate(target_dom_idxs)
         loc_cov = rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
         tot_cov = raw_ltmp_reef_data[idx, findfirst(x->!ismissing(x), raw_ltmp_reef_data[idx, :])] ./ dom.loc_data.k[row_idx]
         dom.init_coral_cover[:, row_idx] .= reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
@@ -76,7 +76,7 @@ insert_init_loc_cover!(dom)
 
 # ----- LOAD CALIBRATED RESULTS -----
 
-coral_param_fn = "Outputs/coral_p_calib_fixedd.dat"
+coral_param_fn = "C:/Users/dtan/data/dhw_calibration.dat"
 coral_params = deserialize(coral_param_fn)
 
 # Load values into scenario dataframe
@@ -87,7 +87,7 @@ scens[1, coral_p_names] = coral_param_values
 # Extract and format location scale factors
 scale_factors::Array{Float64, 3} = reshape(coral_params[length(coral_p_names)+1:length(coral_p_names) + 60], (5, 4, 3))
 
-rs_raw = ADRIA.run_model(dom, scens[1, :], scale_factors, dom_idxs, coral_params[end])
+rs_raw = ADRIA.run_model(dom, scens[1, :], scale_factors, target_dom_idxs, 4.0)
 
 s_rac = (dropdims(sum(rs_raw.raw, dims=2), dims=2) .* site_k_area(dom)') ./ loc_area(dom)'
 
@@ -147,7 +147,7 @@ linkyaxes!(ax1, ax2, ax3)
 
 resize_to_layout!(f)
 
-prefix = "calibrating_dhw"
+prefix = "dhw_calib"
 
 save_dir = "Outputs/$(prefix)"
 

@@ -108,7 +108,7 @@ function location_comparison(
 
     f = Figure()
     Axis(f[1, 1], xlabel="Year", ylabel="relative total area", title="Location $(reef_id)")
-    obs = scatter!(obs_tf, obs_loc_data[not_missing_obs], color=:transparent, strokewidth=2, strokecolor=:black, markersize=15)
+    obs = scatterlines!(obs_tf, obs_loc_data[not_missing_obs], color=:black,  markercolor=:transparent, strokewidth=2, strokecolor=:black, markersize=15, linestyle=:dash,)
     sim = lines!(2008:2022, sim_data, color=:red)
     Legend(
         f[1, 2],
@@ -186,15 +186,16 @@ function temporal_size_class_proportions(raw_data)::Figure
         permutedims(ADRIA.colony_areas()[2], (2, 1)),
         (1, 35, 1)
     )
+    n_locs = size(raw_data, 3)
     population = raw_data ./ sc_mean_area
-    population = reshape(population, (15, 7, 5, 3806))
+    population = reshape(population, (15, 7, 5, n_locs))
     population = dropdims(sum(population, dims=4), dims=4)
     population ./= sum(population, dims=2)
     population = permutedims(population, (3, 2, 1))
 
     fg_names = ADRIA.functional_group_names()
     xs = 2008:2022
-    col = :PuBuGn_9
+    col = :oslo10
 
     f = Figure(; size=(1600, 900))
     ax = Axis(

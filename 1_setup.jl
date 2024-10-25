@@ -155,6 +155,7 @@ ltmp_reef_data[:, 5:end] ./= 100
 first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
 raw_ltmp_reef_data = Matrix(ltmp_reef_data[:, first_yr_idx:end])
 
+# For each ltmp location calculate the row index for the domain
 all_ltmp_idxs = [
     ismissing(id) ? -1 : findfirst(
         x -> x == id,
@@ -171,19 +172,10 @@ raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
 
 composition_data = open_dataset(composition_path)
 
-ltmp_reefmod_idxs = [
-    ismissing(id) ? -1 : findfirst(
-        x -> x == id,
-        dom.loc_data.UNIQUE_ID
-    ) for id in ltmp_reef_data.RME_UNIQUE_ID if !ismissing(id) && (id in limited_locations)
-]
+# for each target location get its row index in the domain
+target_dom_idxs = [findfirst(x->x==id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
 
-using Parquet
-
-raw_rm_ltmp = DataFrame(read_parquet("ltmp_data/LTMP_TRANSECT_MEANS.parquet"))
-raw_rm_ltmp[!, :YEAR_ROUND] .= floor.(raw_rm_ltmp.YEAR_Reefmod)
-
-dom_idxs = [findfirst(x->x==id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
+# extract the ltmp data for each target location
 temporal_range = 2008:2022
 # [year ⋅ taxa ⋅ locs]
 rm_ltmp_taxa = Array{Union{Missing, Float64}}(missing, length(temporal_range), 5, 4)
@@ -193,4 +185,5 @@ end
 
 dom.loc_data[!, :depth_med] .= canonical_gpkg.depth_med
 
+# set ADRIA Env variable to prevent an error during run_model
 ENV["ADRIA_DEBUG"] = false

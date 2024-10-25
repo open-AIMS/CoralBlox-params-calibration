@@ -129,6 +129,40 @@ function plot_target_proportions(loc::String, reefmod_taxa)::Figure
     return f
 end
 
+function error_functions(
+    raw_data,
+    ltmp_loc_idx;
+    obs_data=all_ltmp_reef,
+    obs_idxs=all_ltmp_idxs,
+    obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
+    loc_k_areas=ADRIA.site_k_area(dom),
+    loc_areas=ADRIA.loc_area(dom)
+)
+    loc_cover = dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
+    if obs_idxs[ltmp_loc_idx] == -1
+        return Figure()
+    end
+
+    obs_loc_data = obs_data[ltmp_loc_idx, :]
+    not_missing_obs = (!).(ismissing.(obs_loc_data))
+    obs_tf = (2008:2022)[not_missing_obs]
+
+    sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
+    reef_id = obs_loc_labels[ltmp_loc_idx]
+
+
+    rmse_::Float64 = rmse(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    cc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    maee_::Float64 = MAEE(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    bias_::Float64 = bias(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    @info "Location $(reef_id)"
+    @info "RMSE:       $(trunc(rmse_, digits=4))"
+    @info "Pearsons R: $(trunc(cc_, digits=4))"
+    @info "MAEE:       $(trunc(maee_, digits=4))"
+    @info "Bias:       $(trunc(bias_, digits=4))"
+    return rmse_, cc_, maee_, bias_
+end
+
 corals = ADRIA.to_coral_spec(scens[1, :])
 
 coral_cover = rs_raw.raw .* reshape(site_k_area(dom), (1, 1, 3806))
@@ -137,10 +171,15 @@ coral_cover = rs_raw.raw .* reshape(site_k_area(dom), (1, 1, 3806))
 temporal_range = 2008:2014
 
 # Location coral params
-location_unique_id = "18075100104"
-limited_loc_pos = 4
+limited_loc_pos = 4 # index of target location in
+location_unique_id = limited_locations[limited_loc_pos]
 domain_loc_pos = findfirst(x->x==location_unique_id, dom.loc_data.UNIQUE_ID)
 ltmp_loc_pos = findfirst(x->!ismissing(x) && x==location_unique_id, ltmp_reef_data.RME_UNIQUE_ID)
+
+println("---- Plotting Location $(location_unique_id) ----")
+println("Reef Name: $(dom.loc_data.LOC_NAME_L[domain_loc_pos])")
+println("Calibration Location Index: $(limited_loc_pos)")
+println("Ltmp Location Index: $(ltmp_loc_pos)")
 
 linear_ext = permutedims(reshape(corals.linear_extension, (7, 5)), (2, 1))
 linear_ext[:, 7] .= 0.0
@@ -155,7 +194,7 @@ grp = [(i - 1) % 5 + 1 for i in 1:35]
 
 flt_linear_ext = reshape(linear_ext, (35,))
 
-save_dir = "Outputs/calibrating_dhw/Location_$(location_unique_id)"
+save_dir = "Outputs/$(prefix)/Location_$(location_unique_id)"
 
 mkpath(save_dir)
 
@@ -187,3 +226,9 @@ scatter!([xs], [ys], color=(:black, 0.0), markersize = 20, strokecolor=:black, s
 save("$(save_dir)/loc_map.png", f)
 
 location_comparison(rs_raw.raw, ltmp_loc_pos, save_dir)
+error_functions(rs_raw.raw, ltmp_loc_pos)
+
+loc_cov = rs_raw.raw[:, :, domain_loc_pos:domain_loc_pos]
+
+f = temporal_size_class_proportions(loc_cov)
+save("$(save_dir)/size_class_proportions.png", f)
