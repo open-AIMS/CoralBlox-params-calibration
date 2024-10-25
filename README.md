@@ -70,6 +70,46 @@ construct_cover!(dom, init_cover, location_classification.consecutive_classifica
 
  Optional file name for inital guess.
 
+## Useful Variables
+
+First execute `1_setup.jl`
+
+ - `dom`
+
+ ADRIA reefmod domain.
+
+ - `rm_ltmp_taxa`
+
+ Target taxa composition at target locations
+
+ - `raw_ltmp_reef_data`
+
+ Target coral cover levels at target locations
+
+ - `target_dom_idxs`
+
+ ADRIA domain row index for each target location
+
+ - `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK`
+
+ LTMP Region mask for ADRIA domains.
+
+ - `ltmp_north`, `ltmp_central` and `ltmp_south`
+
+ Regional LTMP data
+
+ - `all_ltmp_reef`
+
+ All ltmp reef manta cover data
+
+ - `all_ltmp_reef_idxs`
+
+ ADRIA domain row index for each ltmp location.
+
+ - `location_classification`
+
+ CSV containing location classification of gbr-wide locations
+
 ## ADRIA  Branch
 
 Checkout `takuya/calib` for compatability.
