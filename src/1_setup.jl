@@ -56,7 +56,7 @@ if (!@isdefined(dom) || reload_domain)
 end
 
 if !@isdefined(LTMP_DATA) || reload_ltmp
-    LTMP_DATA = CSV.read("ltmp_data/modelled_brms.beta.ry.disp.csv", DataFrame, header=true)
+    LTMP_DATA = CSV.read(ltmp_modelled_obs, DataFrame, header=true)
     LTMP_DATA[!, :Region] = String.(LTMP_DATA[:, :Region])
 
     ltmp_north_mask = ["Northern GBR" == reg for reg in LTMP_DATA.Region]

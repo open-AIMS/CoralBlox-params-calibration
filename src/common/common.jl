@@ -25,6 +25,7 @@ global ltmp_reef_data_path = joinpath("../", path_configs["ltmp_reef_data"])  # 
 global composition_path = joinpath("../", path_configs["composition_netcdf"])
 
 global ltmp_shp = joinpath("../", path_configs["ltmp_shp"])
+global ltmp_modelled_obs = joinpath("../", path_configs["ltmp_modelled_obs"])
 global classification_path = joinpath("../", path_configs["classification_path"])  # location classes
 global init_cover_fn = joinpath("../", path_configs["init_cover_fn"])
 
