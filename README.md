@@ -8,111 +8,78 @@ Instantiate environment to install required packages.
 ]instantiate
 ```
 
-Add ADRIA using `dev`.
+It is assumed that all scripts are run inside the `src` directory.
 
-Here, it is assumed this repo lives inside the sandbox directory.
-Otherwise, use the absolute path to the ADRIA repository.
-
-```julia
-] dev ../..
-```
+Add the required version of ADRIA using:
+`add https://www.github.com/open-AIMS/ADRIA.jl#takuya/calib`
 
 Create a `calib_config.toml` file with the following entries:
 
 ```bash
+# TODO: Detail which entries require relative vs absolute paths
 [data_paths]
-reefmod_domain = "<path to ReefMod dataset>"
-rme_domain = "<path to RME dataset>"
-ltmp_shp = "spatial_data/gbr_3Zone 2.shp"
-canonical_path = "<path to canonical gpkg>"
-classification_path = "spatial_data/location_classification_MPA.csv" # location classes
-manta_tow_path = "ltmp_data\\manta_tow_mean_std.nc" # target data for location classes
-ltmp_reef_data = "ltmp_data\\manta_tow_data_reef_lvl.gpkg" # target data for ltmp locs
-composition_netcdf = "ltmp_data\\coral_composition.nc"
-init_cover_fn = "spatial\\init_cover.dat"
-init_guess_fn = "<path to initial guess>" # optional
+reefmod_domain = "<path to ReefMod dataset>"  # Required
+rme_domain = "<path to RME dataset>"  # Required
+ltmp_shp = "spatial_data/gbr_3Zone 2.shp"  # Required
+ltmp_modelled_obs = "ltmp_data/modelled_brms.beta.ry.disp.csv"  # Required
+canonical_path = "<path to canonical gpkg>"  # Required
+classification_path = "spatial_data/location_classification_MPA.csv"  # location classes
+manta_tow_path = "ltmp_data/manta_tow_mean_std.nc"  # target data for location classes
+ltmp_reef_data = "ltmp_data/manta_tow_data_reef_lvl.gpkg"  # target data for ltmp locs
+composition_netcdf = "ltmp_data/coral_composition.nc"
+init_cover_fn = "spatial/init_cover.dat"
+init_guess_fn = "coral_p_calib_last.dat"  # optional, just the filename
+out_dir = "../outputs"  # path to output directory for intermediate calibration results
 ```
 
 ## Config File Path Descriptions
 
- - `reefmod_domain`
+- `reefmod_domain` : Domain found on teams called `limited_reefmod_domain` in ADRIA domain folder.
 
- Domain found on teams called `limited_reefmod_domain` in ADRIA domain folder.
+- `classification_path` : CSV file contains location classes in the same order as the ADRIA domain.
 
- - `classification_path`
-
- CSV file contains location classes in the same order as the ADRIA domain.
-
- - `manta_tow_path`
-
- NetCDF containing target mean and standard deviation for location classes not individual
+- `manta_tow_path` : NetCDF containing target mean and standard deviation for location classes not individual
 locations. Contained in `ltmp_data` directory.
 
- - `ltmp_reef_data`
+- `ltmp_reef_data` : Geopackage containing target data for individual locations. Contained in `ltmp_data` directory.
 
- Gpkg containing target data for individual locations. Contained in `ltmp_data` directory.
-
- - `composition_netcdf`
-
- NetCDF containing coral composition for each ADRIA functional group at each ltmp
+- `composition_netcdf` : NetCDF containing coral composition for each ADRIA functional group at each ltmp
 photogrammetry location. Contained in the `ltmp_data` directory.
 
- - `init_cover_fn`
+- `init_guess_fn` : Optional file name for inital guess.
 
- Data containing calibrated initial cover. Must be loaded into domain as follows.
+- `init_cover_fn` : Data containing calibrated initial cover. Must be loaded into domain as follows.
 
 ```julia
 init_cover = deserialize(init_cover_fn)
 construct_cover!(dom, init_cover, location_classification.consecutive_classification)
 ```
 
- - `init_guess_fn`
-
- Optional file name for inital guess.
-
 ## Useful Variables
 
 First execute `1_setup.jl`
 
- - `dom`
+ - `dom` : ADRIA reefmod domain.
 
- ADRIA reefmod domain.
+ - `rm_ltmp_taxa` : Target taxa composition at target locations
 
- - `rm_ltmp_taxa`
+ - `raw_ltmp_reef_data` : Target coral cover levels at target locations
 
- Target taxa composition at target locations
+ - `target_dom_idxs` : ADRIA domain row index for each target location
 
- - `raw_ltmp_reef_data`
+ - `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK` : LTMP Region mask for ADRIA domains.
 
- Target coral cover levels at target locations
+ - `ltmp_north`, `ltmp_central` and `ltmp_south` : Regional LTMP data
 
- - `target_dom_idxs`
+ - `all_ltmp_reef` : All ltmp reef manta cover data
 
- ADRIA domain row index for each target location
+ - `all_ltmp_reef_idxs` : ADRIA domain row index for each ltmp location.
 
- - `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK`
+ - `location_classification` : CSV containing location classification of GBR-wide locations
 
- LTMP Region mask for ADRIA domains.
+## ADRIA Branch
 
- - `ltmp_north`, `ltmp_central` and `ltmp_south`
-
- Regional LTMP data
-
- - `all_ltmp_reef`
-
- All ltmp reef manta cover data
-
- - `all_ltmp_reef_idxs`
-
- ADRIA domain row index for each ltmp location.
-
- - `location_classification`
-
- CSV containing location classification of gbr-wide locations
-
-## ADRIA  Branch
-
-Checkout `takuya/calib` for compatability.
+Checkout `takuya/calib` for compatibility.
 
 The run model function has an altered call signature.
 
@@ -155,5 +122,3 @@ Expects total cover of shape `[timesteps x location]`
 ### Result Analysis
 
 #### results_analysis.jl
-
-
