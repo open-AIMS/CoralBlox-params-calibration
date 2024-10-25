@@ -20,14 +20,16 @@ global rme_domain_path = path_configs["rme_domain"]
 global canonical_path = path_configs["canonical_path"]
 global init_guess_fn = path_configs["init_guess_fn"]  # optional
 
-global manta_tow_class_path = joinpath("../", path_configs["manta_tow_path"])  # target data for location classes
-global ltmp_reef_data_path = joinpath("../", path_configs["ltmp_reef_data"])  # target data for ltmp locs
-global composition_path = joinpath("../", path_configs["composition_netcdf"])
+global manta_tow_class_path = joinpath(pwd(), "../", path_configs["manta_tow_path"])  # target data for location classes
+global ltmp_reef_data_path = joinpath(pwd(), "../", path_configs["ltmp_reef_data"])  # target data for ltmp locs
+global composition_path = joinpath(pwd(), "../", path_configs["composition_netcdf"])
 
-global ltmp_shp = joinpath("../", path_configs["ltmp_shp"])
-global ltmp_modelled_obs = joinpath("../", path_configs["ltmp_modelled_obs"])
-global classification_path = joinpath("../", path_configs["classification_path"])  # location classes
-global init_cover_fn = joinpath("../", path_configs["init_cover_fn"])
+global ltmp_shp = joinpath(pwd(), "../", path_configs["ltmp_shp"])
+global ltmp_modelled_obs = joinpath(pwd(), "../", path_configs["ltmp_modelled_obs"])
+global classification_path = joinpath(pwd(), "../", path_configs["classification_path"])  # location classes
+global init_cover_fn = joinpath(pwd(), "../", path_configs["init_cover_fn"])
+
+global OUT_DIR = path_configs["out_dir"]
 
 global start_year = 2008
 global end_year = 2022
