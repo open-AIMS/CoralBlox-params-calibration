@@ -15,14 +15,15 @@ coral_p_names = []
 size_widths = ADRIA.bin_widths()
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in szs
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "linear_extension"))
+        # Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "linear_extension")
+        push!(coral_p_names, Symbol("$(taxa)_$(t_idx)_$(s)_linear_extension"))
     end
 end
 
 # add mortality bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in szs
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "mb_rate"))
+        push!(coral_p_names, Symbol("$(taxa)_$(t_idx)_$(s)_mb_rate"))
     end
 end
 
@@ -30,21 +31,21 @@ end
 # add fecundity bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in 4:7
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "fecundity"))
+        push!(coral_p_names, Symbol("$(taxa)_$(t_idx)_$(s)_fecundity"))
     end
 end
 
 # add dist_mean bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in 1:7
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_mean"))
+        push!(coral_p_names, Symbol("$(taxa)_$(t_idx)_$(s)_dist_mean"))
     end
 end
 
 # add dist_std bounds
 for (t_idx, taxa) in enumerate(taxa_names)
     for s in 1:7
-        push!(coral_p_names, Symbol(taxa * "_" * string(t_idx) * "_" * string(s) * "_" * "dist_std"))
+        push!(coral_p_names, Symbol("$(taxa)_$(t_idx)_$(s)_dist_std"))
     end
 end
 
