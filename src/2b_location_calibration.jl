@@ -55,7 +55,7 @@ n_taxa = 5
 n_limited_locs = length(limited_locations)
 n_factors = 3  # growth, mortality, fecundity
 
-location_coef = fill((0.3, 1.1), n_taxa * n_limited_locs * n_factors)
+location_coef = fill((0.3, 1.2), n_taxa * n_limited_locs * n_factors)
 
 coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
