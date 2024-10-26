@@ -109,6 +109,9 @@ end
 """
 Calculate the functional group correlation and temporal correlation between aggregated ltmp
 data created for reefmod.
+
+Uses the complement of the absolute pearson correlation coefficient such that 0 indicates
+a perfect fit, and 1 indicates no correlation.
 """
 function reef_taxa_error(
     cover;
@@ -120,11 +123,11 @@ function reef_taxa_error(
         non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
         for id in eachindex(2008:2022)[non_missing_mask]
             fg_corr +=
-                cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
+                abs(cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j])) ./ count(non_missing_mask)
         end
     end
 
-    return fg_corr ./ length(dom_idxs)
+    return 1.0 - (fg_corr ./ length(dom_idxs))
 end
 
 """
@@ -336,7 +339,7 @@ function obj_func(
     last_non_zero = findlast(x -> x != 0, reef_error_series)
 
     score = reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]
-    score += (1 - fg_corr) * 2.0
+    score += fg_corr * 2.0
 
     return score
 end
