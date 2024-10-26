@@ -38,19 +38,13 @@ out_dir = "../outputs"  # path to output directory for intermediate calibration 
 ## Config File Path Descriptions
 
 - `reefmod_domain` : Domain found on teams called `limited_reefmod_domain` in ADRIA domain folder.
-
 - `classification_path` : CSV file contains location classes in the same order as the ADRIA domain.
-
 - `manta_tow_path` : NetCDF containing target mean and standard deviation for location classes not individual
 locations. Contained in `ltmp_data` directory.
-
 - `ltmp_reef_data` : Geopackage containing target data for individual locations. Contained in `ltmp_data` directory.
-
 - `composition_netcdf` : NetCDF containing coral composition for each ADRIA functional group at each ltmp
 photogrammetry location. Contained in the `ltmp_data` directory.
-
 - `init_guess_fn` : Optional file name for inital guess.
-
 - `init_cover_fn` : Data containing calibrated initial cover. Must be loaded into domain as follows.
 
 ```julia
@@ -62,23 +56,15 @@ construct_cover!(dom, init_cover, location_classification.consecutive_classifica
 
 First execute `1_setup.jl`
 
- - `dom` : ADRIA reefmod domain.
-
- - `rm_ltmp_taxa` : Target taxa composition at target locations
-
- - `raw_ltmp_reef_data` : Target coral cover levels at target locations
-
- - `target_dom_idxs` : ADRIA domain row index for each target location
-
- - `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK` : LTMP Region mask for ADRIA domains.
-
- - `ltmp_north`, `ltmp_central` and `ltmp_south` : Regional LTMP data
-
- - `all_ltmp_reef` : All ltmp reef manta cover data
-
- - `all_ltmp_reef_idxs` : ADRIA domain row index for each ltmp location.
-
- - `location_classification` : CSV containing location classification of GBR-wide locations
+- `dom` : ADRIA reefmod domain.
+- `rm_ltmp_taxa` : Target taxa composition at target locations
+- `raw_ltmp_reef_data` : Target coral cover levels at target locations
+- `target_dom_idxs` : ADRIA domain row index for each target location
+- `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK` : LTMP Region mask for ADRIA domains.
+- `ltmp_north`, `ltmp_central` and `ltmp_south` : Regional LTMP data
+- `all_ltmp_reef` : All ltmp reef manta cover data
+- `all_ltmp_reef_idxs` : ADRIA domain row index for each ltmp location.
+- `location_classification` : CSV containing location classification of GBR-wide locations
 
 ## Calibration-specific branches
 
