@@ -57,3 +57,23 @@ include("./plotting.jl")
 # julia> create_compare_plot("plot file name.png")
 # julia> create_error_statistics("error statistics filename.csv")
 # julia> plot_residuals("residual plot.png")
+
+# Convenience functions to retrieve parameters from an ADRIA model specification
+function extract_param_group_idx(model_spec::DataFrame, needle::String)::Vector{Int64}
+    needle_pos = contains.(string.(model_spec.fieldname), needle)
+    return findall(needle_pos)
+end
+function extract_param_group_idx(model::ADRIA.Model, component, needle::String)::Vector{Int64}
+    comp_params = ADRIA.component_params(model, component)
+    return extract_param_group_idx(comp_params, needle)
+end
+
+function extract_param_group(model::ADRIA.Model, component, needle::String)::DataFrame
+    group_pos = extract_param_group_idx(model, component, needle)
+    comp_params = ADRIA.component_params(model, component)
+    return comp_params[group_pos, :]
+end
+function extract_param_group(model_spec::DataFrame, needle::String)::DataFrame
+    group_pos = extract_param_group_idx(model_spec, needle)
+    return model_spec[group_pos, :]
+end
