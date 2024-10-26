@@ -27,7 +27,7 @@ sample_bounds = collect(zip(
 # Adjust bounds for linear extensions
 lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
 size_widths = ADRIA.bin_widths()'[:]  # transpose and flatten
-sample_bounds[lin_ext_pos] .= collect(zip(size_widths * 0.5, size_widths * 1.1))
+sample_bounds[lin_ext_pos] .= collect(zip(size_widths * 0.3, size_widths * 1.0))
 
 # Adjust bounds for mortality rate (size: 1 - 3, all groups)
 mb_rate_size_1_to_3 = extract_param_group_idx(coral_params, "1_mb_rate")
@@ -340,7 +340,7 @@ construct_cover!(dom, init_state, location_classification.consecutive_classifica
 
 insert_init_loc_cover!(dom)
 
-best_score_file = init_guess_fn
+best_score_file = joinpath(OUT_DIR, init_guess_fn)
 if !@isdefined(best_init_state) && isfile(best_score_file)
     best_init_state = deserialize(best_score_file)
     @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
