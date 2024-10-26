@@ -13,6 +13,9 @@ It is assumed that all scripts are run inside the `src` directory.
 Add the required version of ADRIA using:
 `add https://www.github.com/open-AIMS/ADRIA.jl#takuya/calib`
 
+The latest version of CoralBlox is also required:
+`add https://www.github.com/open-AIMS/CoralBlox.jl#main`
+
 Create a `calib_config.toml` file with the following entries:
 
 ```bash
@@ -77,11 +80,11 @@ First execute `1_setup.jl`
 
  - `location_classification` : CSV containing location classification of GBR-wide locations
 
-## ADRIA Branch
+## Calibration-specific branches
 
-Checkout `takuya/calib` for compatibility.
+Both ADRIA and CoralBlox have been modified to facilitate the calibration process.
 
-The run model function has an altered call signature.
+The `ADRIA.jl#takuya/calib` contains a run model function with an altered call signature:
 
 `rs_raw = ADRIA.run_model(dom, scens, scale_factors, target_loc_idxs, bleaching_threshold)`
 
@@ -89,7 +92,17 @@ where `scale_factors` is a matrix of shape `[taxa x n_target_locs x n_parameter_
 The scale factors apply a different scaling coefficient for each location.
 
 The bleaching threshold parameter specifies the lower bound of the truncated normal
-disitrbution used to calculate bleaching mortality.
+distribution used to calculate bleaching mortality.
+
+The latest `CoralBlox.jl#main` contains an implementation of `linear_extension_scale_factors`
+which accepts parameters for a single location. It allows parameter values for a specific
+location to be changed:
+
+`linear_extension_scale_factors(::Matrix{Float64}, ::Float64, ::Matrix{Float64}, ::Matrix{Float64}, ::Float64)`
+
+In addition to the usual:
+
+`linear_extension_scale_factors(::AbstractArray{Float64, 3}, ::AbstractVector{Float64}, ::AbstractMatrix{Float64}, ::AbstractMatrix{Float64}, ::AbstractVector{Float64})`
 
 ## Error Functions
 
