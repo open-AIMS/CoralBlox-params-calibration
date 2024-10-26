@@ -27,7 +27,10 @@ sample_bounds = collect(zip(
 # Adjust bounds for linear extensions
 lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
 size_widths = ADRIA.bin_widths()'[:]  # transpose and flatten
-sample_bounds[lin_ext_pos] .= collect(zip(size_widths * 0.3, size_widths * 1.0))
+
+extended_lb = first.(sample_bounds[lin_ext_pos]) .* 0.25
+extended_ub = last.(sample_bounds[lin_ext_pos]) .* 2.0
+sample_bounds[lin_ext_pos] .= collect(zip(extended_lb, extended_ub))
 
 # Adjust bounds for mortality rate (size: 1 - 3, all groups)
 mb_rate_size_1_to_3 = extract_param_group_idx(coral_params, "1_mb_rate")
