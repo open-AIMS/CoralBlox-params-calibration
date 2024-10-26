@@ -138,7 +138,7 @@ function reef_error(
     tmp_err::Vector{Float64} = zeros(Float64, 15)
     err_counts::Vector{Int64} = zeros(Int64, 15)
     not_missing::BitVector = BitVector(fill(true, 15))
-    for (row_idx, loc_obs) in enumerate(skipmissing.(eachrow(ltmp_obs)))
+    for (row_idx, loc_obs) in enumerate(eachrow(ltmp_obs))
         if target_dom_idxs[row_idx] == -1
             continue
         end
@@ -292,7 +292,10 @@ function obj_func(
     try
         res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs)
     catch err
-        if !(err isa MethodError)
+        if !(err isa AssertionError)
+            rethrow(err)
+        elseif contains(sprint(showerror, err), "no method matching")
+            # Catch errors unrelated to perturbed parameter values
             rethrow(err)
         end
 
