@@ -408,7 +408,7 @@ Save intermediate results when at least one of the time or step interval is hit.
 """
 function save_results_callback(
     oc;
-    time_interv=10,
+    time_interv=1800,
     step_interv=1000,
     result_fn="intermediate_coral_calib.dat"
 )::Nothing
