@@ -15,16 +15,18 @@ coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
 # Extract just the target coral parameters
 lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
 mbrate_pos = extract_param_group_idx(coral_params, "mb_rate")
+coldiam_pos = extract_param_group_idx(coral_params, "mean_colony_diameter_m")
 fecundity_pos = extract_param_group_idx(coral_params, "fecundity")
 dhw_tol_mean_pos = extract_param_group_idx(coral_params, "dist_mean")
 
-coral_param_idx = vcat(lin_ext_pos, mbrate_pos, fecundity_pos, dhw_tol_mean_pos)
+coral_param_idx = vcat(lin_ext_pos, mbrate_pos, coldiam_pos, fecundity_pos, dhw_tol_mean_pos)
 coral_params = coral_params[sort(coral_param_idx), :]
 coral_param_names = coral_params.fieldname
 
 # Get updated parameter positions
 lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
 mbrate_pos = extract_param_group_idx(coral_params, "mb_rate")
+coldiam_pos = extract_param_group_idx(coral_params, "mean_colony_diameter_m")
 fecundity_pos = extract_param_group_idx(coral_params, "fecundity")
 dhw_tol_mean_pos = extract_param_group_idx(coral_params, "dist_mean")
 
@@ -406,14 +408,17 @@ Save intermediate results when at least one of the time or step interval is hit.
 """
 function save_results_callback(
     oc;
-    time_interv=1800,
+    time_interv=10,
     step_interv=1000,
     result_fn="intermediate_coral_calib.dat"
 )::Nothing
     is_save_point = oc.num_steps % step_interv == 0
     elapsed = (oc.last_report_time - oc.start_time)
-    intervening_time = floor((oc.last_report_time - oc.start_time) / time_interv)
-    is_save_time = elapsed > 0 ? intervening_time >= 1.0 : false
+
+    intermediate_save_id = Int64(round(elapsed / time_interv, digits=0))
+    fn = joinpath(OUT_DIR, "$(intermediate_save_id)_calib_progress.png")
+    should_save = intermediate_save_id > 0 && !isfile(fn)
+    is_save_time = elapsed > 0 ? should_save : false
 
     if !is_save_point && !is_save_time
         return nothing
@@ -423,7 +428,7 @@ function save_results_callback(
     best_state = best_candidate(oc)
     serialize(out_fn, best_state)
 
-    plot_calibration(out_fn, coral_param_names)
+    plot_calibration(out_fn, coral_param_names; save_fn=fn)
     @info "Saved intermediate progress"
 
     return nothing
