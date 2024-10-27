@@ -30,7 +30,8 @@ Mean Absolute Exponential Error.
 
 Assign error that increases exponentially with distance to observed/"true" data.
 """
-function MAEE(sim, obs) abs_err = abs.(sim .- obs)
+function MAEE(sim, obs)
+    abs_err = abs.(sim .- obs)
     mean(ℯ.^((abs_err) .* (1.0 .+ abs_err ./ 1.0)) .- 1.0)
 end
 
