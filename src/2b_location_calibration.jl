@@ -406,13 +406,14 @@ Save intermediate results when at least one of the time or step interval is hit.
 """
 function save_results_callback(
     oc;
-    time_interv=3600,
+    time_interv=1800,
     step_interv=1000,
     result_fn="intermediate_coral_calib.dat"
 )::Nothing
     is_save_point = oc.num_steps % step_interv == 0
     elapsed = (oc.last_report_time - oc.start_time)
-    is_save_time = elapsed > 0 ? elapsed % time_interv == 0 : false
+    intervening_time = floor((oc.last_report_time - oc.start_time) / time_interv)
+    is_save_time = elapsed > 0 ? intervening_time >= 1.0 : false
 
     if !is_save_point && !is_save_time
         return nothing
@@ -421,7 +422,10 @@ function save_results_callback(
     out_fn = joinpath(OUT_DIR, result_fn)
     best_state = best_candidate(oc)
     serialize(out_fn, best_state)
-    @info "Saved intermediate"
+
+    plot_calibration(out_fn, coral_param_names)
+    @info "Saved intermediate progress"
+
     return nothing
 end
 
@@ -445,7 +449,9 @@ else
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=Threads.nthreads() - 1
+        NThreads=Threads.nthreads() - 1,
+        CallbackFunction=save_results_callback,
+        CallbackInterval=0  # run at end of every step
     )
 end
 
