@@ -7,7 +7,7 @@ using CSV, DataFrames, YAXArrays
 using StatsBase, Statistics
 using BlackBoxOptim
 
-using WGLMakie, GeoMakie, GraphMakie
+using CairoMakie
 using ADRIA
 using ADRIA: GDF, AG, DimensionalData
 
