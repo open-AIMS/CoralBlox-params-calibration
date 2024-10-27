@@ -50,7 +50,8 @@ if !@isdefined(OPTIONS)
 end
 
 include("./perf_metrics.jl")
-include("./plotting.jl")
+include("./plotting/plotting.jl")
+include("./plotting/progress.jl")
 
 
 # julia> include("path to gist.jl")
