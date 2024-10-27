@@ -41,7 +41,7 @@ function convert_to_ltmp_values(res)
     return dropdims(sum(res.raw, dims=2), dims=2)
 end
 
-function plot_calibration(param_filepath, coral_param_names)
+function plot_calibration(param_filepath, coral_param_names; save_fn="calib_progress.png")
     interm = deserialize(param_filepath)
 
     coral_start_idx = 1
@@ -88,8 +88,7 @@ function plot_calibration(param_filepath, coral_param_names)
 
     linkaxes!(filter(x -> x isa Axis, f.content)...)
 
-    right_now = replace(string(now()), ":"=>"", "."=>"_")
-    save(joinpath(OUT_DIR, "calib_progress_$(right_now).png"), f)
+    save(save_fn, f)
 
     return nothing
 end
