@@ -13,11 +13,20 @@ include("./common/cover_construction.jl")
 coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
 
 # Extract just the target coral parameters
-coral_param_idx = extract_param_group_idx(coral_params, "linear_extension")
-append!(coral_param_idx, extract_param_group_idx(coral_params, "mb_rate"))
-append!(coral_param_idx, extract_param_group_idx(coral_params, "fecundity"))
+lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
+mbrate_pos = extract_param_group_idx(coral_params, "mb_rate")
+fecundity_pos = extract_param_group_idx(coral_params, "fecundity")
+dhw_tol_mean_pos = extract_param_group_idx(coral_params, "dist_mean")
+
+coral_param_idx = vcat(lin_ext_pos, mbrate_pos, fecundity_pos, dhw_tol_mean_pos)
 coral_params = coral_params[sort(coral_param_idx), :]
 coral_param_names = coral_params.fieldname
+
+# Get updated parameter positions
+lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
+mbrate_pos = extract_param_group_idx(coral_params, "mb_rate")
+fecundity_pos = extract_param_group_idx(coral_params, "fecundity")
+dhw_tol_mean_pos = extract_param_group_idx(coral_params, "dist_mean")
 
 sample_bounds = collect(zip(
     first.(coral_params.dist_params),
@@ -25,19 +34,13 @@ sample_bounds = collect(zip(
 ))
 
 # Adjust bounds for linear extensions
-lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
-size_widths = ADRIA.bin_widths()'[:]  # transpose and flatten
-
+# size_widths = ADRIA.bin_widths()'[:]  # transpose and flatten
 extended_lb = first.(sample_bounds[lin_ext_pos]) .* 0.25
-extended_ub = last.(sample_bounds[lin_ext_pos]) .* 2.0
+extended_ub = last.(sample_bounds[lin_ext_pos]) .* 1.8
 sample_bounds[lin_ext_pos] .= collect(zip(extended_lb, extended_ub))
 
-# Adjust bounds for mortality rate (size: 1 - 3, all groups)
-mb_rate_size_1_to_3 = extract_param_group_idx(coral_params, "1_mb_rate")
-append!(mb_rate_size_1_to_3, extract_param_group_idx(coral_params, "2_mb_rate"))
-append!(mb_rate_size_1_to_3, extract_param_group_idx(coral_params, "3_mb_rate"))
-sample_bounds[mb_rate_size_1_to_3] .= fill((0.01, 0.6), length(mb_rate_size_1_to_3))
-
+# Adjust bounds for mortality rate
+# Size specific changes for each group
 for grp in 1:5, sz in 1:7
     group_idx = extract_param_group_idx(coral_params, "$(grp)_$(sz)_mb_rate")
 
@@ -49,13 +52,22 @@ for grp in 1:5, sz in 1:7
     end
 end
 
+# Expand bounds for fecundity
+extended_lb = first.(sample_bounds[fecundity_pos]) .* 0.5
+extended_ub = last.(sample_bounds[fecundity_pos]) .* 3.0
+sample_bounds[fecundity_pos] .= collect(zip(extended_lb, extended_ub))
+
+# Expand bounds for initial mean DHW tolerance
+extended_lb = first.(sample_bounds[dhw_tol_mean_pos]) .* 0.8
+extended_ub = last.(sample_bounds[dhw_tol_mean_pos]) .* 3.0
+sample_bounds[dhw_tol_mean_pos] .= collect(zip(extended_lb, extended_ub))
+
 # Add parameters for location-specific scaling
-# Location specific scaling
 n_taxa = 5
 n_limited_locs = length(limited_locations)
 n_factors = 3  # growth, mortality, fecundity
 
-location_coef = fill((0.3, 1.2), n_taxa * n_limited_locs * n_factors)
+location_coef = fill((0.3, 1.5), n_taxa * n_limited_locs * n_factors)
 
 coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
@@ -112,6 +124,8 @@ data created for reefmod.
 
 Uses the complement of the absolute pearson correlation coefficient such that 0 indicates
 a perfect fit, and 1 indicates no correlation.
+
+The score indicates the mean correlation.
 """
 function reef_taxa_error(
     cover;
@@ -254,6 +268,12 @@ function _to_group_size(flat_vec::Vector{Float64})::Matrix{Float64}
     return permutedims(reshape(flat_vec, (7, 5)), (2, 1))
 end
 
+# For finding minimum index
+argmin_missing(x) = argmin(ifelse.(ismissing.(x), Inf, x))
+
+# For finding maximum index
+argmax_missing(x) = argmax(ifelse.(ismissing.(x), -Inf, x))
+
 """
 Model simulations end at 2022, so north/central/south obs argument ignores the last entry
 which is for 2023.
@@ -338,7 +358,24 @@ function obj_func(
     first_non_zero = findfirst(x -> x != 0, reef_error_series)
     last_non_zero = findlast(x -> x != 0, reef_error_series)
 
-    score = reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]
+    # Mean Absolute Error for peaks and troughs
+    peaks = argmax_missing.(eachrow(raw_ltmp_reef_data))
+    troughs = argmin_missing.(eachrow(raw_ltmp_reef_data))
+    obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1,2,3,4], peaks)]
+    obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1,2,3,4], troughs)]
+    modelled_peaks = loc_cover[CartesianIndex.(peaks, target_dom_idxs)]
+    modelled_troughs = loc_cover[CartesianIndex.(troughs, target_dom_idxs)]
+
+    peaks_score = mean(abs.(modelled_peaks .- obs_peaks)) * 2.0
+    troughs_score = mean(abs.(modelled_troughs .- obs_troughs)) * 2.0
+
+    score = (
+        reef_perf +
+        reef_error_series[first_non_zero] +
+        reef_error_series[last_non_zero] +
+        peaks_score +
+        troughs_score
+    )
     score += fg_corr * 2.0
 
     return score
@@ -350,7 +387,7 @@ construct_cover!(dom, init_state, location_classification.consecutive_classifica
 insert_init_loc_cover!(dom)
 
 best_score_file = joinpath(OUT_DIR, init_guess_fn)
-if !@isdefined(best_init_state) && isfile(best_score_file)
+if isfile(best_score_file)
     best_init_state = deserialize(best_score_file)
     @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
 else
@@ -370,7 +407,7 @@ Save intermediate results when at least one of the time or step interval is hit.
 function save_results_callback(
     oc;
     time_interv=3600,
-    step_interv=10_000,
+    step_interv=1000,
     result_fn="intermediate_coral_calib.dat"
 )::Nothing
     is_save_point = oc.num_steps % step_interv == 0
@@ -389,7 +426,7 @@ function save_results_callback(
 end
 
 @info "Using $(Threads.nthreads()-1) threads."
-if !@isdefined(best_init_state) || isnothing(best_init_state)
+if isnothing(best_init_state)
     # Include additional config if using BorgMOEA
     # Method=:borg_moea,
     # FitnessScheme=ParetoFitnessScheme{3}(is_minimizing=true),
@@ -401,7 +438,7 @@ if !@isdefined(best_init_state) || isnothing(best_init_state)
         CallbackFunction=save_results_callback,
         CallbackInterval=0  # run at end of every step
     )
-elseif !isnothing(best_init_state)
+else
     @info "Using initial guess."
     res = bboptimize(
         obj_func,
@@ -412,7 +449,7 @@ elseif !isnothing(best_init_state)
     )
 end
 
-out_fn = joinpath(OUT_DIR, "coral_p_calib_last.dat")
+out_fn = joinpath(OUT_DIR, init_guess_fn)
 
 best_fitness(res)
 best_init_state = best_candidate(res)
