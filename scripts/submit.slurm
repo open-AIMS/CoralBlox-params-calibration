@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#SBATCH --output=%x-%j.out          # Output file
-#SBATCH --error=%x-%j.err           # Error file
 #SBATCH --time=12:00:00             # Time limit
 #SBATCH --nodes=1                   # Number of nodes
 #SBATCH --ntasks-per-node=1         # Tasks per node
