@@ -3,7 +3,7 @@
 Submit jobs like:
 
 ```bash
-cd src
+cd scripts
 
 sbatch --job-name=loc_calib_test --chdir ~/ltmp_calibration/src submit.slurm ../scripts/run_loc_calib.jl > ../scripts/calib_output.log
 ```
