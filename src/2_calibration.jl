@@ -1,6 +1,5 @@
 using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
-
 include("./common/common.jl")
 include("./common/cover_construction.jl")
 
@@ -101,7 +100,7 @@ coral_end_idx = length(sample_bounds)
 
 n_taxa = 5
 n_limited_locs = length(limited_locations)
-n_factors = 3  # growth, mortality, fecundity
+n_factors = 3 # growth, mortality, fecundity
 
 location_coef = repeat([(0.5, 2.0)], n_taxa * n_limited_locs * n_factors)
 
@@ -128,88 +127,6 @@ function average_class_cover(
     end
 
     return class_cover
-end
-
-function insert_init_loc_cover!(
-    dom;
-    raw_ltmp_reef_data=raw_ltmp_reef_data,
-    rm_ltmp_taxa=rm_ltmp_taxa,
-    target_dom_idxs=target_dom_idxs
-)::Nothing
-    size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
-    for (idx, row_idx) in enumerate(target_dom_idxs)
-        loc_cov =
-            rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
-        tot_cov =
-            raw_ltmp_reef_data[
-                idx, findfirst(x -> !ismissing(x), raw_ltmp_reef_data[idx, :])
-            ] ./ dom.loc_data.k[row_idx]
-        dom.init_coral_cover[:, row_idx] .=
-            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
-    end
-
-    return nothing
-end
-
-"""
-Calculate the functional group correlation and temporal correlation between aggregated ltmp
-data created for reefmod.
-"""
-function reef_taxa_error(
-    cover;
-    rm_ltmp_taxa=rm_ltmp_taxa,
-    dom_idxs=target_dom_idxs
-)
-    fg_corr::Float64 = 0.0
-    for (j, idx) in enumerate(dom_idxs)
-        non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
-        for id in eachindex(2008:2022)[non_missing_mask]
-            fg_corr +=
-                cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
-        end
-    end
-
-    return fg_corr ./ length(dom_idxs)
-end
-
-"""
-    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
-
-Calculate the error between ltmp observations and the given cover array.
-"""
-function reef_error(
-    cover;
-    ltmp_obs=raw_ltmp_reef_data,
-    target_dom_idxs=target_dom_idxs
-)::Vector{Float64}
-    err_series::Vector{Float64} = zeros(Float64, 15)
-    tmp_err::Vector{Float64} = zeros(Float64, 15)
-    err_counts::Vector{Int64} = zeros(Int64, 15)
-    not_missing::BitVector = BitVector(fill(true, 15))
-    for (row_idx, loc_obs) in enumerate(skipmissing.(eachrow(ltmp_obs)))
-        if target_dom_idxs[row_idx] == -1
-            continue
-        end
-
-        not_missing .= (!).(ismissing.(loc_obs))
-        min_arg = argmin(loc_obs[not_missing])
-        max_arg = argmax(loc_obs[not_missing])
-        tmp_err[not_missing] .= MAEE_series(
-            cover[not_missing, target_dom_idxs[row_idx]], loc_obs[not_missing]
-        )
-
-        # Apply double the weight on the peak/trough of the time series
-        tmp_err[not_missing][[min_arg, max_arg]] .*= 2.0
-        err_series[not_missing] .+= tmp_err[not_missing]
-        err_counts[not_missing] .+= 1.0
-    end
-
-    if any(err_counts .== 0)
-        @debug "No reef level observation data for some years."
-        err_counts[err_counts .== 0] .= 1
-    end
-
-    return err_series ./ err_counts
 end
 
 """
@@ -249,6 +166,82 @@ function class_error(
 end
 
 """
+Calculate the functional group correlation and temporal correlation between aggregated ltmp
+data created for reefmod.
+"""
+function reef_taxa_error(
+    cover;
+    rm_ltmp_taxa=rm_ltmp_taxa,
+    dom_idxs=dom_idxs
+)
+    fg_corr::Float64 = 0.0
+    for (j, idx) in enumerate(dom_idxs)
+        non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
+        for id in eachindex(2008:2022)[non_missing_mask]
+            fg_corr +=
+                cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
+        end
+    end
+    return fg_corr ./ length(dom_idxs)
+end
+
+function insert_init_loc_cover!(
+    dom;
+    raw_ltmp_reef_data=raw_ltmp_reef_data,
+    rm_ltmp_taxa=rm_ltmp_taxa,
+    target_dom_idxs=target_dom_idxs
+)::Nothing
+    size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
+    for (idx, row_idx) in enumerate(target_dom_idxs)
+        loc_cov =
+            rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
+        tot_cov =
+            raw_ltmp_reef_data[
+                idx, findfirst(x -> !ismissing(x), raw_ltmp_reef_data[idx, :])
+            ] ./ dom.loc_data.k[row_idx]
+        dom.init_coral_cover[:, row_idx] .=
+            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
+    end
+    return nothing
+end
+
+"""
+    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
+
+Calculate the error between ltmp observations and the given cover array.
+"""
+function reef_error(
+    cover;
+    raw_ltmp_reef_data=raw_ltmp_reef_data,
+    target_dom_idxs=target_dom_idxs
+)::Vector{Float64}
+    err_series::Vector{Float64} = zeros(Float64, 15)
+    tmp_err::Vector{Float64} = zeros(Float64, 15)
+    err_counts::Vector{Int64} = zeros(Int64, 15)
+    not_missing::BitVector = BitVector(repeat([true], 15))
+    for (row_idx, ltmp_row) in enumerate(eachrow(raw_ltmp_reef_data))
+        if target_dom_idxs[row_idx] == -1
+            continue
+        end
+        not_missing .= (!).(ismissing.(ltmp_row))
+        min_arg = argmin(ltmp_row[not_missing])
+        max_arg = argmax(ltmp_row[not_missing])
+        tmp_err[not_missing] .= MAEE_series(
+            cover[not_missing, target_dom_idxs[row_idx]], ltmp_row[not_missing]
+        )
+        tmp_err[not_missing][[min_arg, max_arg]] .*= 2
+        err_series[not_missing] .+= tmp_err[not_missing]
+        err_counts[not_missing] .+= 1
+    end
+    if any(err_counts .== 0)
+        @debug "No reef level observation data for some years."
+        err_counts[err_counts .== 0] .= 1
+    end
+
+    return err_series ./ err_counts
+end
+
+"""
     validate_linear_extension_coefficients(linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Vector{Float64})::Bool
 
 Check that the sampled linear extension values and location coefficients guarentee values that
@@ -260,13 +253,11 @@ function validate_linear_extension_coefficients(
     size_class_bins::Matrix{Float64} = ADRIA.bin_widths()
     n_locs::Int64 = size(linear_ext_coefs, 2)
     dist_from_valid::Float64 = 0.0
-
     for j in 1:n_locs
         tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins
         tmp[tmp .< 0] .= 0.0
         dist_from_valid += sum(tmp)
     end
-
     return dist_from_valid
 end
 
@@ -288,7 +279,6 @@ function validate_mortality_coefficients(
         tmp[tmp .< 0] .= 0.0
         dist_from_valid += sum(tmp)
     end
-
     return dist_from_valid
 end
 
@@ -308,7 +298,7 @@ function obj_func(
     end_year=end_year,
     coral_param_names=coral_p_names,
     param_idxs=[coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx],
-    loc_idxs=target_dom_idxs
+    loc_idxs=dom_idxs
 )
     scen = ADRIA.param_table(dom)
     coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
@@ -321,6 +311,7 @@ function obj_func(
     scale_factors::Array{Float64,3} = reshape(
         init_values[param_idxs[3]:param_idxs[4]], (5, 4, 3)
     )
+    bleaching_threshold::Float64 = init_values[end]
 
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
     survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
@@ -332,32 +323,14 @@ function obj_func(
         survival_r, scale_factors[:, :, 2]
     )
     if mortality_validity + lin_ext_validity != 0.0
-        return 1e6 + (2e6 * (mortality_validity + lin_ext_validity))
+        return mortality_validity + lin_ext_validity + 6e5
     end
 
     res = nothing
     try
-        res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs)
+        res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs, 4.0)
     catch err
-        if !(err isa MethodError)
-            rethrow(err)
-        end
-
-        # Symmetric error function, where result is 0 if x == y
-        # but as y moves further away from x in either positive or negative direction, then
-        # the value approaches 1.0 (result is ≈1.0 if the distance between x and y is 10)
-        err_func(x, y) = 2.0 / (1.0 + exp(-abs(x - y))) - 1.0
-
-        # Determine how far away from the "default" values these are
-        comp_params = ADRIA.component_params(dom.model, :Coral)
-        coral_fn = comp_params[:, :fieldname]
-        lin_ext_idx = contains.(string.(coral_fn), "linear_ext")
-        mbrate_idx = contains.(string.(coral_fn), "mb_rate")
-
-        linext_overage = err_func.(corals.linear_extension, replace(comp_params[lin_ext_idx, :val], 0.0 => 1.0))
-        mbrate_overage = err_func.(corals.mb_rate, replace(comp_params[mbrate_idx, :val], 0.0 => 1.0))
-
-        return 5e5 * (sum(linext_overage) + sum(mbrate_overage) + sum(scale_factors))
+        return 5e5 + sum(linear_ext) + sum(survival_r) + sum(scale_factors)
     end
 
     # north_mean_cover = zeros(size(res.raw, 1))
@@ -372,10 +345,10 @@ function obj_func(
     # comp_years_south = (ref_years .∈ [ltmp_south[ltmp_south.Year .>= start_year, :Year]])
 
     # for ts in axes(res.raw, 1)
-        # rac = vec(sum(res.raw[ts, :, :], dims=1) .* loc_k_areas') ./ loc_areas
-        # north_mean_cover[ts] = mean(rac[NORTH_MASK .&& ltmp_loc_mask])
-        # center_mean_cover[ts] = mean(rac[CENTRAL_MASK .&& ltmp_loc_mask])
-        # south_mean_cover[ts] = mean(rac[SOUTH_MASK .&& ltmp_loc_mask])
+    # rac = vec(sum(res.raw[ts, :, :], dims=1) .* loc_k_areas') ./ loc_areas
+    # north_mean_cover[ts] = mean(rac[NORTH_MASK .&& ltmp_loc_mask])
+    # center_mean_cover[ts] = mean(rac[CENTRAL_MASK .&& ltmp_loc_mask])
+    # south_mean_cover[ts] = mean(rac[SOUTH_MASK .&& ltmp_loc_mask])
     # end
 
     # north_mean_cover = north_mean_cover[comp_years_north]
@@ -404,18 +377,18 @@ function obj_func(
     # central_lowest = argmin(central_obs)
     # south_lowest = argmin(south_obs)
     # trough_score = [
-        # north_perf_series[north_lowest],
-        # central_perf_series[central_lowest],
-        # south_perf_series[south_lowest],
+    # north_perf_series[north_lowest],
+    # central_perf_series[central_lowest],
+    # south_perf_series[south_lowest],
     # ]
 
     # Penalize poor performance at end of time series
     # end_score = [
-        # north_perf_series[end],
-        # central_perf_series[end],
-        # south_perf_series[end],
-        # class_error_series[end] * 3,
-        # reef_error_series[end] * 10
+    # north_perf_series[end],
+    # central_perf_series[end],
+    # south_perf_series[end],
+    # class_error_series[end] * 3,
+    # reef_error_series[end] * 10
     # ]
 
     taxa_cover = dropdims(
@@ -423,13 +396,12 @@ function obj_func(
     )
     fg_corr = reef_taxa_error(taxa_cover)
 
-    first_non_zero = findfirst(x -> x != 0, reef_error_series)
     last_non_zero = findlast(x -> x != 0, reef_error_series)
+    first_non_zero = findfirst(x -> x != 0, reef_error_series)
 
-    score = reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]
-    score += (1 - fg_corr) * 2.0
-
-    return score
+    return 6.0 * (
+        reef_perf + reef_error_series[first_non_zero] + reef_error_series[last_non_zero]
+    ) + (1 - fg_corr)
 end
 
 init_state = deserialize(init_cover_fn)
@@ -445,34 +417,11 @@ else
     best_init_state = nothing
 end
 
-"""
-    save_results_callback(
-        oc;
-        time_interv=3600,
-        step_interv=10_000,
-        result_fn="intermediate_coral_calib.dat"
-    )::Nothing
-
-Save intermediate results when at least one of the time or step interval is hit.
-"""
-function save_results_callback(
-    oc;
-    time_interv=3600,
-    step_interv=10_000,
-    result_fn="intermediate_coral_calib.dat"
-)::Nothing
-    is_save_point = oc.num_steps % step_interv == 0
-    elapsed = (oc.last_report_time - oc.start_time)
-    is_save_time = elapsed > 0 ? elapsed % time_interv == 0 : false
-
-    if !is_save_point && !is_save_time
-        return nothing
-    end
-
-    out_fn = joinpath(OUT_DIR, result_fn)
+function save_results_callback(oc)
+    out_fn = "$(OUT_DIR)/coral_p_calib_fixeds.dat"
     best_state = best_candidate(oc)
     serialize(out_fn, best_state)
-    @info "Saved intermediate"
+    @info "Saving"
     return nothing
 end
 
@@ -487,7 +436,7 @@ if !@isdefined(best_init_state) || isnothing(best_init_state)
         MaxSteps=100_000,
         NThreads=Threads.nthreads() - 1,
         CallbackFunction=save_results_callback,
-        CallbackInterval=0  # run at end of every step
+        CallbackInterval=3600
     )
 elseif !isnothing(best_init_state)
     @info "Using initial guess."
@@ -500,7 +449,7 @@ elseif !isnothing(best_init_state)
     )
 end
 
-out_fn = joinpath(OUT_DIR, "coral_p_calib_last.dat")
+out_fn = joinpath(OUT_DIR, "coral_p_calib_fixeddd.dat")
 
 best_fitness(res)
 best_init_state = best_candidate(res)
