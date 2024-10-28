@@ -31,8 +31,8 @@ fecundity_pos = extract_param_group_idx(coral_params, "fecundity")
 dhw_tol_mean_pos = extract_param_group_idx(coral_params, "dist_mean")
 
 sample_bounds = collect(zip(
-    first.(coral_params.dist_params),
-    getindex.(coral_params.dist_params, 2)
+    coral_params.lower_bound,
+    coral_params.upper_bound
 ))
 
 # Adjust bounds for linear extensions
