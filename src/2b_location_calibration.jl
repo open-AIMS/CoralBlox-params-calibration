@@ -125,7 +125,7 @@ Calculate the functional group correlation and temporal correlation between aggr
 data created for reefmod.
 
 Uses the complement of the absolute pearson correlation coefficient such that 0 indicates
-a perfect fit, and 1 indicates no correlation.
+a perfect fit, and >= 0 indicates no or negative correlation.
 
 The score indicates the mean correlation.
 """
@@ -139,7 +139,7 @@ function reef_taxa_error(
         non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
         for id in eachindex(2008:2022)[non_missing_mask]
             fg_corr +=
-                abs(cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j])) ./ count(non_missing_mask)
+                cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
         end
     end
 
