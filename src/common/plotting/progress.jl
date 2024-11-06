@@ -26,6 +26,9 @@ function calib_run(dom, params, coral_param_names, param_idxs, loc_idxs)
     )
 
     scen = ADRIA.param_table(dom)
+    scen[:, :steepness] .= params[param_idxs[5]]
+    scen[:, :height] .= params[param_idxs[5]+1]
+    scen[:, :midpoint] .= params[param_idxs[6]]
     coral_param_values = params[param_idxs[1]:param_idxs[2]]
     scen[1, coral_param_names] = coral_param_values
 
@@ -48,13 +51,16 @@ function plot_calibration(param_filepath, coral_param_names; save_fn="calib_prog
     coral_end_idx = length(coral_param_names)
 
     loc_coef_start_idx = coral_end_idx + 1
-    loc_coef_end_idx = length(interm)
+    loc_coef_end_idx = loc_coef_start_idx + 5 * 4 * 3 - 1
+
+    growth_start_idx = loc_coef_end_idx + 1
+    growth_end_idx = growth_start_idx + 3 - 1
 
     calib_res = calib_run(
         dom,
         interm,
         coral_param_names,
-        [coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx],
+        [coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx, growth_start_idx, growth_end_idx],
         target_dom_idxs
     )
 
