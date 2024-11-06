@@ -78,6 +78,12 @@ loc_coef_start_idx = coral_end_idx + 1
 append!(sample_bounds, location_coef)
 loc_coef_end_idx = length(sample_bounds)
 
+growth_acc_start_idx = loc_coef_end_idx + 1
+push!(sample_bounds, (-30.0, -15.0)) # steepness
+push!(sample_bounds, (0.0, 2.0)) # height
+push!(sample_bounds, (0.0, 0.3)) # midpoint
+growth_acc_end_idx = length(sample_bounds)
+
 """
     average_class_cover(cover; loc_classes=location_classification.consecutive_classification)::Array{Float64}
 
@@ -287,12 +293,16 @@ function obj_func(
     start_year=start_year,
     end_year=end_year,
     coral_param_names=coral_param_names,
-    param_idxs=[coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx],
+    param_idxs=[coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx, growth_acc_start_idx, growth_acc_end_idx],
     loc_idxs=target_dom_idxs
 )
     scen = ADRIA.param_table(dom)
     coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
     scen[1, coral_param_names] = coral_param_values
+
+    scen[:, :steepness] .= init_values[param_idxs[5]]
+    scen[:, :height] .= init_values[param_idxs[5]+1]
+    scen[:, :midpoint] .= init_values[param_idxs[6]]
     corals = ADRIA.to_coral_spec(scen[1, :])
 
     loc_k_areas = ADRIA.site_k_area(dom)
@@ -391,6 +401,9 @@ insert_init_loc_cover!(dom)
 best_score_file = joinpath(OUT_DIR, init_guess_fn)
 if isfile(best_score_file)
     best_init_state = deserialize(best_score_file)
+    push!(best_init_state, -21.0)
+    push!(best_init_state, 0.5)
+    push!(best_init_state, 0.15)
     @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
 else
     best_init_state = nothing
