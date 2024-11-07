@@ -20,19 +20,23 @@ Run ADRIA-CoralBlox with the provided parameters.
 # Returns
 ADRIA run results
 """
-function calib_run(dom, params, coral_param_names, param_idxs, loc_idxs)
+function calib_run(dom_raw, params, coral_param_names, param_idxs, loc_idxs)
+    dom = deepcopy(dom_raw)
+
     scale_factors::Array{Float64,3} = reshape(
         params[param_idxs[3]:param_idxs[4]], (5, 4, 3)
     )
 
     scen = ADRIA.param_table(dom)
-    scen[:, :steepness] .= params[param_idxs[5]]
-    scen[:, :height] .= params[param_idxs[5]+1]
-    scen[:, :midpoint] .= params[param_idxs[6]]
+
+    growth_acc_params = reshape_growth_accel_parameters(params[param_idxs[5]:param_idxs[6]])
+
+    insert_init_loc_cover!(dom, params[param_idxs[7]:param_idxs[8]])
+
     coral_param_values = params[param_idxs[1]:param_idxs[2]]
     scen[1, coral_param_names] = coral_param_values
 
-    return ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs)
+    return ADRIA.run_model(dom, scen[1, :], scale_factors, growth_acc_params, loc_idxs)
 end
 
 """
@@ -54,13 +58,21 @@ function plot_calibration(param_filepath, coral_param_names; save_fn="calib_prog
     loc_coef_end_idx = loc_coef_start_idx + 5 * 4 * 3 - 1
 
     growth_start_idx = loc_coef_end_idx + 1
-    growth_end_idx = growth_start_idx + 3 - 1
+    growth_end_idx = growth_start_idx + 3 * 4 - 1
+
+    sc_dist_start_idx = growth_end_idx + 1
+    sc_dist_end_idx = length(interm)
 
     calib_res = calib_run(
         dom,
         interm,
         coral_param_names,
-        [coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx, growth_start_idx, growth_end_idx],
+        [
+            coral_start_idx, coral_end_idx,
+            loc_coef_start_idx, loc_coef_end_idx,
+            growth_start_idx, growth_end_idx,
+            sc_dist_start_idx, sc_dist_end_idx
+        ],
         target_dom_idxs
     )
 

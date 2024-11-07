@@ -79,10 +79,28 @@ append!(sample_bounds, location_coef)
 loc_coef_end_idx = length(sample_bounds)
 
 growth_acc_start_idx = loc_coef_end_idx + 1
-push!(sample_bounds, (-30.0, -15.0)) # steepness
-push!(sample_bounds, (0.0, 2.0)) # height
-push!(sample_bounds, (0.0, 0.3)) # midpoint
+for _ in 1:length(target_dom_idxs)
+    push!(sample_bounds, (-30.0, -15.0)) # steepness
+    push!(sample_bounds, (0.0, 2.0)) # height
+    push!(sample_bounds, (0.0, 0.3)) # midpoint
+end
 growth_acc_end_idx = length(sample_bounds)
+
+sc_dist_bounds = fill((0.25, 30.0), n_limited_locs)
+
+sc_dist_start_idx = growth_acc_end_idx+1
+append!(sample_bounds, sc_dist_bounds)
+sc_dist_end_idx = length(sample_bounds)
+
+"""
+Reshape the growth acceleration parameters froma vector a matrix of shape [n_parameters ⋅ n_locs]
+"""
+function reshape_growth_accel_parameters(
+    params::Vector{Float64};
+    n_locs=length(target_dom_idxs)
+)::Matrix{Float64}
+    return reshape(params, (3, n_locs))
+end
 
 """
     average_class_cover(cover; loc_classes=location_classification.consecutive_classification)::Array{Float64}
@@ -106,13 +124,14 @@ function average_class_cover(
 end
 
 function insert_init_loc_cover!(
-    dom;
+    dom,
+    lambdas;
     raw_ltmp_reef_data=raw_ltmp_reef_data,
     rm_ltmp_taxa=rm_ltmp_taxa,
-    target_dom_idxs=target_dom_idxs
+    target_dom_idxs=target_dom_idxs,
 )::Nothing
-    size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
     for (idx, row_idx) in enumerate(target_dom_idxs)
+        size_class_props = size_class_distribution(lambdas[idx], ADRIA.bin_edges()[1, :])
         loc_cov =
             rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
         tot_cov =
@@ -288,21 +307,28 @@ which is for 2023.
 """
 function obj_func(
     init_values;
-    dom=dom,
+    dom_raw=dom,
     location_classification=location_classification.consecutive_classification,
     start_year=start_year,
     end_year=end_year,
     coral_param_names=coral_param_names,
-    param_idxs=[coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx, growth_acc_start_idx, growth_acc_end_idx],
+    param_idxs=[
+        coral_start_idx, coral_end_idx,
+        loc_coef_start_idx, loc_coef_end_idx,
+        growth_acc_start_idx, growth_acc_end_idx,
+        sc_dist_start_idx, sc_dist_end_idx
+    ],
     loc_idxs=target_dom_idxs
 )
+
+    dom = deepcopy(dom_raw)
+
     scen = ADRIA.param_table(dom)
     coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
     scen[1, coral_param_names] = coral_param_values
 
-    scen[:, :steepness] .= init_values[param_idxs[5]]
-    scen[:, :height] .= init_values[param_idxs[5]+1]
-    scen[:, :midpoint] .= init_values[param_idxs[6]]
+    growth_acc_params = reshape_growth_accel_parameters(init_values[param_idxs[5]:param_idxs[6]])
+
     corals = ADRIA.to_coral_spec(scen[1, :])
 
     loc_k_areas = ADRIA.site_k_area(dom)
@@ -326,9 +352,11 @@ function obj_func(
         return 1e6 + (2e6 * (mortality_validity + lin_ext_validity))
     end
 
+    insert_init_loc_cover!(dom, init_values[param_idxs[7]:param_idxs[8]])
+
     res = nothing
     try
-        res = ADRIA.run_model(dom, scen[1, :], scale_factors, loc_idxs)
+        res = ADRIA.run_model(dom, scen[1, :], scale_factors, growth_acc_params, loc_idxs)
     catch err
         if !(err isa AssertionError)
             rethrow(err)
@@ -393,17 +421,26 @@ function obj_func(
     return score
 end
 
+function restructure_initial_guess!(
+    init_guess::Vector{Float64};
+    n_locs=length(target_dom_idxs)
+)::Vector{Float64}
+    # use calibrated growth params as initial guess for location specific
+    growth_params::Vector{Float64} = init_guess[end-2:end]
+    for _ in 1:(n_locs-1)
+        append!(init_guess, growth_params)
+    end
+    return init_guess
+end
+
 init_state = deserialize(init_cover_fn)
 construct_cover!(dom, init_state, location_classification.consecutive_classification)
 
-insert_init_loc_cover!(dom)
-
 best_score_file = joinpath(OUT_DIR, init_guess_fn)
 if isfile(best_score_file)
-    best_init_state = deserialize(best_score_file)
-    push!(best_init_state, -21.0)
-    push!(best_init_state, 0.5)
-    push!(best_init_state, 0.15)
+    best_init_state = deserialize(init_guess_fn)
+    best_init_state = restructure_initial_guess!(best_init_state)
+    append!(best_init_state, fill(2.0, length(target_dom_idxs)))
     @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
 else
     best_init_state = nothing
@@ -433,9 +470,9 @@ function save_results_callback(
     should_save = intermediate_save_id > 0 && !isfile(fn)
     is_save_time = elapsed > 0 ? should_save : false
 
-    if !is_save_point && !is_save_time
-        return nothing
-    end
+    #if !is_save_point && !is_save_time
+    #    return nothing
+    #end
 
     out_fn = joinpath(OUT_DIR, result_fn)
     best_state = best_candidate(oc)
@@ -469,13 +506,13 @@ else
         MaxSteps=100_000,
         NThreads=Threads.nthreads() - 1,
         CallbackFunction=save_results_callback,
-        CallbackInterval=0  # run at end of every step
+        CallbackInterval=30  # run at end of every step
     )
 end
 
-out_fn = joinpath(OUT_DIR, init_guess_fn)
+out_fn = joinpath(OUT_DIR, "new_" * init_guess_fn)
 
 best_fitness(res)
 best_init_state = best_candidate(res)
 
-serialize(out_fn, best_init_state)
+#serialize(out_fn, best_init_state)

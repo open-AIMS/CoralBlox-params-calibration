@@ -40,7 +40,8 @@ function location_comparison(
     obs_idxs=all_ltmp_idxs,
     obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
     loc_k_areas=ADRIA.site_k_area(dom),
-    loc_areas=ADRIA.loc_area(dom)
+    loc_areas=ADRIA.loc_area(dom),
+    reef_names=dom.loc_data.GBR_NAME
 )::Figure
     loc_cover = dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
     if obs_idxs[ltmp_loc_idx] == -1
@@ -58,9 +59,9 @@ function location_comparison(
     sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
     reef_id = obs_loc_labels[ltmp_loc_idx]
 
-    f = Figure()
-    Axis(f[1, 1], xlabel="Year", ylabel="relative total area", title="Location $(reef_id)")
-    obs = scatterlines!(obs_tf, obs_loc_data[not_missing_obs], color=:black,  markercolor=:transparent, strokewidth=2, strokecolor=:black, markersize=15, linestyle=:dash,)
+    f = Figure(; size=(1000, 600))
+    Axis(f[1, 1], xlabel="Year", ylabel="relative total area", title="$(reef_names[obs_idxs[ltmp_loc_idx]])\nLocation $(reef_id)")
+    obs = scatter!(obs_tf, obs_loc_data[not_missing_obs], color=(:red, 0.5), markersize=20)
     sim = lines!(2008:2022, sim_data, color=:red)
     Legend(
         f[1, 2],
