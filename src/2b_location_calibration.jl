@@ -9,26 +9,28 @@ using BlackBoxOptim: init_rng!
 include("./common/common.jl")
 include("./common/cover_construction.jl")
 
+const ADRIA_CORAL_PARAM_NAMES = [
+    "linear_extension", "mb_rate", "mean_colony_diameter_m", "fecundity", "dist_mean"
+]
+
+function coral_params_indices(coral_params, coral_param_name::String)
+    return extract_param_group_idx(coral_params, coral_param_name)
+end
+
 # Define parameter space to scan over
 coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
 
 # Extract just the target coral parameters
-lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
-mbrate_pos = extract_param_group_idx(coral_params, "mb_rate")
-coldiam_pos = extract_param_group_idx(coral_params, "mean_colony_diameter_m")
-fecundity_pos = extract_param_group_idx(coral_params, "fecundity")
-dhw_tol_mean_pos = extract_param_group_idx(coral_params, "dist_mean")
+lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx =
+    coral_params_indices.([coral_params], ADRIA_CORAL_PARAM_NAMES)
 
-coral_param_idx = vcat(lin_ext_pos, mbrate_pos, coldiam_pos, fecundity_pos, dhw_tol_mean_pos)
+coral_param_idx = vcat(lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx)
 coral_params = coral_params[sort(coral_param_idx), :]
 coral_param_names = coral_params.fieldname
 
 # Get updated parameter positions
-lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
-mbrate_pos = extract_param_group_idx(coral_params, "mb_rate")
-coldiam_pos = extract_param_group_idx(coral_params, "mean_colony_diameter_m")
-fecundity_pos = extract_param_group_idx(coral_params, "fecundity")
-dhw_tol_mean_pos = extract_param_group_idx(coral_params, "dist_mean")
+lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx =
+    coral_params_indices.([coral_params], ADRIA_CORAL_PARAM_NAMES)
 
 sample_bounds = collect(zip(
     coral_params.lower_bound,
