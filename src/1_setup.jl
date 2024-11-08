@@ -37,7 +37,6 @@ if (!@isdefined(dom) || reload_domain)
     end
 
     @info "Attaching historic DHW"
-    historic_dhw_path = joinpath(rme_domain_path, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
     dhw_data_df = CSV.read(historic_dhw_path, DataFrame)
 
     # Available DHW data starts 1985 - 2022

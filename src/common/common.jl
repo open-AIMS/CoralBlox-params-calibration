@@ -21,6 +21,7 @@ global canonical_path = path_configs["canonical_path"]
 global init_guess_fn = path_configs["init_guess_fn"]  # optional
 
 global manta_tow_class_path = joinpath(pwd(), "../", path_configs["manta_tow_path"])  # target data for location classes
+global historic_dhw_path = joinpath(rme_domain_path, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
 global ltmp_reef_data_path = joinpath(pwd(), "../", path_configs["ltmp_reef_data"])  # target data for ltmp locs
 global composition_path = joinpath(pwd(), "../", path_configs["composition_netcdf"])
 
