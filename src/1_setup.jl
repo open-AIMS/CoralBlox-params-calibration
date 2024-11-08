@@ -18,23 +18,15 @@ end
 # Avoid reloading the domain every time
 # Load ReefModDomain
 if (!@isdefined(dom) || reload_domain)
-    if reefmod_domain
-        if start_year < 2008
-            start_year = 2008
-            @warn "Setting start year to $(start_year). 2008 is the earliest possible start for ReefModDomain."
-        end
 
-        @info "Loading ReefModDomain"
-        dom = ADRIA.load_domain(ReefModDomain, reefmod_domain_path, "45", timeframe=(start_year, end_year))
-    elseif !reefmod_domain
-        # Load the RME Domain
-        if start_year < 2000
-            start_year = 2000
-            @warn "Setting start year to $(start_year). 2000 is earlier possible start for RMEDomain."
-        end
-        @info "Loading RMEDomain"
-        dom = ADRIA.load_domain(RMEDomain, rme_domain_path, "45", timeframe=(start_year, end_year))
+    if start_year < 2008
+        start_year = 2008
+        @warn "Setting start year to $(start_year). 2008 is the earliest possible start for ReefModDomain."
     end
+
+    @info "Loading ReefModDomain"
+    dom = ADRIA.load_domain(ReefModDomain, reefmod_domain_path, "45", timeframe=(start_year, end_year))
+
 
     @info "Attaching historic DHW"
     dhw_data_df = CSV.read(historic_dhw_path, DataFrame)
