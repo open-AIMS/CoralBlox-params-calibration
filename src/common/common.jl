@@ -38,7 +38,6 @@ global n_scenarios = 16
 
 if !@isdefined(OPTIONS)
     global reload_domain = false
-    global reload_canonical = false
 
     # define OPTIONS to prevent reinitialise on every include
     global OPTIONS = true

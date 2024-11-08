@@ -1,10 +1,9 @@
 include("./common/common.jl")
 
-if !@isdefined(canonical_gpkg) || reload_canonical
+if !@isdefined(canonical_gpkg)
     @info "Loading Canonical gpkg"
     canonical_gpkg = GDF.read(canonical_path)
     ltmp_loc_mask = canonical_gpkg.is_LTMP_reef .!= 0
-    reload_canonical = false
 end
 
 # Avoid reloading the domain every time
