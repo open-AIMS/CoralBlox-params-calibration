@@ -37,11 +37,17 @@ sample_bounds = collect(zip(
     coral_params.upper_bound
 ))
 
-# Adjust bounds for linear extensions
-# size_widths = ADRIA.bin_widths()'[:]  # transpose and flatten
-extended_lb = first.(sample_bounds[lin_ext_pos]) .* 0.25
-extended_ub = last.(sample_bounds[lin_ext_pos]) .* 1.8
-sample_bounds[lin_ext_pos] .= collect(zip(extended_lb, extended_ub))
+function adjust_bounds!(sample_bounds, coral_param_idx, new_lb::Float64, new_ub::Float64)::Nothing
+    extended_lb = first.(sample_bounds[coral_param_idx]) .* new_lb
+    extended_ub = last.(sample_bounds[coral_param_idx]) .* new_ub
+    sample_bounds[coral_param_idx] .= collect(zip(extended_lb, extended_ub))
+    return nothing
+end
+
+# Adjust bounds for linear extensions, fecundity and initial mean DHW tolerance
+adjust_bounds!(sample_bounds, lin_ext_idx, 0.25, 1.8)
+adjust_bounds!(sample_bounds, fecundity_idx, 0.5, 3.0)
+adjust_bounds!(sample_bounds, dhw_tol_mean_idx, 0.8, 3.0)
 
 # Adjust bounds for mortality rate
 # Size specific changes for each group
@@ -55,16 +61,6 @@ for grp in 1:5, sz in 1:7
         sample_bounds[group_idx] .= fill((0.01, ub), length(group_idx))
     end
 end
-
-# Expand bounds for fecundity
-extended_lb = first.(sample_bounds[fecundity_pos]) .* 0.5
-extended_ub = last.(sample_bounds[fecundity_pos]) .* 3.0
-sample_bounds[fecundity_pos] .= collect(zip(extended_lb, extended_ub))
-
-# Expand bounds for initial mean DHW tolerance
-extended_lb = first.(sample_bounds[dhw_tol_mean_pos]) .* 0.8
-extended_ub = last.(sample_bounds[dhw_tol_mean_pos]) .* 3.0
-sample_bounds[dhw_tol_mean_pos] .= collect(zip(extended_lb, extended_ub))
 
 # Add parameters for location-specific scaling
 n_taxa = 5
