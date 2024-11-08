@@ -9,7 +9,6 @@ end
 # Avoid reloading the domain every time
 # Load ReefModDomain
 if (!@isdefined(dom) || reload_domain)
-
     if start_year < 2008
         start_year = 2008
         @warn "Setting start year to $(start_year). 2008 is the earliest possible start for ReefModDomain."
@@ -18,15 +17,18 @@ if (!@isdefined(dom) || reload_domain)
     @info "Loading ReefModDomain"
     dom = ADRIA.load_domain(ReefModDomain, reefmod_domain_path, "45", timeframe=(start_year, end_year))
 
-
     @info "Attaching historic DHW"
     dhw_data_df = CSV.read(historic_dhw_path, DataFrame)
 
     # Available DHW data starts 1985 - 2022
     target_years = string.(start_year:end_year)
-    dhw_data = reshape(Matrix(dhw_data_df[:, target_years])', 15, 3806, 1)
+    locs = collect(caxes(dom.dhw_scens)[2])
 
-    dom.dhw_scens = ADRIA.DataCube(dhw_data; timesteps=target_years, locs=collect(caxes(dom.dhw_scens)[2]), scenarios=1:1)
+    n_timesteps = length(target_years)
+    n_locs = length(locs)
+
+    dhw_data = reshape(Matrix(dhw_data_df[:, target_years])', n_timesteps, n_locs, 1)
+    dom.dhw_scens = ADRIA.DataCube(dhw_data; timesteps=target_years, locs=locs, scenarios=1:1)
 
     @info "Loading default parameters"
     scens = ADRIA.param_table(dom)
@@ -113,11 +115,11 @@ raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
 
 composition_data = open_dataset(composition_path)
 
-# for each target location get its row index in the domain
+# For each target location get its row index in the domain
 target_dom_idxs = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
 
-# extract the ltmp data for each target location
-temporal_range = 2008:2022
+# Extract the ltmp data for each target location
+temporal_range = start_year:end_year
 # [year ⋅ taxa ⋅ locs]
 rm_ltmp_taxa = Array{Union{Missing,Float64}}(missing, length(temporal_range), 5, 4)
 for (j, loc_name) in enumerate(location_names)
