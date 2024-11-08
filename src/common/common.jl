@@ -37,7 +37,6 @@ global end_year = 2022
 global n_scenarios = 16
 
 if !@isdefined(OPTIONS)
-    global uniform_initial_cover = false
     global rerun = false
 
     global reefmod_domain = true

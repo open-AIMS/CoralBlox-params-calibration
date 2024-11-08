@@ -85,41 +85,6 @@ if !@isdefined(NORTH_MASK)
     const NOT_CONTAINED = (!).(NORTH_MASK .|| CENTRAL_MASK .|| SOUTH_MASK)
 end
 
-
-if !isdefined(Main, :uniform_initial_cover)
-    uniform_initial_cover = false
-end
-
-if uniform_initial_cover
-    @info "Using LTMP data to intialise uniform cover for north, central and southern GBR regions"
-    north_index = findfirst(x -> x >= start_year, ltmp_north.Year)
-    central_index = findfirst(x -> x >= start_year, ltmp_central.Year)
-    south_index = findfirst(x -> x >= start_year, ltmp_south.Year)
-
-    north_cover::Float64 = ltmp_north.response[north_index]
-    central_cover::Float64 = ltmp_central.response[central_index]
-    south_cover::Float64 = ltmp_south.response[south_index]
-
-    interp_cover = (north_cover + central_cover + south_cover) / 3
-
-    # Maintain species distributions, normalise to meet equivalent cover
-    init_loc_cover = sum(dom.init_coral_cover, dims=:species)
-
-    dom.init_coral_cover[locs=NORTH_MASK] .*= north_cover ./ init_loc_cover[locs=NORTH_MASK]
-    dom.init_coral_cover[locs=CENTRAL_MASK] .*= central_cover ./ init_loc_cover[locs=CENTRAL_MASK]
-    dom.init_coral_cover[locs=SOUTH_MASK] .*= south_cover ./ init_loc_cover[locs=SOUTH_MASK]
-
-    # Locations not contained in the shapes defined, are assigned averaged values
-    if any(NOT_CONTAINED)
-        dom.init_coral_cover[locs=NOT_CONTAINED] .*= interp_cover ./ init_loc_cover[locs=NOT_CONTAINED]
-    end
-
-    dom.init_coral_cover ./= dom.loc_data.k'
-    # Convert total cover to relative cover
-
-    uniform_initial_cover = false
-end
-
 if !@isdefined(north_res) && @isdefined(s_rac)
     north_res = s_rac[locs=NORTH_MASK]
     central_res = s_rac[locs=CENTRAL_MASK]
@@ -165,19 +130,19 @@ all_ltmp_reef = copy(raw_ltmp_reef_data)
 
 # Calibration Locations
 limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
-location_names    = ["Mackay Reef", "Opal Reef", "Macgillivray Reef", "John Brewer Reef"]
-limited_loc_idxs = [findfirst(x->!ismissing(x) && x==id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
+location_names = ["Mackay Reef", "Opal Reef", "Macgillivray Reef", "John Brewer Reef"]
+limited_loc_idxs = [findfirst(x -> !ismissing(x) && x == id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
 raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
 
 composition_data = open_dataset(composition_path)
 
 # for each target location get its row index in the domain
-target_dom_idxs = [findfirst(x->x==id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
+target_dom_idxs = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
 
 # extract the ltmp data for each target location
 temporal_range = 2008:2022
 # [year ⋅ taxa ⋅ locs]
-rm_ltmp_taxa = Array{Union{Missing, Float64}}(missing, length(temporal_range), 5, 4)
+rm_ltmp_taxa = Array{Union{Missing,Float64}}(missing, length(temporal_range), 5, 4)
 for (j, loc_name) in enumerate(location_names)
     rm_ltmp_taxa[:, :, j] .= composition_data.mean[location=At(loc_name)].data[(2008-1992+1):(2008-1992)+length(temporal_range), :]
 end
