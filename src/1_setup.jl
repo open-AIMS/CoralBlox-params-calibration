@@ -36,21 +36,17 @@ if (!@isdefined(dom) || reload_domain)
     reload_domain = false
 end
 
-if !@isdefined(LTMP_DATA)
-    LTMP_DATA = CSV.read(ltmp_modelled_obs, DataFrame, header=true)
-    LTMP_DATA[!, :Region] = String.(LTMP_DATA[:, :Region])
+function ltmp_period(ltmp_region::String, ltmp_data::CSV, start_year::Int64, end_year::Int64)::BitVector
+    ltmp_region = ltmp_data[[ltmp_region == reg for reg in ltmp_data.Region], :]
+    return (ltmp_region.Year .>= start_year) .& (ltmp_north.Year .<= end_year)
+end
 
-    ltmp_north_mask = ["Northern GBR" == reg for reg in LTMP_DATA.Region]
-    ltmp_central_mask = ["Central GBR" == reg for reg in LTMP_DATA.Region]
-    ltmp_south_mask = ["Southern GBR" == reg for reg in LTMP_DATA.Region]
-
-    ltmp_north = LTMP_DATA[ltmp_north_mask, :]
-    ltmp_central = LTMP_DATA[ltmp_central_mask, :]
-    ltmp_south = LTMP_DATA[ltmp_south_mask, :]
-
-    ltmp_north_period = (ltmp_north.Year .>= start_year) .& (ltmp_north.Year .<= end_year)
-    ltmp_central_period = (ltmp_central.Year .>= start_year) .& (ltmp_central.Year .<= end_year)
-    ltmp_south_period = (ltmp_south.Year .>= start_year) .& (ltmp_south.Year .<= end_year)
+if !@isdefined(ltmp_data)
+    ltmp_data = CSV.read(ltmp_modelled_obs, DataFrame, header=true)
+    ltmp_data[!, :Region] = String.(ltmp_data[:, :Region])
+    regions = ["Northern GBR", "Central GBR", "Southern GBR"]
+    ltmp_north_period, ltmp_central_period, ltmp_south_period =
+        ltmp_period.(regions, [ltmp_data], [start_year], [end_year])
 end
 
 if !@isdefined(region_shps)
