@@ -7,10 +7,6 @@ if !@isdefined(canonical_gpkg) || reload_canonical
     reload_canonical = false
 end
 
-if !@isdefined(reload_ltmp)
-    reload_ltmp = true
-end
-
 # Avoid reloading the domain every time
 # Load ReefModDomain
 if (!@isdefined(dom) || reload_domain)
@@ -39,7 +35,7 @@ if (!@isdefined(dom) || reload_domain)
     reload_domain = false
 end
 
-if !@isdefined(LTMP_DATA) || reload_ltmp
+if !@isdefined(LTMP_DATA)
     LTMP_DATA = CSV.read(ltmp_modelled_obs, DataFrame, header=true)
     LTMP_DATA[!, :Region] = String.(LTMP_DATA[:, :Region])
 
@@ -54,8 +50,6 @@ if !@isdefined(LTMP_DATA) || reload_ltmp
     ltmp_north_period = (ltmp_north.Year .>= start_year) .& (ltmp_north.Year .<= end_year)
     ltmp_central_period = (ltmp_central.Year .>= start_year) .& (ltmp_central.Year .<= end_year)
     ltmp_south_period = (ltmp_south.Year .>= start_year) .& (ltmp_south.Year .<= end_year)
-
-    reload_tmp = false
 end
 
 if !@isdefined(region_shps)
