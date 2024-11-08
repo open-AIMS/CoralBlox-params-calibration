@@ -49,9 +49,6 @@ if (!@isdefined(dom) || reload_domain)
     scens = ADRIA.param_table(dom)
 
     reload_domain = false
-
-    @info "Forcing Results Rerun"
-    rerun = true
 end
 
 if !@isdefined(LTMP_DATA) || reload_ltmp
