@@ -11,10 +11,6 @@ if !@isdefined(reload_ltmp)
     reload_ltmp = true
 end
 
-if !@isdefined(reload_shp)
-    reload_shp = true
-end
-
 # Avoid reloading the domain every time
 # Load ReefModDomain
 if (!@isdefined(dom) || reload_domain)
@@ -62,9 +58,8 @@ if !@isdefined(LTMP_DATA) || reload_ltmp
     reload_tmp = false
 end
 
-if !@isdefined(region_shps) || reload_shp
+if !@isdefined(region_shps)
     region_shps = GDF.read(ltmp_shp)
-    reload_shp = false
 end
 
 if !@isdefined(NORTH_MASK)

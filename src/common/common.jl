@@ -38,7 +38,7 @@ global n_scenarios = 16
 
 if !@isdefined(OPTIONS)
     global reload_domain = false
-    global reload_shp = false
+
     global reload_ltmp = false
     global reload_canonical = false
 
