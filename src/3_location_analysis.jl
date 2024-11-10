@@ -1,3 +1,5 @@
+include("1_setup.jl")
+
 if !isdefined(Main, :reload_calibration_results)
     reload_calibration_results = true
 end
@@ -71,7 +73,7 @@ function plot_bleaching_mortality(
     prop_sc_fg_cover = prop_sc_fg_cover ./ sum(prop_sc_fg_cover, dims=(2, 3))
     perc_loss = dropdims(sum(prop_sc_fg_cover .* loc_bleaching, dims=(2, 3)), dims=(2, 3))
 
-    xs = 2008:2022
+    xs = start_year:end_year
     f = Figure(; size=(1300, 900))
     ax = Axis(
         f[1, 1];
@@ -127,40 +129,6 @@ function plot_target_proportions(loc::String, reefmod_taxa)::Figure
     sr = series!(xs_m, dt, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
     Legend(f[1, 2], ax, framevisible=false)
     return f
-end
-
-function error_functions(
-    raw_data,
-    ltmp_loc_idx;
-    obs_data=all_ltmp_reef,
-    obs_idxs=all_ltmp_idxs,
-    obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
-    loc_k_areas=ADRIA.site_k_area(dom),
-    loc_areas=ADRIA.loc_area(dom)
-)
-    loc_cover = dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
-    if obs_idxs[ltmp_loc_idx] == -1
-        return Figure()
-    end
-
-    obs_loc_data = obs_data[ltmp_loc_idx, :]
-    not_missing_obs = (!).(ismissing.(obs_loc_data))
-    obs_tf = (start_year:end_year)[not_missing_obs]
-
-    sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
-    reef_id = obs_loc_labels[ltmp_loc_idx]
-
-
-    rmse_::Float64 = rmse(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
-    cc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
-    maee_::Float64 = MAEE(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
-    bias_::Float64 = bias(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
-    @info "Location $(reef_id)"
-    @info "RMSE:       $(trunc(rmse_, digits=4))"
-    @info "Pearsons R: $(trunc(cc_, digits=4))"
-    @info "MAEE:       $(trunc(maee_, digits=4))"
-    @info "Bias:       $(trunc(bias_, digits=4))"
-    return rmse_, cc_, maee_, bias_
 end
 
 corals = ADRIA.to_coral_spec(scens[1, :])
@@ -226,7 +194,7 @@ scatter!([xs], [ys], color=(:black, 0.0), markersize = 20, strokecolor=:black, s
 save("$(save_dir)/loc_map.png", f)
 
 location_comparison(rs_raw.raw, ltmp_loc_pos, save_dir)
-error_functions(rs_raw.raw, ltmp_loc_pos)
+collect_error_stats(rs_raw.raw, ltmp_loc_pos)
 
 loc_cov = rs_raw.raw[:, :, domain_loc_pos:domain_loc_pos]
 

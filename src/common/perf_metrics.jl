@@ -181,3 +181,42 @@ function create_error_statistics(filename::String)::DataFrame
 
     return err_csv
 end
+
+function collect_error_stats(
+    raw_data,
+    ltmp_loc_idx;
+    obs_data=all_ltmp_reef,
+    obs_idxs=all_ltmp_idxs,
+    obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
+    loc_k_areas=ADRIA.site_k_area(dom),
+    loc_areas=ADRIA.loc_area(dom)
+)
+    loc_cover = dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
+    if obs_idxs[ltmp_loc_idx] == -1
+        return Figure()
+    end
+
+    obs_loc_data = obs_data[ltmp_loc_idx, :]
+    not_missing_obs = (!).(ismissing.(obs_loc_data))
+    obs_tf = (start_year:end_year)[not_missing_obs]
+
+    sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
+    reef_id = obs_loc_labels[ltmp_loc_idx]
+
+    rmse_::Float64 = rmse(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    cc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    maee_::Float64 = MAEE(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    bias_::Float64 = bias(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+
+    μ_obs = mean(obs_loc_data[not_missing_obs])
+    s = length(sim_data[not_missing_obs])
+    benchmark_::Float64 = rmse(fill(μ_obs, s), obs_loc_data[not_missing_obs])
+
+    @info "Location $(reef_id)"
+    @info "RMSE:       $(trunc(rmse_, digits=4))"
+    @info "Benchmark:  $(trunc(benchmark_, digits=4))"
+    @info "Pearsons R: $(trunc(cc_, digits=4))"
+    @info "MAEE:       $(trunc(maee_, digits=4))"
+    @info "Bias:       $(trunc(bias_, digits=4))"
+    return rmse_, benchmark_, cc_, maee_, bias_
+end
