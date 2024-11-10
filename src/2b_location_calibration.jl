@@ -444,7 +444,7 @@ construct_cover!(dom, init_state, location_classification.consecutive_classifica
 
 best_score_file = joinpath(OUT_DIR, init_guess_fn)
 if isfile(best_score_file)
-    best_init_state = deserialize(init_guess_fn)
+    best_init_state = deserialize(best_score_file)
     best_init_state = restructure_initial_guess!(best_init_state)
     append!(best_init_state, fill(2.0, length(target_dom_idxs)))
     @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
