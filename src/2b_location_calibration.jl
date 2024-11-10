@@ -6,7 +6,7 @@ Attempt to calibrate location-specific scaling as well.
 using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
 
-include("./common/common.jl")
+include("./1_setup.jl")
 include("./common/cover_construction.jl")
 
 const ADRIA_CORAL_PARAM_NAMES = [
