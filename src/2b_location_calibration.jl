@@ -7,14 +7,20 @@ using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
 
 include("./1_setup.jl")
-include("./common/cover_construction.jl")
 
-const ADRIA_CORAL_PARAM_NAMES = [
-    "linear_extension", "mb_rate", "mean_colony_diameter_m", "fecundity", "dist_mean"
-]
+function target_param_names()
+    return [
+        "linear_extension", "mb_rate", "mean_colony_diameter_m", "fecundity", "dist_mean"
+    ]
+end
 
-function coral_params_indices(coral_params, coral_param_name::String)
-    return extract_param_group_idx(coral_params, coral_param_name)
+function adjust_bounds!(
+    sample_bounds, coral_param_idx, scale_lb::Float64, scale_ub::Float64
+)::Nothing
+    extended_lb = first.(sample_bounds[coral_param_idx]) .* scale_lb
+    extended_ub = last.(sample_bounds[coral_param_idx]) .* scale_ub
+    sample_bounds[coral_param_idx] .= collect(zip(extended_lb, extended_ub))
+    return nothing
 end
 
 # Define parameter space to scan over
@@ -22,27 +28,22 @@ coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
 
 # Extract just the target coral parameters
 lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx =
-    coral_params_indices.([coral_params], ADRIA_CORAL_PARAM_NAMES)
+    extract_param_group_idx.([coral_params], target_param_names())
 
-coral_param_idx = vcat(lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx)
+coral_param_idx = vcat(
+    lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx
+)
 coral_params = coral_params[sort(coral_param_idx), :]
 coral_param_names = coral_params.fieldname
 
 # Get updated parameter positions
 lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx =
-    coral_params_indices.([coral_params], ADRIA_CORAL_PARAM_NAMES)
+    extract_param_group_idx.([coral_params], target_param_names())
 
 sample_bounds = collect(zip(
     coral_params.lower_bound,
     coral_params.upper_bound
 ))
-
-function adjust_bounds!(sample_bounds, coral_param_idx, new_lb::Float64, new_ub::Float64)::Nothing
-    extended_lb = first.(sample_bounds[coral_param_idx]) .* new_lb
-    extended_ub = last.(sample_bounds[coral_param_idx]) .* new_ub
-    sample_bounds[coral_param_idx] .= collect(zip(extended_lb, extended_ub))
-    return nothing
-end
 
 # Adjust bounds for linear extensions, fecundity and initial mean DHW tolerance
 adjust_bounds!(sample_bounds, lin_ext_idx, 0.25, 1.8)
