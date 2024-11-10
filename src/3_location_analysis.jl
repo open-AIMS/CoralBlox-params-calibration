@@ -145,7 +145,7 @@ function error_functions(
 
     obs_loc_data = obs_data[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
-    obs_tf = (2008:2022)[not_missing_obs]
+    obs_tf = (start_year:end_year)[not_missing_obs]
 
     sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
     reef_id = obs_loc_labels[ltmp_loc_idx]
