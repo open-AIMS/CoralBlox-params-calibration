@@ -78,11 +78,12 @@ loc_coef_start_idx = coral_end_idx + 1
 append!(sample_bounds, location_coef)
 loc_coef_end_idx = length(sample_bounds)
 
+# Location-based growth scaling
 growth_acc_start_idx = loc_coef_end_idx + 1
 for _ in 1:length(target_dom_idxs)
-    push!(sample_bounds, (-30.0, -15.0)) # steepness
-    push!(sample_bounds, (0.0, 2.0)) # height
-    push!(sample_bounds, (0.0, 0.3)) # midpoint
+    push!(sample_bounds, (-30.0, -15.0))  # steepness
+    push!(sample_bounds, (0.0, 2.0))  # height
+    push!(sample_bounds, (0.0, 0.3))  # midpoint
 end
 growth_acc_end_idx = length(sample_bounds)
 
