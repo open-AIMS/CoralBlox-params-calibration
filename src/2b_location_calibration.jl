@@ -50,9 +50,15 @@ adjust_bounds!(sample_bounds, lin_ext_idx, 0.25, 1.8)
 adjust_bounds!(sample_bounds, fecundity_idx, 0.5, 3.0)
 adjust_bounds!(sample_bounds, dhw_tol_mean_idx, 0.8, 3.0)
 
+# Add parameters for location-specific scaling
+n_groups = 5
+n_size_classes = 7
+n_limited_locs = length(limited_locations)
+n_factors = 3  # growth, mortality, fecundity
+
 # Adjust bounds for mortality rate
 # Size specific changes for each group
-for grp in 1:5, sz in 1:7
+for grp in 1:n_groups, sz in 1:n_size_classes
     group_idx = extract_param_group_idx(coral_params, "$(grp)_$(sz)_mb_rate")
 
     if sz < 4
@@ -63,12 +69,7 @@ for grp in 1:5, sz in 1:7
     end
 end
 
-# Add parameters for location-specific scaling
-n_taxa = 5
-n_limited_locs = length(limited_locations)
-n_factors = 3  # growth, mortality, fecundity
-
-location_coef = fill((0.3, 1.5), n_taxa * n_limited_locs * n_factors)
+location_coef = fill((0.3, 1.5), n_groups * n_limited_locs * n_factors)
 
 coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
