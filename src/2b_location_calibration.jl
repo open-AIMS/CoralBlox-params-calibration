@@ -540,9 +540,9 @@ else
     )
 end
 
-out_fn = joinpath(OUT_DIR, "new_" * init_guess_fn)
+out_fn = joinpath(OUT_DIR, init_guess_fn)
 
 best_fitness(res)
 best_init_state = best_candidate(res)
 
-# serialize(out_fn, best_init_state)
+serialize(out_fn, best_init_state)
