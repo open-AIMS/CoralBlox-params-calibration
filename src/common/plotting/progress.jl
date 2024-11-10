@@ -48,6 +48,11 @@ function convert_to_ltmp_values(res)
     return dropdims(sum(res.raw, dims=2), dims=2)
 end
 
+"""
+    progress_run(interm_params, coral_param_names)
+
+Run ADRIA-CoralBlox with calibrated parameters.
+"""
 function progress_run(interm_params, coral_param_names)
     coral_start_idx = 1
     coral_end_idx = length(coral_param_names)
@@ -77,6 +82,11 @@ function progress_run(interm_params, coral_param_names)
     return calib_res
 end
 
+"""
+    plot_calibration(calib_res; save_fn="calib_progress.png")
+
+Create a plot of the four locations targeted for calibration.
+"""
 function plot_calibration(calib_res; save_fn="calib_progress.png")
     modelled_locs = convert_to_ltmp_values(calib_res)[:, target_dom_idxs]
     obs_locs = raw_ltmp_reef_data'
