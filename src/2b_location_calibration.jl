@@ -507,7 +507,8 @@ function save_results_callback(
     best_state = best_candidate(oc)
     serialize(calib_fn, best_state)
 
-    plot_calibration(calib_fn, coral_param_names; save_fn=plot_fn)
+    interim_res = progress_run(best_state, coral_param_names)
+    plot_calibration(interim_res; save_fn=plot_fn)
     @info "Saved intermediate progress"
 
     return nothing
@@ -544,4 +545,4 @@ out_fn = joinpath(OUT_DIR, "new_" * init_guess_fn)
 best_fitness(res)
 best_init_state = best_candidate(res)
 
-#serialize(out_fn, best_init_state)
+# serialize(out_fn, best_init_state)

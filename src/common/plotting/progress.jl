@@ -48,9 +48,7 @@ function convert_to_ltmp_values(res)
     return dropdims(sum(res.raw, dims=2), dims=2)
 end
 
-function plot_calibration(param_filepath, coral_param_names; save_fn="calib_progress.png")
-    interm = deserialize(param_filepath)
-
+function progress_run(interm_params, coral_param_names)
     coral_start_idx = 1
     coral_end_idx = length(coral_param_names)
 
@@ -61,11 +59,11 @@ function plot_calibration(param_filepath, coral_param_names; save_fn="calib_prog
     growth_end_idx = growth_start_idx + 3 * 4 - 1
 
     sc_dist_start_idx = growth_end_idx + 1
-    sc_dist_end_idx = length(interm)
+    sc_dist_end_idx = length(interm_params)
 
     calib_res = calib_run(
         dom,
-        interm,
+        interm_params,
         coral_param_names,
         [
             coral_start_idx, coral_end_idx,
@@ -76,6 +74,10 @@ function plot_calibration(param_filepath, coral_param_names; save_fn="calib_prog
         target_dom_idxs
     )
 
+    return calib_res
+end
+
+function plot_calibration(calib_res; save_fn="calib_progress.png")
     modelled_locs = convert_to_ltmp_values(calib_res)[:, target_dom_idxs]
     obs_locs = raw_ltmp_reef_data'
 
@@ -87,9 +89,21 @@ function plot_calibration(param_filepath, coral_param_names; save_fn="calib_prog
         reef_name = dom.loc_data[loc, :GBR_NAME]
         reef_id = dom.loc_data[loc, :UNIQUE_ID]
 
+        ltmp_loc_pos = findfirst(x->!ismissing(x) && x==reef_id, ltmp_reef_data.RME_UNIQUE_ID)
+
+        rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(calib_res.raw, ltmp_loc_pos)
+
+        rmse_ = trunc(rmse_, digits=4)
+        benchmark_ = trunc(benchmark_, digits=4)
+        cc_ = trunc(cc_, digits=4)
+        maee_ = trunc(maee_, digits=4)
+        bias_ = trunc(bias_, digits=4)
+
+        err_report_str = "RMSE: $(rmse_) | μ bnch: $(benchmark_) | PCC: $(cc_) | MAEE: $(maee_) | BIAS: $(bias_)"
+        title_text = rich("$reef_name\n$(reef_id)\n", rich(err_report_str, fontsize=9))
         ax = Axis(
             f[row[], col[]],
-            title="$reef_name\n$(reef_id)",
+            title=title_text,
             xticks=(1:15, string.(start_year:end_year)),
             xticklabelrotation=45
         )
@@ -110,5 +124,3 @@ function plot_calibration(param_filepath, coral_param_names; save_fn="calib_prog
 
     return nothing
 end
-
-# plot_calibration(joinpath(OUT_DIR, "coral_p_calib_last.dat"), coral_param_names)
