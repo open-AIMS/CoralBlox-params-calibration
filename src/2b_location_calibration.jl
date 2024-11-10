@@ -452,15 +452,22 @@ else
     best_init_state = nothing
 end
 
+global LAST_SAVE = 0.0
+
 """
     save_results_callback(
         oc;
-        time_interv=3600,
-        step_interv=10_000,
+        time_interv=1800,
+        step_interv=1000,
         result_fn="intermediate_coral_calib.dat"
     )::Nothing
 
-Save intermediate results when at least one of the time or step interval is hit.
+Save intermediate results when either `time_interv` or `step_interv` is reached.
+Default values are to save every 30mins or 1000 steps.
+
+Progress plots are created and saved in the format of:
+
+- `calib_progress_[start date and time in UTC]_[number of seconds elapsed].png`
 """
 function save_results_callback(
     oc;
@@ -468,23 +475,39 @@ function save_results_callback(
     step_interv=1000,
     result_fn="intermediate_coral_calib.dat"
 )::Nothing
-    is_save_point = oc.num_steps % step_interv == 0
-    elapsed = (oc.last_report_time - oc.start_time)
+    start_time = replace(string(unix2datetime(oc.start_time)), "T"=>"_", ":"=>"")
+    elapsed = oc.last_report_time - oc.start_time
+    elapsed = round(elapsed; digits=2)
 
-    intermediate_save_id = Int64(round(elapsed / time_interv; digits=0))
-    fn = joinpath(OUT_DIR, "calib_progress_$(elapsed).png")
-    should_save = intermediate_save_id > 0 && !isfile(fn)
-    is_save_time = elapsed > 0 ? should_save : false
+    if LAST_SAVE == 0.0
+        # If very first run, save results so we can see how things started
+        is_save_point = true
+    else
+        # Otherwise, check if the required number of steps has elapsed
+        is_save_point = oc.num_steps % step_interv == 0
 
-    #if !is_save_point && !is_save_time
-    #    return nothing
-    #end
+        if !is_save_point
+            # If steps have not elapsed, check if the number of seconds has elapsed
 
-    out_fn = joinpath(OUT_DIR, result_fn)
+            if (oc.last_report_time - LAST_SAVE) > time_interv
+                is_save_point = true
+            end
+        end
+    end
+
+    if !is_save_point
+        # Save point has not been reached, so exit
+        return nothing
+    end
+
+    # Otherwise, save intermediate progress!
+    global LAST_SAVE = datetime2unix(now(UTC))
+    plot_fn = joinpath(OUT_DIR, "calib_progress_$(start_time)_$(elapsed).png")
+    calib_fn = joinpath(OUT_DIR, result_fn)
     best_state = best_candidate(oc)
-    serialize(out_fn, best_state)
+    serialize(calib_fn, best_state)
 
-    plot_calibration(out_fn, coral_param_names; save_fn=fn)
+    plot_calibration(calib_fn, coral_param_names; save_fn=plot_fn)
     @info "Saved intermediate progress"
 
     return nothing
