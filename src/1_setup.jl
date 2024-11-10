@@ -1,4 +1,5 @@
 include("./common/common.jl")
+include("./common/cover_construction.jl")
 
 if !@isdefined(canonical_gpkg)
     @info "Loading Canonical gpkg"
