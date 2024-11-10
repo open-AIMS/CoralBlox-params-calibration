@@ -89,12 +89,12 @@ growth_acc_end_idx = length(sample_bounds)
 
 sc_dist_bounds = fill((0.25, 30.0), n_limited_locs)
 
-sc_dist_start_idx = growth_acc_end_idx+1
+sc_dist_start_idx = growth_acc_end_idx + 1
 append!(sample_bounds, sc_dist_bounds)
 sc_dist_end_idx = length(sample_bounds)
 
 """
-Reshape the growth acceleration parameters froma vector a matrix of shape [n_parameters ⋅ n_locs]
+Reshape the growth acceleration parameters from a vector a matrix of shape [n_parameters ⋅ n_locs]
 """
 function reshape_growth_accel_parameters(
     params::Vector{Float64};
@@ -129,7 +129,7 @@ function insert_init_loc_cover!(
     lambdas;
     raw_ltmp_reef_data=raw_ltmp_reef_data,
     rm_ltmp_taxa=rm_ltmp_taxa,
-    target_dom_idxs=target_dom_idxs,
+    target_dom_idxs=target_dom_idxs
 )::Nothing
     for (idx, row_idx) in enumerate(target_dom_idxs)
         size_class_props = size_class_distribution(lambdas[idx], ADRIA.bin_edges()[1, :])
@@ -321,14 +321,15 @@ function obj_func(
     ],
     loc_idxs=target_dom_idxs
 )
-
     dom = deepcopy(dom_raw)
 
     scen = ADRIA.param_table(dom)
     coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
     scen[1, coral_param_names] = coral_param_values
 
-    growth_acc_params = reshape_growth_accel_parameters(init_values[param_idxs[5]:param_idxs[6]])
+    growth_acc_params = reshape_growth_accel_parameters(
+        init_values[param_idxs[5]:param_idxs[6]]
+    )
 
     corals = ADRIA.to_coral_spec(scen[1, :])
 
@@ -377,8 +378,12 @@ function obj_func(
         lin_ext_idx = contains.(string.(coral_fn), "linear_ext")
         mbrate_idx = contains.(string.(coral_fn), "mb_rate")
 
-        linext_overage = err_func.(corals.linear_extension, replace(comp_params[lin_ext_idx, :val], 0.0 => 1.0))
-        mbrate_overage = err_func.(corals.mb_rate, replace(comp_params[mbrate_idx, :val], 0.0 => 1.0))
+        linext_overage =
+            err_func.(
+                corals.linear_extension, replace(comp_params[lin_ext_idx, :val], 0.0 => 1.0)
+            )
+        mbrate_overage =
+            err_func.(corals.mb_rate, replace(comp_params[mbrate_idx, :val], 0.0 => 1.0))
 
         return 5e5 + (sum(linext_overage) + sum(mbrate_overage) + sum(scale_factors .> 1.0))
     end
@@ -402,8 +407,8 @@ function obj_func(
     # Mean Absolute Error for peaks and troughs
     peaks = argmax_missing.(eachrow(raw_ltmp_reef_data))
     troughs = argmin_missing.(eachrow(raw_ltmp_reef_data))
-    obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1,2,3,4], peaks)]
-    obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1,2,3,4], troughs)]
+    obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], peaks)]
+    obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], troughs)]
     modelled_peaks = loc_cover[CartesianIndex.(peaks, target_dom_idxs)]
     modelled_troughs = loc_cover[CartesianIndex.(troughs, target_dom_idxs)]
 
@@ -427,8 +432,8 @@ function restructure_initial_guess!(
     n_locs=length(target_dom_idxs)
 )::Vector{Float64}
     # use calibrated growth params as initial guess for location specific
-    growth_params::Vector{Float64} = init_guess[end-2:end]
-    for _ in 1:(n_locs-1)
+    growth_params::Vector{Float64} = init_guess[(end - 2):end]
+    for _ in 1:(n_locs - 1)
         append!(init_guess, growth_params)
     end
     return init_guess
@@ -466,8 +471,8 @@ function save_results_callback(
     is_save_point = oc.num_steps % step_interv == 0
     elapsed = (oc.last_report_time - oc.start_time)
 
-    intermediate_save_id = Int64(round(elapsed / time_interv, digits=0))
-    fn = joinpath(OUT_DIR, "$(intermediate_save_id)_calib_progress.png")
+    intermediate_save_id = Int64(round(elapsed / time_interv; digits=0))
+    fn = joinpath(OUT_DIR, "calib_progress_$(elapsed).png")
     should_save = intermediate_save_id > 0 && !isfile(fn)
     is_save_time = elapsed > 0 ? should_save : false
 
