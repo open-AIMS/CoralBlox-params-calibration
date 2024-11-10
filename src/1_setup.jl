@@ -36,15 +36,16 @@ if (!@isdefined(dom) || reload_domain)
     reload_domain = false
 end
 
-function ltmp_period(ltmp_region::String, ltmp_data::CSV, start_year::Int64, end_year::Int64)::BitVector
-    ltmp_region = ltmp_data[[ltmp_region == reg for reg in ltmp_data.Region], :]
-    return (ltmp_region.Year .>= start_year) .& (ltmp_north.Year .<= end_year)
+function ltmp_period(ltmp_region_name::String, ltmp_data::DataFrame, start_year::Int64, end_year::Int64)::BitVector
+    region_tf = ltmp_data[ltmp_data.Region .== ltmp_region_name, :Year]
+    return (region_tf .>= start_year) .& (region_tf .<= end_year)
 end
 
 if !@isdefined(ltmp_data)
     ltmp_data = CSV.read(ltmp_modelled_obs, DataFrame, header=true)
     ltmp_data[!, :Region] = String.(ltmp_data[:, :Region])
     regions = ["Northern GBR", "Central GBR", "Southern GBR"]
+
     ltmp_north_period, ltmp_central_period, ltmp_south_period =
         ltmp_period.(regions, [ltmp_data], [start_year], [end_year])
 end
