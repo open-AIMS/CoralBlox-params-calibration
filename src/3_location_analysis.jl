@@ -1,3 +1,4 @@
+include("common/plotting/plotting.jl")
 include("1_setup.jl")
 
 if !isdefined(Main, :reload_calibration_results)
@@ -8,127 +9,6 @@ if !isdefined(Main, :results_setup) || reload_calibration_results
     include("results_analysis.jl")
     results_setup = true
     reload_calibration_results = false
-end
-
-function plot_coral_param(
-    loc::String,
-    param_name::String,
-    category,
-    group,
-    data
-)::Figure
-
-    fig = Figure(; size=(1300, 900))
-    ax = Axis(
-        fig[1,1],
-        xticks = 1:length(category) / 5,
-        title = "$(location_unique_id): $(param_name)"
-    )
-
-    barplot!(
-        ax,
-        category,
-        data,
-        dodge = group,
-        color = Makie.wong_colors()[group]
-    )
-
-    labels = String.(ADRIA.functional_group_names())
-    elements = [PolyElement(polycolor = Makie.wong_colors()[i]) for i in 1:length(labels)]
-    title = "Functional Groups"
-
-    Legend(fig[1,2], elements, labels, title)
-
-    return fig
-end
-
-function plot_taxa_props(
-    loc::String,
-    cover;
-)::Figure
-    cover = reshape(cover, (15, 7, 5))
-    cover = dropdims(sum(cover, dims=2), dims=2) ./ dropdims(sum(cover, dims=(2, 3)), dims=2)
-    cover = permutedims(cover, (2, 1))
-    xs = 2008:2022
-    f = Figure(; size=(1300, 900))
-    ax = Axis(
-        f[1, 1];
-        xlabel="year",
-        ylabel="Cover Proportion",
-        title="$(loc): Functional Group Cover Proportions",
-        limits=(nothing, nothing, 0, 1)
-    )
-    sr = series!(xs, cover, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
-    Legend(f[1, 2], ax, framevisible=false)
-
-    return f
-end
-
-function plot_bleaching_mortality(
-    loc::String,
-    loc_cover,
-    loc_bleaching
-)::Figure
-    prop_sc_fg_cover = permutedims(reshape(loc_cover, (15, 7, 5)), (1, 3, 2))
-    prop_sc_fg_cover = prop_sc_fg_cover ./ sum(prop_sc_fg_cover, dims=(2, 3))
-    perc_loss = dropdims(sum(prop_sc_fg_cover .* loc_bleaching, dims=(2, 3)), dims=(2, 3))
-
-    xs = start_year:end_year
-    f = Figure(; size=(1300, 900))
-    ax = Axis(
-        f[1, 1];
-        xlabel="year",
-        ylabel="Cover Loss",
-        title="$(loc): Proportion Cover Loss from Bleaching"
-    )
-    sr = lines!(xs, perc_loss)
-
-    return f
-end
-
-function plot_cyclone_mortality(
-    loc::String,
-    loc_cover,
-    loc_cyclone
-)::Figure
-    prop_sc_fg_cover = permutedims(reshape(loc_cover, (15, 7, 5)), (1, 3, 2))
-    prop_sc_fg_cover = dropdims(sum(prop_sc_fg_cover ./ sum(prop_sc_fg_cover, dims=(2, 3)), dims=3), dims=3)
-    perc_loss = dropdims(sum(prop_sc_fg_cover .* loc_cyclone, dims=2), dims=2)
-
-    xs = 2008:2022
-    f = Figure(; size=(1300, 900))
-    ax = Axis(
-        f[1, 1];
-        xlabel="year",
-        ylabel="Cover Loss",
-        title="$(loc): Proportion Cover Loss from Cyclones"
-    )
-    sr = lines!(xs, perc_loss)
-    return f
-end
-
-function plot_target_proportions(loc::String, reefmod_taxa)::Figure
-    xs = 2008:2022
-    normalised_comp = reefmod_taxa ./ sum(reefmod_taxa, dims = 2)
-    non_missing_mask = (!).(ismissing.(reefmod_taxa[:, 1]))
-
-    f = Figure(;size=(1300, 900))
-
-    ax = Axis(
-        f[1, 1];
-        xlabel="year",
-        ylabel="Cover Loss",
-        xticks = xs,
-        title="$(loc): Target Coral Composition",
-        limits=(nothing, nothing, 0, 1)
-    )
-
-    xs_m = xs[non_missing_mask]
-    dt = permutedims(Float64.(normalised_comp[non_missing_mask, :]), (2, 1))
-
-    sr = series!(xs_m, dt, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
-    Legend(f[1, 2], ax, framevisible=false)
-    return f
 end
 
 corals = ADRIA.to_coral_spec(scens[1, :])
@@ -180,7 +60,7 @@ save("$(save_dir)/taxa_props.png", f)
 f = plot_bleaching_mortality(location_unique_id, rs_raw.raw[:, :, domain_loc_pos], rs_raw.bleaching_mortality[:, :, :, domain_loc_pos])
 save("$(save_dir)/bleaching_mortality.png", f)
 
-f = plot_cyclone_mortality(location_unique_id, rs_raw.raw[:, :, 1293], dom.cyclone_mortality_scens[:, 1293, :, scens[1, :cyclone_mortality_scenario]].data)
+f = plot_cyclone_mortality(location_unique_id, rs_raw.raw[:, :, domain_loc_pos], dom.cyclone_mortality_scens[:, domain_loc_pos, :, scens[1, :cyclone_mortality_scenario]].data)
 save("$(save_dir)/cyclone_mortality.png", f)
 
 f = plot_target_proportions(location_unique_id, rm_ltmp_taxa[:, :, limited_loc_pos])

@@ -400,3 +400,214 @@ function create_compare_plot(
     save(filename, f)
     return f
 end
+
+"""
+    plot_coral_param(loc::String, param_name::String, category, group, data)::Figure
+
+Plot coral parameters in a  bar graph grouped by size class.
+
+# Example
+
+```julia
+# Each parameter size class. [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, ...]
+category = [floor((i - 1) / 5) + 1 for i in 1:35]
+# Each parameter functional group, [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, ...]
+group = [(i - 1) % 5 + 1 for i in 1:35]
+# Flattened coral background mortality rate.
+flt_mb_rate = corals.mb_rate
+# Plot parameters
+f = plot_coral_param(<Loc Name>, "Background Mortality", category, group, flt_mb_rate)
+```
+
+# Arguments
+- `loc` : Name of location. Used in title.
+- `param_name` : Name of parameter being plotted. Used in title.
+- `category` : A vector of ints describing the size class each parameter belongs to.
+- `group` : A vector of ints describing the functional groups each parameter belongs to.
+- `data` : A vector of parameters to be plotted.
+"""
+function plot_coral_param(
+    loc::String,
+    param_name::String,
+    category,
+    group,
+    data
+)::Figure
+
+    fig = Figure(; size=(1300, 900))
+    ax = Axis(
+        fig[1,1],
+        xticks = 1:length(category) / 5,
+        title = "$(loc): $(param_name)"
+    )
+
+    barplot!(
+        ax,
+        category,
+        data,
+        dodge = group,
+        color = Makie.wong_colors()[group]
+    )
+
+    labels = String.(ADRIA.functional_group_names())
+    elements = [PolyElement(polycolor = Makie.wong_colors()[i]) for i in 1:length(labels)]
+    title = "Functional Groups"
+
+    Legend(fig[1,2], elements, labels, title)
+
+    return fig
+end
+
+"""
+    plot_taxa_props(loc::String, cover)::Figure
+
+Plot the modelled coral composition for a given location.
+
+# Example
+```julia
+# ADRIA single run results
+rs = ADRIA.run_model(...)
+# Index of location of interest
+location_idx = ...
+
+f = plot_taxa_props(<Location Name or ID>, rs.raw[:, :, location_idx])
+```
+"""
+function plot_taxa_props(
+    loc::String,
+    cover
+)::Figure
+    cover = reshape(cover, (15, 7, 5))
+    cover = dropdims(sum(cover, dims=2), dims=2) ./ dropdims(sum(cover, dims=(2, 3)), dims=2)
+    cover = permutedims(cover, (2, 1))
+    xs = 2008:2022
+    f = Figure(; size=(1300, 900))
+    ax = Axis(
+        f[1, 1];
+        xlabel="year",
+        ylabel="Cover Proportion",
+        title="$(loc): Functional Group Cover Proportions",
+        limits=(nothing, nothing, 0, 1)
+    )
+    sr = series!(xs, cover, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
+    Legend(f[1, 2], ax, framevisible=false)
+
+    return f
+end
+
+"""
+    plot_bleaching_mortality(loc::String, loc_cover, loc_bleaching)::Figure
+
+Plot the percentage of cover lost to bleaching over time.
+
+# Example
+```julia
+# ADRIA single run results
+rs = ADRIA.run_model(...)
+# Index of location of interest
+location_idx = ...
+
+f = plot_bleaching_mortality(
+    <Location Name or ID>, # Only used in title.
+    rs.raw[:, :, location_idx],
+    rs.bleaching_mortality[:, :, location_idx]
+)
+```
+"""
+function plot_bleaching_mortality(
+    loc::String,
+    loc_cover,
+    loc_bleaching
+)::Figure
+    prop_sc_fg_cover = permutedims(reshape(loc_cover, (15, 7, 5)), (1, 3, 2))
+    prop_sc_fg_cover = prop_sc_fg_cover ./ sum(prop_sc_fg_cover, dims=(2, 3))
+    perc_loss = dropdims(sum(prop_sc_fg_cover .* loc_bleaching, dims=(2, 3)), dims=(2, 3))
+
+    xs = start_year:end_year
+    f = Figure(; size=(1300, 900))
+     Axis(
+        f[1, 1];
+        xlabel="year",
+        ylabel="Cover Loss",
+        title="$(loc): Proportion Cover Loss from Bleaching"
+    )
+    lines!(xs, perc_loss)
+
+    return f
+end
+
+"""
+    plot_cyclone_mortality(loc::String, loc_cover, loc_cyclone)::Figure
+
+Plot the percentage of cover lost to cyclones over time.
+
+# Example
+```julia
+# ADRIA single run results
+rs = ADRIA.run_model(...)
+# Index of location of interest
+location_idx = ...
+# Get cyclone scenario used
+cyc_scen = scens[1, :cyclone_mortality_scenario]
+
+f = plot_cyclone_mortality(
+    <Location Name or ID>, # Only used in title.
+    rs.raw[:, :, location_idx],
+    dom.cyclone_mortality_scens[:, location_idx, :, cyc_scen].data
+)
+```
+"""
+function plot_cyclone_mortality(
+    loc::String,
+    loc_cover,
+    loc_cyclone
+)::Figure
+    prop_sc_fg_cover = permutedims(reshape(loc_cover, (15, 7, 5)), (1, 3, 2))
+    prop_sc_fg_cover = dropdims(sum(prop_sc_fg_cover ./ sum(prop_sc_fg_cover, dims=(2, 3)), dims=3), dims=3)
+    perc_loss = dropdims(sum(prop_sc_fg_cover .* loc_cyclone, dims=2), dims=2)
+
+    xs = 2008:2022
+    f = Figure(; size=(1300, 900))
+    ax = Axis(
+        f[1, 1];
+        xlabel="year",
+        ylabel="Cover Loss",
+        title="$(loc): Proportion Cover Loss from Cyclones"
+    )
+    sr = lines!(xs, perc_loss)
+    return f
+end
+
+"""
+    plot_target_proportions(loc::String, target_taxa)::Figure
+
+Plot the target coral composition over time.
+
+# Example
+```julia
+f = plot_target_proportions(<Location Name or ID>, rm_ltmp_taxa[:, :, limited_loc_pos])
+```
+"""
+function plot_target_proportions(loc::String, target_taxa)::Figure
+    xs = 2008:2022
+    normalised_comp = target_taxa ./ sum(target_taxa, dims = 2)
+    non_missing_mask = (!).(ismissing.(target_taxa[:, 1]))
+
+    f = Figure(;size=(1300, 900))
+
+    ax = Axis(
+        f[1, 1];
+        xlabel="year",
+        ylabel="Cover Loss",
+        xticks = xs,
+        title="$(loc): Target Coral Composition",
+        limits=(nothing, nothing, 0, 1)
+    )
+
+    xs_m = xs[non_missing_mask]
+    dt = permutedims(Float64.(normalised_comp[non_missing_mask, :]), (2, 1))
+
+    sr = series!(xs_m, dt, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
+    Legend(f[1, 2], ax, framevisible=false)
+    return f
+end
