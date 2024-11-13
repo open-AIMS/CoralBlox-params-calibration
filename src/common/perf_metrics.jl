@@ -40,13 +40,6 @@ function MAEE_series(sim, obs)
     return ℯ.^((abs_err) .* (1.0 .+ abs_err / 1.0)) .- 1.0
 end
 
-# """
-# Asymmetric MAEE which penalizes under-estimates more than over-estimates.
-# """
-# function MAEE_series(sim, obs)
-#     return abs.((1.0 .+ (sim .< obs)) .* ((sim ./ obs) .- 1.0))
-# end
-
 function temporal_variability(x::AbstractVector{<:Real}; w=[0.9, 0.1])
     return mean([mean(x), std(x)], weights(w))
 end
@@ -219,4 +212,106 @@ function collect_error_stats(
     @info "MAEE:       $(trunc(maee_, digits=4))"
     @info "Bias:       $(trunc(bias_, digits=4))"
     return rmse_, benchmark_, cc_, maee_, bias_
+end
+
+"""
+Calculate the functional group correlation and temporal correlation between aggregated ltmp
+data created for reefmod.
+
+Uses the complement of the absolute pearson correlation coefficient such that 0 indicates
+a perfect fit, and >= 0 indicates no or negative correlation.
+
+The score indicates the mean correlation.
+"""
+function reef_taxa_error(
+    cover;
+    rm_ltmp_taxa=rm_ltmp_taxa,
+    dom_idxs=target_dom_idxs
+)
+    fg_corr::Float64 = 0.0
+    for (j, idx) in enumerate(dom_idxs)
+        non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
+        for id in eachindex(2008:2022)[non_missing_mask]
+            fg_corr +=
+                cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
+        end
+    end
+
+    return 1.0 - (fg_corr ./ length(dom_idxs))
+end
+
+"""
+    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
+
+Calculate the error between ltmp observations and the given cover array.
+"""
+function reef_error(
+    cover;
+    ltmp_obs=raw_ltmp_reef_data,
+    target_dom_idxs=target_dom_idxs
+)::Vector{Float64}
+    err_series::Vector{Float64} = zeros(Float64, 15)
+    tmp_err::Vector{Float64} = zeros(Float64, 15)
+    err_counts::Vector{Int64} = zeros(Int64, 15)
+    not_missing::BitVector = BitVector(fill(true, 15))
+    for (row_idx, loc_obs) in enumerate(eachrow(ltmp_obs))
+        if target_dom_idxs[row_idx] == -1
+            continue
+        end
+
+        not_missing .= (!).(ismissing.(loc_obs))
+        min_arg = argmin(loc_obs[not_missing])
+        max_arg = argmax(loc_obs[not_missing])
+        tmp_err[not_missing] .= MAEE_series(
+            cover[not_missing, target_dom_idxs[row_idx]], loc_obs[not_missing]
+        )
+
+        # Apply double the weight on the peak/trough of the time series
+        tmp_err[not_missing][[min_arg, max_arg]] .*= 2.0
+        err_series[not_missing] .+= tmp_err[not_missing]
+        err_counts[not_missing] .+= 1.0
+    end
+
+    if any(err_counts .== 0)
+        @debug "No reef level observation data for some years."
+        err_counts[err_counts .== 0] .= 1
+    end
+
+    return err_series ./ err_counts
+end
+
+"""
+    class_error(cover; obs_class_data=manta_tow_classes)::Vector{Float64}
+
+Calculate the average class level error per year.
+"""
+function class_error(
+    cover;
+    manta_tow_mean=manta_tow_mean,
+    manta_tow_std=manta_tow_std
+)::Vector{Float64}
+    # Preallocations
+    err_series::Vector{Float64} = zeros(Float64, 15)
+    err_counts::Vector{Int64} = zeros(Int64, 15)
+    not_missing::BitVector = BitVector(repeat([true], 15))
+
+    # Dims ~ [timesteps ⋅ classes]
+    class_cover::Matrix{Float64} = average_class_cover(cover)
+
+    for (idx, class) in enumerate(manta_tow_mean.class)
+        if class == -1
+            continue
+        end
+        not_missing .= (!).(ismissing.(manta_tow_mean[idx, :]))
+        err_series[not_missing] .+=
+            abs.(
+                (
+                    manta_tow_mean[idx, not_missing] .- class_cover[not_missing, class]
+                ) ./ manta_tow_std[idx, not_missing]
+            )
+        err_counts[not_missing] .+= 1
+    end
+    err_counts[err_counts .== 0] .= 1
+
+    return err_series ./ err_counts
 end

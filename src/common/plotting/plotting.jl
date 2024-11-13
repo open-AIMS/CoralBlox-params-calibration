@@ -1,3 +1,6 @@
+"""
+    plot_class_size_props(init_cover, class_idx)::Figure
+"""
 function plot_class_size_props(
     init_cover,
     class_idx
@@ -15,6 +18,9 @@ function plot_class_size_props(
     return f
 end
 
+"""
+    plot_class_properties(init_cover, class_idx)::Figure
+"""
 function plot_class_properties(
     init_cover,
     class_idx
@@ -32,6 +38,11 @@ function plot_class_properties(
     return f
 end
 
+"""
+    location_comparison(raw_data, ltmp_loc_idx, save_dir; obs_data=all_ltmp_reef, obs_idxs=all_ltmp_idxs, obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID, loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom), reef_names=dom.loc_data.GBR_NAME )::Figure
+
+Plot LTMP Manta Tow Coral Cover against the modelled cover output given the LTMP location index.
+"""
 function location_comparison(
     raw_data,
     ltmp_loc_idx,
@@ -72,6 +83,12 @@ function location_comparison(
     return f
 end
 
+"""
+    taxa_cover_proportions(raw_data)::Figure
+
+Plot the proportion of coral cover composed of each functional group as a line graph given
+the raw modelled output cover matrix as input.
+"""
 function taxa_cover_proportions(raw_data)::Figure
     cover = reshape(raw_data, (15, 7, 5, 3806))
     cover = dropdims(sum(cover, dims=4), dims=4)
@@ -93,6 +110,12 @@ function taxa_cover_proportions(raw_data)::Figure
     return f
 end
 
+"""
+    taxa_population_proportions(raw_data)::Figure
+
+Plot the proportion of coral population composed of each functional group. Population
+proportions are calculated using the average coral diameter of each size class.
+"""
 function taxa_population_proportions(raw_data)::Figure
     sc_mean_area = reshape(
         permutedims(ADRIA.colony_areas()[2], (2, 1)),
@@ -122,7 +145,8 @@ end
 """
     temporal_size_class_proportions(raw_data)
 
-Calculate the percentage of coral population occupied by each size class.
+Calculate the percentage of coral population occupied by each size class split by functional
+group.
 """
 function temporal_size_class_proportions(raw_data)::Figure
     sc_mean_area = reshape(
