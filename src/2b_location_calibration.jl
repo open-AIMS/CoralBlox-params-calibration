@@ -442,7 +442,7 @@ else
     )
 end
 
-out_fn = joinpath(OUT_DIR, init_guess_fn)
+out_fn = joinpath(OUT_DIR, "final_calibration_results.dat")
 
 best_fitness(res)
 best_init_state = best_candidate(res)
