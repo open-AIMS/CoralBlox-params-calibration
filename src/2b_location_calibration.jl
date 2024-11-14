@@ -6,44 +6,59 @@ Attempt to calibrate location-specific scaling as well.
 using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
 
-include("./common/common.jl")
-include("./common/cover_construction.jl")
+include("./1_setup.jl")
+
+function target_param_names()
+    return [
+        "linear_extension", "mb_rate", "mean_colony_diameter_m", "fecundity", "dist_mean"
+    ]
+end
+
+function adjust_bounds!(
+    sample_bounds, coral_param_idx, scale_lb::Float64, scale_ub::Float64
+)::Nothing
+    extended_lb = first.(sample_bounds[coral_param_idx]) .* scale_lb
+    extended_ub = last.(sample_bounds[coral_param_idx]) .* scale_ub
+    sample_bounds[coral_param_idx] .= collect(zip(extended_lb, extended_ub))
+    return nothing
+end
 
 # Define parameter space to scan over
 coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
 
 # Extract just the target coral parameters
-lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
-mbrate_pos = extract_param_group_idx(coral_params, "mb_rate")
-coldiam_pos = extract_param_group_idx(coral_params, "mean_colony_diameter_m")
-fecundity_pos = extract_param_group_idx(coral_params, "fecundity")
-dhw_tol_mean_pos = extract_param_group_idx(coral_params, "dist_mean")
+lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx =
+    extract_param_group_idx.([coral_params], target_param_names())
 
-coral_param_idx = vcat(lin_ext_pos, mbrate_pos, coldiam_pos, fecundity_pos, dhw_tol_mean_pos)
+coral_param_idx = vcat(
+    lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx
+)
 coral_params = coral_params[sort(coral_param_idx), :]
 coral_param_names = coral_params.fieldname
 
 # Get updated parameter positions
-lin_ext_pos = extract_param_group_idx(coral_params, "linear_extension")
-mbrate_pos = extract_param_group_idx(coral_params, "mb_rate")
-coldiam_pos = extract_param_group_idx(coral_params, "mean_colony_diameter_m")
-fecundity_pos = extract_param_group_idx(coral_params, "fecundity")
-dhw_tol_mean_pos = extract_param_group_idx(coral_params, "dist_mean")
+lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx =
+    extract_param_group_idx.([coral_params], target_param_names())
 
 sample_bounds = collect(zip(
     coral_params.lower_bound,
     coral_params.upper_bound
 ))
 
-# Adjust bounds for linear extensions
-# size_widths = ADRIA.bin_widths()'[:]  # transpose and flatten
-extended_lb = first.(sample_bounds[lin_ext_pos]) .* 0.25
-extended_ub = last.(sample_bounds[lin_ext_pos]) .* 1.8
-sample_bounds[lin_ext_pos] .= collect(zip(extended_lb, extended_ub))
+# Adjust bounds for linear extensions, fecundity and initial mean DHW tolerance
+adjust_bounds!(sample_bounds, lin_ext_idx, 0.25, 1.8)
+adjust_bounds!(sample_bounds, fecundity_idx, 0.5, 3.0)
+adjust_bounds!(sample_bounds, dhw_tol_mean_idx, 0.8, 3.0)
+
+# Add parameters for location-specific scaling
+n_groups = 5
+n_size_classes = 7
+n_limited_locs = length(limited_locations)
+n_factors = 3  # growth, mortality, fecundity
 
 # Adjust bounds for mortality rate
 # Size specific changes for each group
-for grp in 1:5, sz in 1:7
+for grp in 1:n_groups, sz in 1:n_size_classes
     group_idx = extract_param_group_idx(coral_params, "$(grp)_$(sz)_mb_rate")
 
     if sz < 4
@@ -54,22 +69,7 @@ for grp in 1:5, sz in 1:7
     end
 end
 
-# Expand bounds for fecundity
-extended_lb = first.(sample_bounds[fecundity_pos]) .* 0.5
-extended_ub = last.(sample_bounds[fecundity_pos]) .* 3.0
-sample_bounds[fecundity_pos] .= collect(zip(extended_lb, extended_ub))
-
-# Expand bounds for initial mean DHW tolerance
-extended_lb = first.(sample_bounds[dhw_tol_mean_pos]) .* 0.8
-extended_ub = last.(sample_bounds[dhw_tol_mean_pos]) .* 3.0
-sample_bounds[dhw_tol_mean_pos] .= collect(zip(extended_lb, extended_ub))
-
-# Add parameters for location-specific scaling
-n_taxa = 5
-n_limited_locs = length(limited_locations)
-n_factors = 3  # growth, mortality, fecundity
-
-location_coef = fill((0.3, 1.5), n_taxa * n_limited_locs * n_factors)
+location_coef = fill((0.3, 1.5), n_groups * n_limited_locs * n_factors)
 
 coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
@@ -78,22 +78,23 @@ loc_coef_start_idx = coral_end_idx + 1
 append!(sample_bounds, location_coef)
 loc_coef_end_idx = length(sample_bounds)
 
+# Location-based growth scaling
 growth_acc_start_idx = loc_coef_end_idx + 1
 for _ in 1:length(target_dom_idxs)
-    push!(sample_bounds, (-30.0, -15.0)) # steepness
-    push!(sample_bounds, (0.0, 2.0)) # height
-    push!(sample_bounds, (0.0, 0.3)) # midpoint
+    push!(sample_bounds, (-30.0, -15.0))  # steepness
+    push!(sample_bounds, (0.0, 2.0))  # height
+    push!(sample_bounds, (0.0, 0.3))  # midpoint
 end
 growth_acc_end_idx = length(sample_bounds)
 
 sc_dist_bounds = fill((0.25, 30.0), n_limited_locs)
 
-sc_dist_start_idx = growth_acc_end_idx+1
+sc_dist_start_idx = growth_acc_end_idx + 1
 append!(sample_bounds, sc_dist_bounds)
 sc_dist_end_idx = length(sample_bounds)
 
 """
-Reshape the growth acceleration parameters froma vector a matrix of shape [n_parameters ⋅ n_locs]
+Reshape the growth acceleration parameters from a vector a matrix of shape [n_parameters ⋅ n_locs]
 """
 function reshape_growth_accel_parameters(
     params::Vector{Float64};
@@ -128,7 +129,7 @@ function insert_init_loc_cover!(
     lambdas;
     raw_ltmp_reef_data=raw_ltmp_reef_data,
     rm_ltmp_taxa=rm_ltmp_taxa,
-    target_dom_idxs=target_dom_idxs,
+    target_dom_idxs=target_dom_idxs
 )::Nothing
     for (idx, row_idx) in enumerate(target_dom_idxs)
         size_class_props = size_class_distribution(lambdas[idx], ADRIA.bin_edges()[1, :])
@@ -320,14 +321,15 @@ function obj_func(
     ],
     loc_idxs=target_dom_idxs
 )
-
     dom = deepcopy(dom_raw)
 
     scen = ADRIA.param_table(dom)
     coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
     scen[1, coral_param_names] = coral_param_values
 
-    growth_acc_params = reshape_growth_accel_parameters(init_values[param_idxs[5]:param_idxs[6]])
+    growth_acc_params = reshape_growth_accel_parameters(
+        init_values[param_idxs[5]:param_idxs[6]]
+    )
 
     corals = ADRIA.to_coral_spec(scen[1, :])
 
@@ -376,8 +378,12 @@ function obj_func(
         lin_ext_idx = contains.(string.(coral_fn), "linear_ext")
         mbrate_idx = contains.(string.(coral_fn), "mb_rate")
 
-        linext_overage = err_func.(corals.linear_extension, replace(comp_params[lin_ext_idx, :val], 0.0 => 1.0))
-        mbrate_overage = err_func.(corals.mb_rate, replace(comp_params[mbrate_idx, :val], 0.0 => 1.0))
+        linext_overage =
+            err_func.(
+                corals.linear_extension, replace(comp_params[lin_ext_idx, :val], 0.0 => 1.0)
+            )
+        mbrate_overage =
+            err_func.(corals.mb_rate, replace(comp_params[mbrate_idx, :val], 0.0 => 1.0))
 
         return 5e5 + (sum(linext_overage) + sum(mbrate_overage) + sum(scale_factors .> 1.0))
     end
@@ -401,8 +407,8 @@ function obj_func(
     # Mean Absolute Error for peaks and troughs
     peaks = argmax_missing.(eachrow(raw_ltmp_reef_data))
     troughs = argmin_missing.(eachrow(raw_ltmp_reef_data))
-    obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1,2,3,4], peaks)]
-    obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1,2,3,4], troughs)]
+    obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], peaks)]
+    obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], troughs)]
     modelled_peaks = loc_cover[CartesianIndex.(peaks, target_dom_idxs)]
     modelled_troughs = loc_cover[CartesianIndex.(troughs, target_dom_idxs)]
 
@@ -426,8 +432,8 @@ function restructure_initial_guess!(
     n_locs=length(target_dom_idxs)
 )::Vector{Float64}
     # use calibrated growth params as initial guess for location specific
-    growth_params::Vector{Float64} = init_guess[end-2:end]
-    for _ in 1:(n_locs-1)
+    growth_params::Vector{Float64} = init_guess[(end - 2):end]
+    for _ in 1:(n_locs - 1)
         append!(init_guess, growth_params)
     end
     return init_guess
@@ -438,7 +444,7 @@ construct_cover!(dom, init_state, location_classification.consecutive_classifica
 
 best_score_file = joinpath(OUT_DIR, init_guess_fn)
 if isfile(best_score_file)
-    best_init_state = deserialize(init_guess_fn)
+    best_init_state = deserialize(best_score_file)
     best_init_state = restructure_initial_guess!(best_init_state)
     append!(best_init_state, fill(2.0, length(target_dom_idxs)))
     @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
@@ -446,15 +452,22 @@ else
     best_init_state = nothing
 end
 
+global LAST_SAVE = 0.0
+
 """
     save_results_callback(
         oc;
-        time_interv=3600,
-        step_interv=10_000,
+        time_interv=1800,
+        step_interv=1000,
         result_fn="intermediate_coral_calib.dat"
     )::Nothing
 
-Save intermediate results when at least one of the time or step interval is hit.
+Save intermediate results when either `time_interv` or `step_interv` is reached.
+Default values are to save every 30mins or 1000 steps.
+
+Progress plots are created and saved in the format of:
+
+- `calib_progress_[start date and time in UTC]_[number of seconds elapsed].png`
 """
 function save_results_callback(
     oc;
@@ -462,23 +475,40 @@ function save_results_callback(
     step_interv=1000,
     result_fn="intermediate_coral_calib.dat"
 )::Nothing
-    is_save_point = oc.num_steps % step_interv == 0
-    elapsed = (oc.last_report_time - oc.start_time)
+    start_time = replace(string(unix2datetime(oc.start_time)), "T"=>"_", ":"=>"")
+    elapsed = oc.last_report_time - oc.start_time
+    elapsed = round(elapsed; digits=2)
 
-    intermediate_save_id = Int64(round(elapsed / time_interv, digits=0))
-    fn = joinpath(OUT_DIR, "$(intermediate_save_id)_calib_progress.png")
-    should_save = intermediate_save_id > 0 && !isfile(fn)
-    is_save_time = elapsed > 0 ? should_save : false
+    if LAST_SAVE == 0.0
+        # If very first run, save results so we can see how things started
+        is_save_point = true
+    else
+        # Otherwise, check if the required number of steps has elapsed
+        is_save_point = oc.num_steps % step_interv == 0
 
-    #if !is_save_point && !is_save_time
-    #    return nothing
-    #end
+        if !is_save_point
+            # If steps have not elapsed, check if the number of seconds has elapsed
 
-    out_fn = joinpath(OUT_DIR, result_fn)
+            if (oc.last_report_time - LAST_SAVE) > time_interv
+                is_save_point = true
+            end
+        end
+    end
+
+    if !is_save_point
+        # Save point has not been reached, so exit
+        return nothing
+    end
+
+    # Otherwise, save intermediate progress!
+    global LAST_SAVE = datetime2unix(now(UTC))
+    plot_fn = joinpath(OUT_DIR, "calib_progress_$(start_time)_$(elapsed).png")
+    calib_fn = joinpath(OUT_DIR, result_fn)
     best_state = best_candidate(oc)
-    serialize(out_fn, best_state)
+    serialize(calib_fn, best_state)
 
-    plot_calibration(out_fn, coral_param_names; save_fn=fn)
+    interim_res = progress_run(best_state, coral_param_names)
+    plot_calibration(interim_res; save_fn=plot_fn)
     @info "Saved intermediate progress"
 
     return nothing
@@ -510,9 +540,9 @@ else
     )
 end
 
-out_fn = joinpath(OUT_DIR, "new_" * init_guess_fn)
+out_fn = joinpath(OUT_DIR, init_guess_fn)
 
 best_fitness(res)
 best_init_state = best_candidate(res)
 
-#serialize(out_fn, best_init_state)
+serialize(out_fn, best_init_state)

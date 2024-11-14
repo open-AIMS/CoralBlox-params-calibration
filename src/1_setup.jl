@@ -1,82 +1,58 @@
 include("./common/common.jl")
+include("./common/cover_construction.jl")
 
-if !@isdefined(canonical_gpkg) || reload_canonical
+if !@isdefined(canonical_gpkg)
     @info "Loading Canonical gpkg"
     canonical_gpkg = GDF.read(canonical_path)
     ltmp_loc_mask = canonical_gpkg.is_LTMP_reef .!= 0
-    reload_canonical = false
-end
-
-if !@isdefined(reload_ltmp)
-    reload_ltmp = true
-end
-
-if !@isdefined(reload_shp)
-    reload_shp = true
 end
 
 # Avoid reloading the domain every time
 # Load ReefModDomain
 if (!@isdefined(dom) || reload_domain)
-    if reefmod_domain
-        if start_year < 2008
-            start_year = 2008
-            @warn "Setting start year to $(start_year). 2008 is the earliest possible start for ReefModDomain."
-        end
-
-        @info "Loading ReefModDomain"
-        dom = ADRIA.load_domain(ReefModDomain, reefmod_domain_path, "45", timeframe=(start_year, end_year))
-    elseif !reefmod_domain
-        # Load the RME Domain
-        if start_year < 2000
-            start_year = 2000
-            @warn "Setting start year to $(start_year). 2000 is earlier possible start for RMEDomain."
-        end
-        @info "Loading RMEDomain"
-        dom = ADRIA.load_domain(RMEDomain, rme_domain_path, "45", timeframe=(start_year, end_year))
+    if start_year < 2008
+        start_year = 2008
+        @warn "Setting start year to $(start_year). 2008 is the earliest possible start for ReefModDomain."
     end
 
+    @info "Loading ReefModDomain"
+    dom = ADRIA.load_domain(ReefModDomain, reefmod_domain_path, "45", timeframe=(start_year, end_year))
+
     @info "Attaching historic DHW"
-    historic_dhw_path = joinpath(rme_domain_path, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
     dhw_data_df = CSV.read(historic_dhw_path, DataFrame)
 
     # Available DHW data starts 1985 - 2022
     target_years = string.(start_year:end_year)
-    dhw_data = reshape(Matrix(dhw_data_df[:, target_years])', 15, 3806, 1)
+    locs = collect(caxes(dom.dhw_scens)[2])
 
-    dom.dhw_scens = ADRIA.DataCube(dhw_data; timesteps=target_years, locs=collect(caxes(dom.dhw_scens)[2]), scenarios=1:1)
+    n_timesteps = length(target_years)
+    n_locs = length(locs)
+
+    dhw_data = reshape(Matrix(dhw_data_df[:, target_years])', n_timesteps, n_locs, 1)
+    dom.dhw_scens = ADRIA.DataCube(dhw_data; timesteps=target_years, locs=locs, scenarios=1:1)
 
     @info "Loading default parameters"
     scens = ADRIA.param_table(dom)
 
     reload_domain = false
-
-    @info "Forcing Results Rerun"
-    rerun = true
 end
 
-if !@isdefined(LTMP_DATA) || reload_ltmp
-    LTMP_DATA = CSV.read(ltmp_modelled_obs, DataFrame, header=true)
-    LTMP_DATA[!, :Region] = String.(LTMP_DATA[:, :Region])
-
-    ltmp_north_mask = ["Northern GBR" == reg for reg in LTMP_DATA.Region]
-    ltmp_central_mask = ["Central GBR" == reg for reg in LTMP_DATA.Region]
-    ltmp_south_mask = ["Southern GBR" == reg for reg in LTMP_DATA.Region]
-
-    ltmp_north = LTMP_DATA[ltmp_north_mask, :]
-    ltmp_central = LTMP_DATA[ltmp_central_mask, :]
-    ltmp_south = LTMP_DATA[ltmp_south_mask, :]
-
-    ltmp_north_period = (ltmp_north.Year .>= start_year) .& (ltmp_north.Year .<= end_year)
-    ltmp_central_period = (ltmp_central.Year .>= start_year) .& (ltmp_central.Year .<= end_year)
-    ltmp_south_period = (ltmp_south.Year .>= start_year) .& (ltmp_south.Year .<= end_year)
-
-    reload_tmp = false
+function ltmp_period(ltmp_region_name::String, ltmp_data::DataFrame, start_year::Int64, end_year::Int64)::BitVector
+    region_tf = ltmp_data[ltmp_data.Region .== ltmp_region_name, :Year]
+    return (region_tf .>= start_year) .& (region_tf .<= end_year)
 end
 
-if !@isdefined(region_shps) || reload_shp
+if !@isdefined(ltmp_data)
+    ltmp_data = CSV.read(ltmp_modelled_obs, DataFrame, header=true)
+    ltmp_data[!, :Region] = String.(ltmp_data[:, :Region])
+    regions = ["Northern GBR", "Central GBR", "Southern GBR"]
+
+    ltmp_north_period, ltmp_central_period, ltmp_south_period =
+        ltmp_period.(regions, [ltmp_data], [start_year], [end_year])
+end
+
+if !@isdefined(region_shps)
     region_shps = GDF.read(ltmp_shp)
-    reload_shp = false
 end
 
 if !@isdefined(NORTH_MASK)
@@ -84,41 +60,6 @@ if !@isdefined(NORTH_MASK)
     const CENTRAL_MASK = BitVector([AG.contains(region_shps.geometry[2], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
     const SOUTH_MASK = BitVector([AG.contains(region_shps.geometry[3], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
     const NOT_CONTAINED = (!).(NORTH_MASK .|| CENTRAL_MASK .|| SOUTH_MASK)
-end
-
-
-if !isdefined(Main, :uniform_initial_cover)
-    uniform_initial_cover = false
-end
-
-if uniform_initial_cover
-    @info "Using LTMP data to intialise uniform cover for north, central and southern GBR regions"
-    north_index = findfirst(x -> x >= start_year, ltmp_north.Year)
-    central_index = findfirst(x -> x >= start_year, ltmp_central.Year)
-    south_index = findfirst(x -> x >= start_year, ltmp_south.Year)
-
-    north_cover::Float64 = ltmp_north.response[north_index]
-    central_cover::Float64 = ltmp_central.response[central_index]
-    south_cover::Float64 = ltmp_south.response[south_index]
-
-    interp_cover = (north_cover + central_cover + south_cover) / 3
-
-    # Maintain species distributions, normalise to meet equivalent cover
-    init_loc_cover = sum(dom.init_coral_cover, dims=:species)
-
-    dom.init_coral_cover[locs=NORTH_MASK] .*= north_cover ./ init_loc_cover[locs=NORTH_MASK]
-    dom.init_coral_cover[locs=CENTRAL_MASK] .*= central_cover ./ init_loc_cover[locs=CENTRAL_MASK]
-    dom.init_coral_cover[locs=SOUTH_MASK] .*= south_cover ./ init_loc_cover[locs=SOUTH_MASK]
-
-    # Locations not contained in the shapes defined, are assigned averaged values
-    if any(NOT_CONTAINED)
-        dom.init_coral_cover[locs=NOT_CONTAINED] .*= interp_cover ./ init_loc_cover[locs=NOT_CONTAINED]
-    end
-
-    dom.init_coral_cover ./= dom.loc_data.k'
-    # Convert total cover to relative cover
-
-    uniform_initial_cover = false
 end
 
 if !@isdefined(north_res) && @isdefined(s_rac)
@@ -166,19 +107,19 @@ all_ltmp_reef = copy(raw_ltmp_reef_data)
 
 # Calibration Locations
 limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
-location_names    = ["Mackay Reef", "Opal Reef", "Macgillivray Reef", "John Brewer Reef"]
-limited_loc_idxs = [findfirst(x->!ismissing(x) && x==id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
+location_names = ["Mackay Reef", "Opal Reef", "Macgillivray Reef", "John Brewer Reef"]
+limited_loc_idxs = [findfirst(x -> !ismissing(x) && x == id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
 raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
 
 composition_data = open_dataset(composition_path)
 
-# for each target location get its row index in the domain
-target_dom_idxs = [findfirst(x->x==id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
+# For each target location get its row index in the domain
+target_dom_idxs = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
 
-# extract the ltmp data for each target location
-temporal_range = 2008:2022
+# Extract the ltmp data for each target location
+temporal_range = start_year:end_year
 # [year ⋅ taxa ⋅ locs]
-rm_ltmp_taxa = Array{Union{Missing, Float64}}(missing, length(temporal_range), 5, 4)
+rm_ltmp_taxa = Array{Union{Missing,Float64}}(missing, length(temporal_range), 5, 4)
 for (j, loc_name) in enumerate(location_names)
     rm_ltmp_taxa[:, :, j] .= composition_data.mean[location=At(loc_name)].data[(2008-1992+1):(2008-1992)+length(temporal_range), :]
 end
