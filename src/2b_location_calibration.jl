@@ -413,7 +413,10 @@ function save_results_callback(
     return nothing
 end
 
-@info "Using $(Threads.nthreads()-1) threads."
+available_threads = Threads.nthreads()
+
+threads_to_use = available_threads == 1 ? available_threads : available_threads - 1
+@info "Using $(threads_to_use) threads."
 if isnothing(best_init_state)
     # Include additional config if using BorgMOEA
     # Method=:borg_moea,
@@ -422,7 +425,7 @@ if isnothing(best_init_state)
         obj_func;
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=Threads.nthreads() - 1,
+        NThreads=threads_to_use,
         CallbackFunction=save_results_callback,
         CallbackInterval=0  # run at end of every step
     )
@@ -433,9 +436,9 @@ else
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=Threads.nthreads() - 1,
+        NThreads=threads_to_use,
         CallbackFunction=save_results_callback,
-        CallbackInterval=30  # run at end of every step
+        CallbackInterval=0  # run at end of every step
     )
 end
 
