@@ -305,8 +305,8 @@ end
 
 available_threads = Threads.nthreads()
 
-threads_to_use = available_threads == 1 ? available_threads : available_threads - 1
-@info "Using $(threads_to_use) threads."
+threads_display = available_threads == 1 ? available_threads : available_threads - 1
+@info "Using $(threads_display) threads."
 if isnothing(best_init_state)
     # Include additional config if using BorgMOEA
     # Method=:borg_moea,
@@ -315,7 +315,7 @@ if isnothing(best_init_state)
         obj_func;
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=threads_to_use,
+        NThreads=available_threads - 1,
         CallbackFunction=save_results_callback,
         CallbackInterval=0  # run at end of every step
     )
@@ -326,7 +326,7 @@ else
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=threads_to_use,
+        NThreads=available_threads,
         CallbackFunction=save_results_callback,
         CallbackInterval=0  # run at end of every step
     )
