@@ -215,6 +215,27 @@ function collect_error_stats(
 end
 
 """
+    average_class_cover(cover; loc_classes=location_classification.consecutive_classification)::Array{Float64}
+
+Calculate the average cover for each location classification.
+"""
+function average_class_cover(
+    cover;
+    loc_classes=location_classification.consecutive_classification
+)::Matrix{Float64}
+    classes = sort(unique(loc_classes))
+    n_tsteps, n_locs = size(cover)
+    class_cover::Matrix{Float64} = zeros(Float64, n_tsteps, length(classes))
+    class_mask::BitVector = Vector(repeat([true], n_locs))
+    for class in classes
+        class_mask .= loc_classes .== class
+        class_cover[:, class] .= dropdims(mean(cover[:, class_mask]; dims=2); dims=2)
+    end
+
+    return class_cover
+end
+
+"""
 Calculate the functional group correlation and temporal correlation between aggregated ltmp
 data created for reefmod.
 
