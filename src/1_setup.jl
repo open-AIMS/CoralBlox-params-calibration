@@ -3,7 +3,7 @@ include("./common/cover_construction.jl")
 
 if !@isdefined(canonical_gpkg)
     @info "Loading Canonical gpkg"
-    canonical_gpkg = GDF.read(canonical_path)
+    canonical_gpkg = GDF.read(CANONICAL_PATH)
     ltmp_loc_mask = canonical_gpkg.is_LTMP_reef .!= 0
 end
 
@@ -16,10 +16,10 @@ if (!@isdefined(dom) || reload_domain)
     end
 
     @info "Loading ReefModDomain"
-    dom = ADRIA.load_domain(ReefModDomain, reefmod_domain_path, "45", timeframe=(start_year, end_year))
+    dom = ADRIA.load_domain(ReefModDomain, REEFMOD_DOMAIN_PATH, "45", timeframe=(start_year, end_year))
 
     @info "Attaching historic DHW"
-    dhw_data_df = CSV.read(historic_dhw_path, DataFrame)
+    dhw_data_df = CSV.read(HISTORIC_DHW_PATH, DataFrame)
 
     # Available DHW data starts 1985 - 2022
     target_years = string.(start_year:end_year)
@@ -43,7 +43,7 @@ function ltmp_period(ltmp_region_name::String, ltmp_data::DataFrame, start_year:
 end
 
 if !@isdefined(ltmp_data)
-    ltmp_data = CSV.read(ltmp_modelled_obs, DataFrame, header=true)
+    ltmp_data = CSV.read(LTMP_MODELLED_OBS_PATH, DataFrame, header=true)
     ltmp_data[!, :Region] = String.(ltmp_data[:, :Region])
     regions = ["Northern GBR", "Central GBR", "Southern GBR"]
 
@@ -52,7 +52,7 @@ if !@isdefined(ltmp_data)
 end
 
 if !@isdefined(region_shps)
-    region_shps = GDF.read(ltmp_shp)
+    region_shps = GDF.read(LTMP_SHP_PATH)
 end
 
 if !@isdefined(NORTH_MASK)
@@ -68,18 +68,18 @@ if !@isdefined(north_res) && @isdefined(s_rac)
     south_res = s_rac[locs=SOUTH_MASK]
 end
 
-location_classification = CSV.read(classification_path, DataFrame)
+location_classification = CSV.read(LOC_CLASS_PATH, DataFrame)
 n_classifications = maximum(location_classification.consecutive_classification)
 
 # Load manta observations for reef location classes
-manta_tow_classes = open_dataset(manta_tow_class_path)
+manta_tow_classes = open_dataset(LOC_CLASS_TARGET_PATH)
 
 # Force memory load
 manta_tow_mean = readcubedata(manta_tow_classes.mean)
 manta_tow_std = readcubedata(manta_tow_classes.std)
 
 # Load manta tow ltmp reef level data
-ltmp_reef_data = GDF.read(ltmp_reef_data_path)
+ltmp_reef_data = GDF.read(LTMP_REEF_DATA_PATH)
 
 # Order year columns in ascending order
 ltmp_reef_years = parse.(Int64, names(ltmp_reef_data)[5:end])
@@ -111,7 +111,7 @@ location_names = ["Mackay Reef", "Opal Reef", "Macgillivray Reef", "John Brewer 
 limited_loc_idxs = [findfirst(x -> !ismissing(x) && x == id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
 raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
 
-composition_data = open_dataset(composition_path)
+composition_data = open_dataset(COMPOSITION_PATH)
 
 # For each target location get its row index in the domain
 target_dom_idxs = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
