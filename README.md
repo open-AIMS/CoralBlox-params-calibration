@@ -18,39 +18,72 @@ The latest version of CoralBlox is also required:
 
 Create a `calib_config.toml` file with the following entries:
 
-```bash
-# TODO: Detail which entries require relative vs absolute paths
-[data_paths]
-reefmod_domain = "<path to ReefMod dataset>"  # Required
-rme_domain = "<path to RME dataset>"  # Required
-ltmp_shp = "spatial_data/gbr_3Zone 2.shp"  # Required
-ltmp_modelled_obs = "ltmp_data/modelled_brms.beta.ry.disp.csv"  # Required
-canonical_path = "<path to canonical gpkg>"  # Required
-classification_path = "spatial_data/location_classification_MPA.csv"  # location classes
-manta_tow_path = "ltmp_data/manta_tow_mean_std.nc"  # target data for location classes
-ltmp_reef_data = "ltmp_data/manta_tow_data_reef_lvl.gpkg"  # target data for ltmp locs
-composition_netcdf = "ltmp_data/coral_composition.nc"
-init_cover_fn = "spatial/init_cover.dat"
-init_guess_fn = "coral_p_calib_last.dat"  # optional, just the filename
-out_dir = "../outputs"  # path to output directory for intermediate calibration results
+```toml
+[Domains]
+reefmod_domain = "<path to ReefMod dataset>"
+rme_domain = "<path to RME dataset>"
+
+[Geospatial]
+canonical_path = "<path to canonical gpkg>"
+ltmp_shp = "../spatial_data/gbr_3Zone 2.shp"
+classification_path = "../spatial_data/location_classification_MPA.csv"
+
+[Target]
+manta_tow_path = "..\\ltmp_data\\manta_tow_mean_std.nc"
+ltmp_reef_data = "..\\ltmp_data\\manta_tow_data_reef_lvl.gpkg"
+composition_netcdf = "..\\ltmp_data\\coral_composition.nc"
+ltmp_modelled_obs = "..\\ltmp_data\\modelled_brms.beta.ry.disp.csv"
+
+[Initialisation]
+init_cover_filepath = "spatial_data\\init_cover.dat"
+init_guess_filepath = "<path to initial guess.dat>" # optional
+
+[Outputs]
+out_dir = "..\\Outputs\\test_dir"
+result_filename = "results.dat" # relative to out_dir
 ```
 
 ## Config File Path Descriptions
 
+**Domain**
+
+Paths to different ADRIA domains or historic input files
 - `reefmod_domain` : Domain found on teams called `limited_reefmod_domain` in ADRIA domain folder.
+- `rme_domain` : Path to ReefModEngine
+
+**Geospatial**
+
+Paths to geopackages, shapefiles and geospatial location data.
+- `canonical_path` : Path to canonical geopackage
+- `ltmp_shp` : Path to LTMP regional shape files
 - `classification_path` : CSV file contains location classes in the same order as the ADRIA domain.
+
+**Target**
+
+Paths to data used as the target observation data for calibration.
 - `manta_tow_path` : NetCDF containing target mean and standard deviation for location classes not individual
 locations. Contained in `ltmp_data` directory.
 - `ltmp_reef_data` : Geopackage containing target data for individual locations. Contained in `ltmp_data` directory.
 - `composition_netcdf` : NetCDF containing coral composition for each ADRIA functional group at each ltmp
 photogrammetry location. Contained in the `ltmp_data` directory.
-- `init_guess_fn` : Optional file name for inital guess.
-- `init_cover_fn` : Data containing calibrated initial cover. Must be loaded into domain as follows.
+- `ltmp_modelled_obs` : Path to modelled regional coral cover data based on LTMP
+  observations
 
+**Initialisation**
+- `init_cover_filepath` : Data containing calibrated initial cover. Must be loaded into domain as follows.
+- `init_guess_filepath` : Optional file name for initial guess.
+
+Initial cover must be loaded as follows.
 ```julia
 init_cover = deserialize(init_cover_fn)
 construct_cover!(dom, init_cover, location_classification.consecutive_classification)
 ```
+
+**Outputs**
+- `out_dir` : Directory to save results plots, intermediate progress reports and final
+  calibration results
+  `result_filename` : Name of file to save calibrated results to, relative to `out_dir`
+
 
 ## Useful Variables
 
