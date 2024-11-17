@@ -228,10 +228,10 @@ function restructure_initial_guess!(
     return init_guess
 end
 
-init_state = deserialize(init_cover_fn)
+init_state = deserialize(INIT_COVER_PATH)
 construct_cover!(dom, init_state, location_classification.consecutive_classification)
 
-best_score_file = joinpath(OUT_DIR, init_guess_fn)
+best_score_file = joinpath(OUT_DIR, INIT_GUESS_PATH)
 if isfile(best_score_file)
     best_init_state = deserialize(best_score_file)
     best_init_state = restructure_initial_guess!(best_init_state)
@@ -332,7 +332,7 @@ else
     )
 end
 
-out_fn = joinpath(OUT_DIR, "final_calibration_results.dat")
+out_fn = joinpath(OUT_DIR, RESULT_FN)
 
 best_fitness(res)
 best_init_state = best_candidate(res)
