@@ -9,38 +9,6 @@ using BlackBoxOptim: init_rng!
 include("./1_setup.jl")
 include("./param_bounds.jl")
 
-"""
-Reshape the growth acceleration parameters from a vector a matrix of shape [n_parameters ⋅ n_locs]
-"""
-function reshape_growth_accel_parameters(
-    params::Vector{Float64};
-    n_locs=length(target_dom_idxs)
-)::Matrix{Float64}
-    return reshape(params, (3, n_locs))
-end
-
-function insert_init_loc_cover!(
-    dom,
-    lambdas;
-    raw_ltmp_reef_data=raw_ltmp_reef_data,
-    rm_ltmp_taxa=rm_ltmp_taxa,
-    target_dom_idxs=target_dom_idxs
-)::Nothing
-    for (idx, row_idx) in enumerate(target_dom_idxs)
-        size_class_props = size_class_distribution(lambdas[idx], ADRIA.bin_edges()[1, :])
-        loc_cov =
-            rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
-        tot_cov =
-            raw_ltmp_reef_data[
-                idx, findfirst(x -> !ismissing(x), raw_ltmp_reef_data[idx, :])
-            ] ./ dom.loc_data.k[row_idx]
-        dom.init_coral_cover[:, row_idx] .=
-            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
-    end
-
-    return nothing
-end
-
 
 """
     validate_linear_extension_coefficients(linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Vector{Float64})::Bool
@@ -110,25 +78,18 @@ function obj_func(
     param_idxs=PARAM_IDXS,
     loc_idxs=target_dom_idxs
 )
-    dom = deepcopy(dom_raw)
-
-    scen = ADRIA.param_table(dom)
-    coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
-    scen[1, coral_param_names] = coral_param_values
-
-    growth_acc_params = reshape_growth_accel_parameters(
-        init_values[param_idxs[5]:param_idxs[6]]
+    dom, scen, growth_acc_params, scale_factors = setup_run(
+        dom_raw,
+        init_values;
+        param_names=coral_param_names,
+        param_idxs=param_idxs,
+        loc_idxs=loc_idxs
     )
 
     corals = ADRIA.to_coral_spec(scen[1, :])
 
     loc_k_areas = ADRIA.site_k_area(dom)
     loc_areas = ADRIA.loc_area(dom)
-
-    # Location-specific scaling for [groups] ⋅ [locations] ⋅ [growth, mortality, fecundity]
-    scale_factors::Array{Float64,3} = reshape(
-        init_values[param_idxs[3]:param_idxs[4]], (5, 4, 3)
-    )
 
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
     survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
@@ -142,8 +103,6 @@ function obj_func(
     if mortality_validity + lin_ext_validity != 0.0
         return 1e6 + (2e6 * (mortality_validity + lin_ext_validity))
     end
-
-    insert_init_loc_cover!(dom, init_values[param_idxs[7]:param_idxs[8]])
 
     res = nothing
     try

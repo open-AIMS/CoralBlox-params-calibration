@@ -105,3 +105,79 @@ global PARAM_IDXS = [
 ]
 
 global CORAL_PARAM_NAMES = coral_params.fieldname
+
+# Utility functions for domain and parameter calibration setup
+
+"""
+Reshape the growth acceleration parameters from a vector a matrix of shape [n_parameters ⋅ n_locs]
+"""
+function reshape_growth_accel_parameters(
+    params::Vector{Float64};
+    n_locs=length(target_dom_idxs)
+)::Matrix{Float64}
+    return reshape(params, (3, n_locs))
+end
+
+"""
+    insert_init_loc_cover!(dom, lambdas; raw_ltmp_reef_data=raw_ltmp_reef_data, rm_ltmp_taxa=rm_ltmp_taxa, target_dom_idxs=target_dom_idxs )::Nothing
+
+Recalculate initial cover of target locations to match photogrammetry coral composition and
+manta tow total cover. Use the given lambda calculation
+"""
+function insert_init_loc_cover!(
+    dom,
+    lambdas;
+    raw_ltmp_reef_data=raw_ltmp_reef_data,
+    rm_ltmp_taxa=rm_ltmp_taxa,
+    target_dom_idxs=target_dom_idxs
+)::Nothing
+    for (idx, row_idx) in enumerate(target_dom_idxs)
+        size_class_props = size_class_distribution(lambdas[idx], ADRIA.bin_edges()[1, :])
+        loc_cov =
+            rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
+        tot_cov =
+            raw_ltmp_reef_data[
+                idx, findfirst(x -> !ismissing(x), raw_ltmp_reef_data[idx, :])
+            ] ./ dom.loc_data.k[row_idx]
+        dom.init_coral_cover[:, row_idx] .=
+            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
+    end
+
+    return nothing
+end
+
+"""
+    setup_run(dom::Domain, sampled_params::Vector{Float64}; param_names::Vector{Symbol}=CORAL_PARAM_NAMES, param_idxs=PARAM_IDXS, loc_idxs=target_dom_idxs )::Nothing
+
+Insert coral parameters into dataframe, reconstruct size class distribution of target
+locations and extract scale factors and growth acceleration parameters.
+"""
+function setup_run(
+    dom::Domain,
+    sampled_params::Vector{Float64};
+    param_names::Vector{Symbol}=CORAL_PARAM_NAMES,
+    param_idxs=PARAM_IDXS,
+    loc_idxs=target_dom_idxs
+)::Tuple{Domain, DataFrame, Matrix{Float64}, Array{Float64, 3}}
+    dom2 = deepcopy(dom)
+
+    scen = ADRIA.param_table(dom2)
+    coral_param_values = sampled_params[param_idxs[1]:param_idxs[2]]
+    scen[1, param_names] = coral_param_values
+
+    growth_acc_params = reshape_growth_accel_parameters(
+        sampled_params[param_idxs[5]:param_idxs[6]]
+    )
+
+    scale_factors::Array{Float64,3} = reshape(
+        sampled_params[param_idxs[3]:param_idxs[4]], (5, 4, 3)
+    )
+
+    insert_init_loc_cover!(
+        dom,
+        sampled_params[param_idxs[7]:param_idxs[8]],
+        target_dom_idxs=loc_idxs
+    )
+
+    return dom2, scen, growth_acc_params, scale_factors
+end
