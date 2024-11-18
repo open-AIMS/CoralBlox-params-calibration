@@ -42,10 +42,19 @@ function ltmp_period(ltmp_region_name::String, ltmp_data::DataFrame, start_year:
     return (region_tf .>= start_year) .& (region_tf .<= end_year)
 end
 
+function ltmp_modelled_results(ltmp_region_name::String, ltmp_data::DataFrame)::DataFrame
+    region_mask = [ltmp_region_name == reg for reg in ltmp_data.Region]
+    return ltmp_data[region_mask, :]
+end
+
 if !@isdefined(ltmp_data)
     ltmp_data = CSV.read(LTMP_MODELLED_OBS_PATH, DataFrame, header=true)
     ltmp_data[!, :Region] = String.(ltmp_data[:, :Region])
     regions = ["Northern GBR", "Central GBR", "Southern GBR"]
+
+    ltmp_north, ltmp_central, ltmp_south = ltmp_modelled_results.(
+        regions, [ltmp_data]
+    )
 
     ltmp_north_period, ltmp_central_period, ltmp_south_period =
         ltmp_period.(regions, [ltmp_data], [start_year], [end_year])
