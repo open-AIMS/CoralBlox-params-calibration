@@ -84,6 +84,41 @@ construct_cover!(dom, init_cover, location_classification.consecutive_classifica
   calibration results
   `result_filename` : Name of file to save calibrated results to, relative to `out_dir`
 
+## Running scripts
+
+The scripts in the `src` directory should be executed in the order according to the filename
+numbering (excluding `2_calibration.jl`).
+
+#### Running calibration and analysis
+
+```julia-repl
+julia> include("1_setup.jl")
+julia> include("2b_location_calibration.jl")
+julia> include("3_regional_analysis.jl")
+julia> include("4_location_analysis.jl")
+```
+
+#### Results analysis only.
+
+The calibration parameters used for results analysis are read from the `result_filename`
+file in the output directory, `out_dir`, that were defined in the calibration configuration file.
+Any plots already existing in this directory that were created using the same scripts will
+be **overwritten**.
+
+```julia-repl
+julia> include("1_setup.jl")
+julia> include("3_regional_analysis.jl")
+julia> include("4_location_analysis.jl")
+```
+
+## Changing Calibration Parameters
+
+In order to reduce the number of files to be edited when making changes to which parameters
+are calibrated and what bounds they have, all parameter bounds setup is confined to the
+`common/param_bounds.jl` file.
+
+The `setup_run` function accepts a vector of parameter values and constructs the domain,
+scenarios and scale factors required to perform a model run.
 
 ## Useful Variables
 

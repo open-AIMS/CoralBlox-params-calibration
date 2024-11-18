@@ -7,7 +7,7 @@ using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
 
 include("./1_setup.jl")
-include("./param_bounds.jl")
+include("./common/param_bounds.jl")
 
 
 """

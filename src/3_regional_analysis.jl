@@ -2,7 +2,7 @@ using ADRIA: RESULTS
 include("./common/common.jl")
 include("./common/cover_construction.jl")
 include("1_setup.jl")
-include("param_bounds.jl")
+include("common/param_bounds.jl")
 
 init_cover_fn = "C:/Users/dtan/data/init_cover.dat"
 init_cover = deserialize(init_cover_fn)
