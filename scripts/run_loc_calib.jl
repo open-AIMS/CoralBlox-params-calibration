@@ -1,7 +1,6 @@
-src_dir = joinpath(expanduser("~"), "ltmp_calibration", "src")
-cd(src_dir)
+cd("src")
 @info pwd()
 
 
-include(joinpath(src_dir, "1_setup.jl"))
-include(joinpath(src_dir, "2b_location_calibration.jl"))
+include("../src/1_setup.jl")
+include("../src/2b_location_calibration.jl")

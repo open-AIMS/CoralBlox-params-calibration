@@ -11,6 +11,18 @@ using CairoMakie
 using ADRIA
 using ADRIA: GDF, AG, DimensionalData
 
+function ADRIA.bin_edges(; unit=:m)
+    return Matrix(
+        [
+            2.5 7.5 12.5 25.0 50.0 80.0 120.0 160.0;
+            2.5 7.5 12.5 20.0 30.0 60.0 100.0 150.0;
+            2.5 7.5 12.5 20.0 30.0 40.0 50.0 60.0;
+            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0;
+            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0
+        ]
+    ) .* ADRIA.linear_scale(:cm, unit)
+end
+
 
 global CONFIG = TOML.parsefile("calib_config.toml")
 
@@ -38,8 +50,9 @@ global COMPOSITION_PATH       = TARGET_CONFIG["composition_netcdf"]
 global LTMP_MODELLED_OBS_PATH = TARGET_CONFIG["ltmp_modelled_obs"]
 
 # Initialisation filepaths
-global INIT_COVER_PATH  = INITIALISATION_CONFIG["init_cover_filepath"]
-global INIT_GUESS_PATH  = INITIALISATION_CONFIG["init_guess_filepath"]  # optiona;
+global INIT_COVER_PATH    = INITIALISATION_CONFIG["init_cover_filepath"]
+global INIT_GUESS_PATH    = INITIALISATION_CONFIG["init_guess_filepath"]  # optional
+global ECORRAP_PARAM_PATH = INITIALISATION_CONFIG["ecorrap_param_filepath"]
 
 # Output filepaths
 global OUT_DIR   = OUTPUT_CONFIG["out_dir"]
