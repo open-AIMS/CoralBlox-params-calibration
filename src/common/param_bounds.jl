@@ -159,9 +159,9 @@ function setup_run(
     param_idxs=PARAM_IDXS,
     loc_idxs=target_dom_idxs
 )::Tuple{Domain, DataFrame, Matrix{Float64}, Array{Float64, 3}}
-    dom2 = deepcopy(dom)
+    new_dom = deepcopy(dom)
 
-    scen = ADRIA.param_table(dom2)
+    scen = ADRIA.param_table(new_dom)
     coral_param_values = sampled_params[param_idxs[1]:param_idxs[2]]
     scen[1, param_names] = coral_param_values
 
@@ -174,10 +174,10 @@ function setup_run(
     )
 
     insert_init_loc_cover!(
-        dom,
+        new_dom,
         sampled_params[param_idxs[7]:param_idxs[8]],
         target_dom_idxs=loc_idxs
     )
 
-    return dom2, scen, growth_acc_params, scale_factors
+    return new_dom, scen, growth_acc_params, scale_factors
 end
