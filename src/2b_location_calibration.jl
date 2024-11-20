@@ -175,26 +175,12 @@ function obj_func(
     return score
 end
 
-function restructure_initial_guess!(
-    init_guess::Vector{Float64};
-    n_locs=length(target_dom_idxs)
-)::Vector{Float64}
-    # use calibrated growth params as initial guess for location specific
-    growth_params::Vector{Float64} = init_guess[(end - 2):end]
-    for _ in 1:(n_locs - 1)
-        append!(init_guess, growth_params)
-    end
-    return init_guess
-end
-
 init_state = deserialize(INIT_COVER_PATH)
 construct_cover!(dom, init_state, location_classification.consecutive_classification)
 
 best_score_file = joinpath(OUT_DIR, INIT_GUESS_PATH)
 if isfile(best_score_file)
     best_init_state = deserialize(best_score_file)
-    best_init_state = restructure_initial_guess!(best_init_state)
-    append!(best_init_state, fill(2.0, length(target_dom_idxs)))
     @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
 else
     best_init_state = nothing
@@ -285,7 +271,7 @@ else
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=available_threads,
+        NThreads=available_threads - 1,
         CallbackFunction=save_results_callback,
         CallbackInterval=0  # run at end of every step
     )
