@@ -26,7 +26,7 @@ dom, scen, growth_acc_params, scale_factors = setup_run(
     loc_idxs=target_dom_idxs
 )
 
-rs_raw = ADRIA.run_model(dom, scens[1, :], scale_factors, growth_acc_params, target_dom_idxs)
+rs_raw = ADRIA.run_model(dom, scen[1, :], scale_factors, growth_acc_params, target_dom_idxs)
 
 s_rac = (dropdims(sum(rs_raw.raw, dims=2), dims=2) .* site_k_area(dom)') ./ loc_area(dom)'
 

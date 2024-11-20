@@ -31,9 +31,6 @@ if (!@isdefined(dom) || reload_domain)
     dhw_data = reshape(Matrix(dhw_data_df[:, target_years])', n_timesteps, n_locs, 1)
     dom.dhw_scens = ADRIA.DataCube(dhw_data; timesteps=target_years, locs=locs, scenarios=1:1)
 
-    @info "Loading default parameters"
-    scens = ADRIA.param_table(dom)
-
     reload_domain = false
 end
 
