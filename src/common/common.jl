@@ -17,7 +17,7 @@ global CONFIG = TOML.parsefile("calib_config.toml")
 # Configuration sections
 global DOMAIN_CONFIG         = CONFIG["Domains"]
 global GEOSPATIAL_CONFIG     = CONFIG["Geospatial"]
-global TARGET_CONFIG         = CONFIG["Target"]
+global TARGET_CONFIG         = CONFIG["Observations"]
 global INITIALISATION_CONFIG = CONFIG["Initialisation"]
 global OUTPUT_CONFIG         = CONFIG["Outputs"]
 

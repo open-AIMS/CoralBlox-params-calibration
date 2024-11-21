@@ -28,7 +28,7 @@ canonical_path = "<path to canonical gpkg>"
 ltmp_shp = "../spatial_data/gbr_3Zone 2.shp"
 classification_path = "../spatial_data/location_classification_MPA.csv"
 
-[Target]
+[Observations]
 manta_tow_path = "..\\ltmp_data\\manta_tow_mean_std.nc"
 ltmp_reef_data = "..\\ltmp_data\\manta_tow_data_reef_lvl.gpkg"
 composition_netcdf = "..\\ltmp_data\\coral_composition.nc"
@@ -45,20 +45,20 @@ result_filename = "results.dat" # relative to out_dir
 
 ## Config File Path Descriptions
 
-**Domain**
+### Domain
 
 Paths to different ADRIA domains or historic input files
 - `reefmod_domain` : Domain found on teams called `limited_reefmod_domain` in ADRIA domain folder.
 - `rme_domain` : Path to ReefModEngine
 
-**Geospatial**
+### Geospatial
 
 Paths to geopackages, shapefiles and geospatial location data.
 - `canonical_path` : Path to canonical geopackage
 - `ltmp_shp` : Path to LTMP regional shape files
 - `classification_path` : CSV file contains location classes in the same order as the ADRIA domain.
 
-**Target**
+### Observations
 
 Paths to data used as the target observation data for calibration.
 - `manta_tow_path` : NetCDF containing target mean and standard deviation for location classes not individual
@@ -69,7 +69,7 @@ photogrammetry location. Contained in the `ltmp_data` directory.
 - `ltmp_modelled_obs` : Path to modelled regional coral cover data based on LTMP
   observations
 
-**Initialisation**
+### Initialisation
 - `init_cover_filepath` : Data containing calibrated initial cover. Must be loaded into domain as follows.
 - `init_guess_filepath` : Optional file name for initial guess.
 
@@ -79,15 +79,15 @@ init_cover = deserialize(init_cover_fn)
 construct_cover!(dom, init_cover, location_classification.consecutive_classification)
 ```
 
-**Outputs**
+### Outputs
 - `out_dir` : Directory to save results plots, intermediate progress reports and final
   calibration results
   `result_filename` : Name of file to save calibrated results to, relative to `out_dir`
 
 ## Running scripts
 
-The scripts in the `src` directory should be executed in the order according to the filename
-numbering (excluding `2_calibration.jl`).
+The scripts in the `src` directory should be executed in the order according to the file
+name numbering (excluding `2_calibration.jl`).
 
 #### Running calibration and analysis
 
@@ -125,8 +125,8 @@ scenarios and scale factors required to perform a model run.
 First execute `1_setup.jl`
 
 - `dom` : ADRIA reefmod domain.
-- `rm_ltmp_taxa` : Target taxa composition at target locations
-- `raw_ltmp_reef_data` : Target coral cover levels at target locations
+- `rm_ltmp_taxa` : Observed taxa composition at target locations
+- `raw_ltmp_reef_data` : Observed coral cover levels at target locations
 - `target_dom_idxs` : ADRIA domain row index for each target location
 - `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK` : LTMP Region mask for ADRIA domains.
 - `ltmp_north`, `ltmp_central` and `ltmp_south` : Regional LTMP data
