@@ -241,7 +241,7 @@ function save_results_callback(
     best_state = best_candidate(oc)
     serialize(calib_fn, best_state)
 
-    interim_res = progress_run(best_state, coral_param_names)
+    interim_res = progress_run(best_state)
     plot_calibration(interim_res; save_fn=plot_fn)
     @info "Saved intermediate progress"
 
