@@ -191,6 +191,11 @@ function collect_error_stats(
 
     obs_loc_data = obs_data[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
+
+    if !any(not_missing_obs)
+        return NaN, NaN, NaN, NaN, NaN
+    end
+
     obs_tf = (start_year:end_year)[not_missing_obs]
 
     sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]

@@ -39,6 +39,60 @@ function plot_class_properties(
 end
 
 """
+    construct_location_err_title(raw_data, ltmp_loc_idx; domain_idx=all_ltmp_idxs[ltmp_loc_idx], reef_name=dom.loc_data.GBR_NAME[domain_idx], reef_id=ltmp_reef_data.RME_UNIQUE_ID[ltmp_loc_idx])::Makie.RichText
+
+Construct a Rich Test string containing the location unique id, location name and the error
+statistics for the location.
+"""
+function construct_location_err_title(
+    raw_data,
+    ltmp_loc_idx;
+    domain_idx=all_ltmp_idxs[ltmp_loc_idx],
+    reef_name=dom.loc_data.GBR_NAME[domain_idx],
+    reef_id=ltmp_reef_data.RME_UNIQUE_ID[ltmp_loc_idx]
+)::Makie.RichText
+    rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(raw_data, ltmp_loc_idx)
+    rmse_, benchmark_, cc_, maee_, bias_ = trunc.(
+        [rmse_, benchmark_, cc_, maee_, bias_], digits=4
+    )
+
+    err_report_str  = "RMSE: $(rmse_) | μ bnch: $(benchmark_) | "
+    err_report_str *= "PCC: $(cc_) | MAEE: $(maee_) | BIAS: $(bias_)"
+
+    title_text = rich("$reef_name\n$(reef_id)\n", rich(err_report_str, fontsize=9))
+
+    return title_text
+end
+
+"""
+    plot_modelled_v_ltmp(raw_data, ltmp_loc_idx, domain_loc_idx)
+
+Plot the modelled coral cover results against observed LTMP manta tow data. Return the
+scatter and line object for use in legends
+"""
+function plot_modelled_v_ltmp(
+    raw_data,
+    ltmp_loc_idx,
+    domain_loc_idx
+)
+    loc_k_area = ADRIA.site_k_area(dom)[domain_loc_idx]
+    loc_area   = ADRIA.loc_area(dom)[domain_loc_idx]
+
+    loc_cover = dropdims(
+        sum(raw_data[:, :, domain_loc_idx], dims=2),
+    dims=2) .* loc_k_area ./ loc_area
+
+    obs_loc_data = all_ltmp_reef[ltmp_loc_idx, :]
+    not_missing_obs = (!).(ismissing.(obs_loc_data))
+    obs_tf = (start_year:end_year)[not_missing_obs]
+
+    obs = scatter!(obs_tf, obs_loc_data[not_missing_obs], color=(:red, 0.5), markersize=20)
+    sim = lines!(2008:2022, loc_cover, color=:red)
+
+    return obs, sim
+end
+
+"""
     location_comparison(raw_data, ltmp_loc_idx, save_dir; obs_data=all_ltmp_reef, obs_idxs=all_ltmp_idxs, obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID, loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom), reef_names=dom.loc_data.GBR_NAME )::Figure
 
 Plot LTMP Manta Tow Coral Cover against the modelled cover output given the LTMP location index.
@@ -47,51 +101,24 @@ function location_comparison(
     raw_data,
     ltmp_loc_idx,
     save_dir;
-    obs_data=all_ltmp_reef,
     obs_idxs=all_ltmp_idxs,
     obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
-    loc_k_areas=ADRIA.site_k_area(dom),
-    loc_areas=ADRIA.loc_area(dom),
-    reef_names=dom.loc_data.GBR_NAME
 )::Figure
-    loc_domain_idx = obs_idxs[ltmp_loc_idx]
+    domain_loc_idx = obs_idxs[ltmp_loc_idx]
 
     # Some LTMP locations do not have a corresponding domain location
-    if loc_domain_idx == -1
+    if domain_loc_idx == -1
         return Figure()
     end
 
     # Extra information specific to the given location
     reef_id = obs_loc_labels[ltmp_loc_idx]
-    reef_name = reef_names[loc_domain_idx]
-    loc_k_area = loc_k_areas[loc_domain_idx]
-    loc_area = loc_areas[loc_domain_idx]
 
-    loc_cover = dropdims(
-        sum(raw_data[:, :, loc_domain_idx], dims=2),
-    dims=2) .* loc_k_area ./ loc_area
-
-    obs_loc_data = obs_data[ltmp_loc_idx, :]
-    not_missing_obs = (!).(ismissing.(obs_loc_data))
-    obs_tf = (2008:2022)[not_missing_obs]
-
-    # Exit if the LTMP location has no recorded observations from start year to end year
-    if !any(not_missing_obs)
-        return Figure()
-    end
-
-    rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(raw_data, ltmp_loc_idx)
-    rmse_, benchmark_, cc_, maee_, bias_ = trunc.(
-        [rmse_, benchmark_, cc_, maee_, bias_], digits=4
-    )
-    err_report_str  = "RMSE: $(rmse_) | μ bnch: $(benchmark_) | "
-    err_report_str *= "PCC: $(cc_) | MAEE: $(maee_) | BIAS: $(bias_)"
-    title_text = rich("$reef_name\n$(reef_id)\n", rich(err_report_str, fontsize=9))
+    title_text = construct_location_err_title(raw_data, ltmp_loc_idx)
 
     f = Figure(; size=(1000, 600))
     Axis(f[1, 1], xlabel="Year", ylabel="relative total area", title=title_text)
-    obs = scatter!(obs_tf, obs_loc_data[not_missing_obs], color=(:red, 0.5), markersize=20)
-    sim = lines!(2008:2022, loc_cover, color=:red)
+    obs, sim = plot_modelled_v_ltmp(raw_data, ltmp_loc_idx, domain_loc_idx)
     Legend(
         f[1, 2],
         [obs, sim],
