@@ -205,12 +205,6 @@ function collect_error_stats(
     s = length(sim_data[not_missing_obs])
     benchmark_::Float64 = rmse(fill(μ_obs, s), obs_loc_data[not_missing_obs])
 
-    @info "Location $(reef_id)"
-    @info "RMSE:       $(trunc(rmse_, digits=4))"
-    @info "Benchmark:  $(trunc(benchmark_, digits=4))"
-    @info "Pearsons R: $(trunc(cc_, digits=4))"
-    @info "MAEE:       $(trunc(maee_, digits=4))"
-    @info "Bias:       $(trunc(bias_, digits=4))"
     return rmse_, benchmark_, cc_, maee_, bias_
 end
 

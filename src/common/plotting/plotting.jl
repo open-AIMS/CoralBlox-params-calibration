@@ -54,32 +54,50 @@ function location_comparison(
     loc_areas=ADRIA.loc_area(dom),
     reef_names=dom.loc_data.GBR_NAME
 )::Figure
-    loc_cover = dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
-    if obs_idxs[ltmp_loc_idx] == -1
+    loc_domain_idx = obs_idxs[ltmp_loc_idx]
+
+    # Some LTMP locations do not have a corresponding domain location
+    if loc_domain_idx == -1
         return Figure()
     end
+
+    # Extra information specific to the given location
+    reef_id = obs_loc_labels[ltmp_loc_idx]
+    reef_name = reef_names[loc_domain_idx]
+    loc_k_area = loc_k_areas[loc_domain_idx]
+    loc_area = loc_areas[loc_domain_idx]
+
+    loc_cover = dropdims(
+        sum(raw_data[:, :, loc_domain_idx], dims=2),
+    dims=2) .* loc_k_area ./ loc_area
 
     obs_loc_data = obs_data[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
     obs_tf = (2008:2022)[not_missing_obs]
 
+    # Exit if the LTMP location has no recorded observations from start year to end year
     if !any(not_missing_obs)
         return Figure()
     end
 
-    sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
-    reef_id = obs_loc_labels[ltmp_loc_idx]
+    rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(raw_data, ltmp_loc_idx)
+    rmse_, benchmark_, cc_, maee_, bias_ = trunc.(
+        [rmse_, benchmark_, cc_, maee_, bias_], digits=4
+    )
+    err_report_str  = "RMSE: $(rmse_) | μ bnch: $(benchmark_) | "
+    err_report_str *= "PCC: $(cc_) | MAEE: $(maee_) | BIAS: $(bias_)"
+    title_text = rich("$reef_name\n$(reef_id)\n", rich(err_report_str, fontsize=9))
 
     f = Figure(; size=(1000, 600))
-    Axis(f[1, 1], xlabel="Year", ylabel="relative total area", title="$(reef_names[obs_idxs[ltmp_loc_idx]])\nLocation $(reef_id)")
+    Axis(f[1, 1], xlabel="Year", ylabel="relative total area", title=title_text)
     obs = scatter!(obs_tf, obs_loc_data[not_missing_obs], color=(:red, 0.5), markersize=20)
-    sim = lines!(2008:2022, sim_data, color=:red)
+    sim = lines!(2008:2022, loc_cover, color=:red)
     Legend(
         f[1, 2],
         [obs, sim],
         ["LTMP", "CoralBlox"]
     )
-    save("$(save_dir)/loc_$(reef_id).png", f)
+    save(joinpath(save_dir, "loc_$(reef_id).png"), f)
     return f
 end
 
