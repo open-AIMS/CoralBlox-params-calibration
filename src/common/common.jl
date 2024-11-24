@@ -45,8 +45,8 @@ global INIT_GUESS_PATH  = INITIALISATION_CONFIG["init_guess_filepath"]  # option
 global OUT_DIR   = OUTPUT_CONFIG["out_dir"]
 global RESULT_FN = OUTPUT_CONFIG["result_filename"]
 
-global start_year = 2008
-global end_year = 2022
+const START_YEAR = 2008
+const END_YEAR = 2022
 global n_scenarios = 16
 
 if !@isdefined(OPTIONS)

@@ -39,7 +39,7 @@ function plot_class_properties(
 end
 
 """
-    construct_location_err_title(raw_data, ltmp_loc_idx; domain_idx=all_ltmp_idxs[ltmp_loc_idx], reef_name=dom.loc_data.GBR_NAME[domain_idx], reef_id=ltmp_reef_data.RME_UNIQUE_ID[ltmp_loc_idx])::Makie.RichText
+    construct_location_err_title(raw_data, ltmp_loc_idx; domain_idx=ALL_LTMP_IDXS[ltmp_loc_idx], reef_name=dom.loc_data.GBR_NAME[domain_idx], reef_id=ltmp_reef_data.RME_UNIQUE_ID[ltmp_loc_idx])::Makie.RichText
 
 Construct a Rich Test string containing the location unique id, location name and the error
 statistics for the location.
@@ -47,7 +47,7 @@ statistics for the location.
 function construct_location_err_title(
     raw_data,
     ltmp_loc_idx;
-    domain_idx=all_ltmp_idxs[ltmp_loc_idx],
+    domain_idx=ALL_LTMP_IDXS[ltmp_loc_idx],
     reef_name=dom.loc_data.GBR_NAME[domain_idx],
     reef_id=ltmp_reef_data.RME_UNIQUE_ID[ltmp_loc_idx]
 )::Makie.RichText
@@ -82,9 +82,9 @@ function plot_modelled_v_ltmp(
         sum(raw_data[:, :, domain_loc_idx], dims=2),
     dims=2) .* loc_k_area ./ loc_area
 
-    obs_loc_data = all_ltmp_reef[ltmp_loc_idx, :]
+    obs_loc_data = ALL_LTMP_REEF[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
-    obs_tf = (start_year:end_year)[not_missing_obs]
+    obs_tf = (START_YEAR:END_YEAR)[not_missing_obs]
 
     obs = scatter!(obs_tf, obs_loc_data[not_missing_obs], color=(:red, 0.5), markersize=20)
     sim = lines!(2008:2022, loc_cover, color=:red)
@@ -93,16 +93,15 @@ function plot_modelled_v_ltmp(
 end
 
 """
-    location_comparison(raw_data, ltmp_loc_idx, save_dir; obs_data=all_ltmp_reef, obs_idxs=all_ltmp_idxs, obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID, loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom), reef_names=dom.loc_data.GBR_NAME )::Figure
-
+    location_comparison( raw_data,  ltmp_loc_idx,  save_dir;  obs_idxs=ALL_LTMP_IDXS,  obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID)::Figure
 Plot LTMP Manta Tow Coral Cover against the modelled cover output given the LTMP location index.
 """
 function location_comparison(
     raw_data,
     ltmp_loc_idx,
     save_dir;
-    obs_idxs=all_ltmp_idxs,
-    obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
+    obs_idxs=ALL_LTMP_IDXS,
+    obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID
 )::Figure
     domain_loc_idx = obs_idxs[ltmp_loc_idx]
 
@@ -353,8 +352,8 @@ function plot_residual(
         ylabel="Residuals"
     )
 
-    ltmp_ind::Int64 = findfirst(x -> x >= start_year, ltmp_data.Year)
-    ltmp_end::Int64 = findfirst(x -> x >= end_year, ltmp_data.Year) - 1
+    ltmp_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_data.Year)
+    ltmp_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_data.Year) - 1
 
     ltmp_xs = ltmp_data.Year[ltmp_ind:ltmp_end]
     ltmp_resp = ltmp_data.response[ltmp_ind:ltmp_end]
@@ -568,7 +567,7 @@ function plot_bleaching_mortality(
     prop_sc_fg_cover = prop_sc_fg_cover ./ sum(prop_sc_fg_cover, dims=(2, 3))
     perc_loss = dropdims(sum(prop_sc_fg_cover .* loc_bleaching, dims=(2, 3)), dims=(2, 3))
 
-    xs = start_year:end_year
+    xs = START_YEAR:END_YEAR
     f = Figure(; size=(1300, 900))
      Axis(
         f[1, 1];

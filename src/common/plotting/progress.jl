@@ -27,7 +27,7 @@ function progress_run(interm_params)
         new_scen[1, :],
         scale_factors,
         growth_acc_params,
-        target_dom_idxs
+        TARGET_DOM_IDXS
     )
 
     return calib_res
@@ -44,7 +44,7 @@ function plot_calibration(calib_res; save_fn="calib_progress.png")
     max_col = 2
     row = Ref(1)
     col = Ref(1)
-    for (i, loc) in enumerate(target_dom_idxs)
+    for (i, loc) in enumerate(TARGET_DOM_IDXS)
         reef_id = dom.loc_data[loc, :UNIQUE_ID]
 
         ltmp_loc_pos = findfirst(x->!ismissing(x) && x==reef_id, ltmp_reef_data.RME_UNIQUE_ID)
@@ -53,7 +53,7 @@ function plot_calibration(calib_res; save_fn="calib_progress.png")
         Axis(
             f[row[], col[]],
             title=title_text,
-            xticks=(1:15, string.(start_year:end_year)),
+            xticks=(1:15, string.(START_YEAR:END_YEAR)),
             xticklabelrotation=45
         )
         plot_modelled_v_ltmp(calib_res.raw, ltmp_loc_pos, loc)

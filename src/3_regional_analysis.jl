@@ -23,20 +23,20 @@ dom, scen, growth_acc_params, scale_factors = setup_run(
     coral_params;
     param_names=CORAL_PARAM_NAMES,
     param_idxs=PARAM_IDXS,
-    loc_idxs=target_dom_idxs
+    loc_idxs=TARGET_DOM_IDXS
 )
 
-rs_raw = ADRIA.run_model(dom, scen[1, :], scale_factors, growth_acc_params, target_dom_idxs)
+rs_raw = ADRIA.run_model(dom, scen[1, :], scale_factors, growth_acc_params, TARGET_DOM_IDXS)
 
 s_rac = (dropdims(sum(rs_raw.raw, dims=2), dims=2) .* site_k_area(dom)') ./ loc_area(dom)'
 
-ref_years = start_year:end_year
+ref_years = START_YEAR:END_YEAR
 north_mean_cover = zeros(size(rs_raw.raw, 1))
 center_mean_cover = zeros(size(rs_raw.raw, 1))
 south_mean_cover = zeros(size(rs_raw.raw, 1))
-comp_years_north = (ref_years .∈ [ltmp_north[ltmp_north.Year .>= start_year, :Year]])
-comp_years_center = (ref_years .∈ [ltmp_central[ltmp_central.Year .>= start_year, :Year]])
-comp_years_south = (ref_years .∈ [ltmp_south[ltmp_south.Year .>= start_year, :Year]])
+comp_years_north = (ref_years .∈ [ltmp_north[ltmp_north.Year .>= START_YEAR, :Year]])
+comp_years_center = (ref_years .∈ [ltmp_central[ltmp_central.Year .>= START_YEAR, :Year]])
+comp_years_south = (ref_years .∈ [ltmp_south[ltmp_south.Year .>= START_YEAR, :Year]])
 
 for ts in axes(rs_raw.raw, 1)
     rac = vec(sum(rs_raw.raw[ts, :, :], dims=1) .* site_k_area(dom)') ./ loc_area(dom)

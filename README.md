@@ -127,11 +127,11 @@ First execute `1_setup.jl`
 - `dom` : ADRIA reefmod domain.
 - `rm_ltmp_taxa` : Observed taxa composition at target locations
 - `raw_ltmp_reef_data` : Observed coral cover levels at target locations
-- `target_dom_idxs` : ADRIA domain row index for each target location
+- `TARGET_DOM_IDXS` : ADRIA domain row index for each target location
 - `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK` : LTMP Region mask for ADRIA domains.
 - `ltmp_north`, `ltmp_central` and `ltmp_south` : Regional LTMP data
-- `all_ltmp_reef` : All ltmp reef manta cover data
-- `all_ltmp_reef_idxs` : ADRIA domain row index for each ltmp location.
+- `ALL_LTMP_REEF` : All ltmp reef manta cover data
+- `ALL_LTMP_REEF_IDXS` : ADRIA domain row index for each ltmp location.
 - `location_classification` : CSV containing location classification of GBR-wide locations
 
 ## Calibration-specific branches

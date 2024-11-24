@@ -52,13 +52,13 @@ function constant_error_statistics(
     filename,
     stat_func=mean
 )::DataFrame
-    north_ind::Int64 = findfirst(x -> x >= start_year, ltmp_north.Year)
-    central_ind::Int64 = findfirst(x -> x >= start_year, ltmp_central.Year)
-    south_ind::Int64 = findfirst(x -> x >= start_year, ltmp_south.Year)
+    north_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_north.Year)
+    central_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_central.Year)
+    south_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_south.Year)
 
-    north_end::Int64 = findfirst(x -> x >= end_year, ltmp_north.Year) - 1
-    central_end::Int64 = findfirst(x -> x >= end_year, ltmp_central.Year) -1
-    south_end::Int64 = findfirst(x -> x >= end_year, ltmp_south.Year) - 1
+    north_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_north.Year) - 1
+    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) -1
+    south_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_south.Year) - 1
 
     north_xs = ltmp_north.Year[north_ind:north_end]
     central_xs = ltmp_central.Year[central_ind:central_end]
@@ -113,15 +113,15 @@ function constant_error_statistics(
 end
 
 function create_error_statistics(filename::String)::DataFrame
-    @info "Computing Error Statistics for time period: $(start_year) - $(end_year)"
+    @info "Computing Error Statistics for time period: $(START_YEAR) - $(END_YEAR)"
 
-    north_ind::Int64 = findfirst(x -> x >= start_year, ltmp_north.Year)
-    central_ind::Int64 = findfirst(x -> x >= start_year, ltmp_central.Year)
-    south_ind::Int64 = findfirst(x -> x >= start_year, ltmp_south.Year)
+    north_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_north.Year)
+    central_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_central.Year)
+    south_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_south.Year)
 
-    north_end::Int64 = findfirst(x -> x >= end_year, ltmp_north.Year) - 1
-    central_end::Int64 = findfirst(x -> x >= end_year, ltmp_central.Year) -1
-    south_end::Int64 = findfirst(x -> x >= end_year, ltmp_south.Year) - 1
+    north_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_north.Year) - 1
+    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) -1
+    south_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_south.Year) - 1
 
     north_xs = ltmp_north.Year[north_ind:north_end]
     central_xs = ltmp_central.Year[central_ind:central_end]
@@ -178,8 +178,8 @@ end
 function collect_error_stats(
     raw_data,
     ltmp_loc_idx;
-    obs_data=all_ltmp_reef,
-    obs_idxs=all_ltmp_idxs,
+    obs_data=ALL_LTMP_REEF,
+    obs_idxs=ALL_LTMP_IDXS,
     obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
     loc_k_areas=ADRIA.site_k_area(dom),
     loc_areas=ADRIA.loc_area(dom)
@@ -196,7 +196,7 @@ function collect_error_stats(
         return NaN, NaN, NaN, NaN, NaN
     end
 
-    obs_tf = (start_year:end_year)[not_missing_obs]
+    obs_tf = (START_YEAR:END_YEAR)[not_missing_obs]
 
     sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
     reef_id = obs_loc_labels[ltmp_loc_idx]
@@ -246,7 +246,7 @@ The score indicates the mean correlation.
 function reef_taxa_error(
     cover;
     rm_ltmp_taxa=rm_ltmp_taxa,
-    dom_idxs=target_dom_idxs
+    dom_idxs=TARGET_DOM_IDXS
 )
     fg_corr::Float64 = 0.0
     for (j, idx) in enumerate(dom_idxs)
@@ -268,7 +268,7 @@ Calculate the error between ltmp observations and the given cover array.
 function reef_error(
     cover;
     ltmp_obs=raw_ltmp_reef_data,
-    target_dom_idxs=target_dom_idxs
+    target_dom_idxs=TARGET_DOM_IDXS
 )::Vector{Float64}
     err_series::Vector{Float64} = zeros(Float64, 15)
     tmp_err::Vector{Float64} = zeros(Float64, 15)

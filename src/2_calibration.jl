@@ -189,7 +189,7 @@ function insert_init_loc_cover!(
     dom;
     raw_ltmp_reef_data=raw_ltmp_reef_data,
     rm_ltmp_taxa=rm_ltmp_taxa,
-    target_dom_idxs=target_dom_idxs
+    target_dom_idxs=TARGET_DOM_IDXS
 )::Nothing
     size_class_props = size_class_distribution(2.0, ADRIA.bin_edges()[1, :])
     for (idx, row_idx) in enumerate(target_dom_idxs)
@@ -213,7 +213,7 @@ Calculate the error between ltmp observations and the given cover array.
 function reef_error(
     cover;
     raw_ltmp_reef_data=raw_ltmp_reef_data,
-    target_dom_idxs=target_dom_idxs
+    target_dom_idxs=TARGET_DOM_IDXS
 )::Vector{Float64}
     err_series::Vector{Float64} = zeros(Float64, 15)
     tmp_err::Vector{Float64} = zeros(Float64, 15)
@@ -227,7 +227,7 @@ function reef_error(
         min_arg = argmin(ltmp_row[not_missing])
         max_arg = argmax(ltmp_row[not_missing])
         tmp_err[not_missing] .= MAEE_series(
-            cover[not_missing, target_dom_idxs[row_idx]], ltmp_row[not_missing]
+            cover[not_missing, TARGET_DOM_IDXS[row_idx]], ltmp_row[not_missing]
         )
         tmp_err[not_missing][[min_arg, max_arg]] .*= 2
         err_series[not_missing] .+= tmp_err[not_missing]
@@ -294,8 +294,8 @@ function obj_func(
     init_values;
     dom=dom,
     location_classification=location_classification.consecutive_classification,
-    start_year=start_year,
-    end_year=end_year,
+    START_YEAR=START_YEAR,
+    END_YEAR=END_YEAR,
     coral_param_names=coral_p_names,
     param_idxs=[coral_start_idx, coral_end_idx, loc_coef_start_idx, loc_coef_end_idx],
     loc_idxs=dom_idxs
@@ -339,10 +339,10 @@ function obj_func(
 
     # Hacky manual specification of observation years to use to compare against LTMP data
     # which misses some years (ignoring 2023, the last entry)
-    # ref_years = start_year:end_year
-    # comp_years_north = (ref_years .∈ [ltmp_north[ltmp_north.Year .>= start_year, :Year]])
-    # comp_years_center = (ref_years .∈ [ltmp_central[ltmp_central.Year .>= start_year, :Year]])
-    # comp_years_south = (ref_years .∈ [ltmp_south[ltmp_south.Year .>= start_year, :Year]])
+    # ref_years = START_YEAR:END_YEAR
+    # comp_years_north = (ref_years .∈ [ltmp_north[ltmp_north.Year .>= START_YEAR, :Year]])
+    # comp_years_center = (ref_years .∈ [ltmp_central[ltmp_central.Year .>= START_YEAR, :Year]])
+    # comp_years_south = (ref_years .∈ [ltmp_south[ltmp_south.Year .>= START_YEAR, :Year]])
 
     # for ts in axes(res.raw, 1)
     # rac = vec(sum(res.raw[ts, :, :], dims=1) .* loc_k_areas') ./ loc_areas

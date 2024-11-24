@@ -72,11 +72,9 @@ function obj_func(
     init_values;
     dom_raw=dom,
     location_classification=location_classification.consecutive_classification,
-    start_year=start_year,
-    end_year=end_year,
     coral_param_names=CORAL_PARAM_NAMES,
     param_idxs=PARAM_IDXS,
-    loc_idxs=target_dom_idxs
+    loc_idxs=TARGET_DOM_IDXS
 )
     dom, scen, growth_acc_params, scale_factors = setup_run(
         dom_raw,
@@ -157,8 +155,8 @@ function obj_func(
     troughs = argmin_missing.(eachrow(raw_ltmp_reef_data))
     obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], peaks)]
     obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], troughs)]
-    modelled_peaks = loc_cover[CartesianIndex.(peaks, target_dom_idxs)]
-    modelled_troughs = loc_cover[CartesianIndex.(troughs, target_dom_idxs)]
+    modelled_peaks = loc_cover[CartesianIndex.(peaks, loc_idxs)]
+    modelled_troughs = loc_cover[CartesianIndex.(troughs, loc_idxs)]
 
     peaks_score = mean(abs.(modelled_peaks .- obs_peaks)) * 2.0
     troughs_score = mean(abs.(modelled_troughs .- obs_troughs)) * 2.0

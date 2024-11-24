@@ -10,19 +10,19 @@ end
 # Avoid reloading the domain every time
 # Load ReefModDomain
 if (!@isdefined(dom) || reload_domain)
-    if start_year < 2008
-        start_year = 2008
-        @warn "Setting start year to $(start_year). 2008 is the earliest possible start for ReefModDomain."
+    if START_YEAR < 2008
+        START_YEAR = 2008
+        @warn "Setting start year to $(START_YEAR). 2008 is the earliest possible start for ReefModDomain."
     end
 
     @info "Loading ReefModDomain"
-    dom = ADRIA.load_domain(ReefModDomain, REEFMOD_DOMAIN_PATH, "45", timeframe=(start_year, end_year))
+    dom = ADRIA.load_domain(ReefModDomain, REEFMOD_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
 
     @info "Attaching historic DHW"
     dhw_data_df = CSV.read(HISTORIC_DHW_PATH, DataFrame)
 
     # Available DHW data starts 1985 - 2022
-    target_years = string.(start_year:end_year)
+    target_years = string.(START_YEAR:END_YEAR)
     locs = collect(caxes(dom.dhw_scens)[2])
 
     n_timesteps = length(target_years)
@@ -34,9 +34,9 @@ if (!@isdefined(dom) || reload_domain)
     reload_domain = false
 end
 
-function ltmp_period(ltmp_region_name::String, ltmp_data::DataFrame, start_year::Int64, end_year::Int64)::BitVector
+function ltmp_period(ltmp_region_name::String, ltmp_data::DataFrame, START_YEAR::Int64, END_YEAR::Int64)::BitVector
     region_tf = ltmp_data[ltmp_data.Region .== ltmp_region_name, :Year]
-    return (region_tf .>= start_year) .& (region_tf .<= end_year)
+    return (region_tf .>= START_YEAR) .& (region_tf .<= END_YEAR)
 end
 
 function ltmp_modelled_results(ltmp_region_name::String, ltmp_data::DataFrame)::DataFrame
@@ -54,7 +54,7 @@ if !@isdefined(ltmp_data)
     )
 
     ltmp_north_period, ltmp_central_period, ltmp_south_period =
-        ltmp_period.(regions, [ltmp_data], [start_year], [end_year])
+        ltmp_period.(regions, [ltmp_data], [START_YEAR], [END_YEAR])
 end
 
 if !@isdefined(region_shps)
@@ -103,13 +103,13 @@ first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
 raw_ltmp_reef_data = Matrix(ltmp_reef_data[:, first_yr_idx:end])
 
 # For each ltmp location calculate the row index for the domain
-all_ltmp_idxs = [
+ALL_LTMP_IDXS = [
     ismissing(id) ? -1 : findfirst(
         x -> x == id,
         dom.loc_data.UNIQUE_ID
     ) for id in ltmp_reef_data.RME_UNIQUE_ID
 ]
-all_ltmp_reef = copy(raw_ltmp_reef_data)
+ALL_LTMP_REEF = copy(raw_ltmp_reef_data)
 
 # Calibration Locations
 limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
@@ -120,10 +120,10 @@ raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
 composition_data = open_dataset(COMPOSITION_PATH)
 
 # For each target location get its row index in the domain
-target_dom_idxs = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
+TARGET_DOM_IDXS = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
 
 # Extract the ltmp data for each target location
-temporal_range = start_year:end_year
+temporal_range = START_YEAR:END_YEAR
 # [year ⋅ taxa ⋅ locs]
 rm_ltmp_taxa = Array{Union{Missing,Float64}}(missing, length(temporal_range), 5, 4)
 for (j, loc_name) in enumerate(location_names)
