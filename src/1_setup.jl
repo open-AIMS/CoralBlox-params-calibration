@@ -112,15 +112,15 @@ ALL_LTMP_IDXS = [
 ALL_LTMP_REEF = copy(raw_ltmp_reef_data)
 
 # Calibration Locations
-limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
+LIMITED_LOCATIONS = ["16015100104", "16025100104", "14114100104", "18075100104"]
 location_names = ["Mackay Reef", "Opal Reef", "Macgillivray Reef", "John Brewer Reef"]
-limited_loc_idxs = [findfirst(x -> !ismissing(x) && x == id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
+limited_loc_idxs = [findfirst(x -> !ismissing(x) && x == id, ltmp_reef_data.RME_UNIQUE_ID) for id in LIMITED_LOCATIONS]
 raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
 
 composition_data = open_dataset(COMPOSITION_PATH)
 
 # For each target location get its row index in the domain
-TARGET_DOM_IDXS = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
+TARGET_DOM_IDXS = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in LIMITED_LOCATIONS]
 
 # Extract the ltmp data for each target location
 temporal_range = START_YEAR:END_YEAR

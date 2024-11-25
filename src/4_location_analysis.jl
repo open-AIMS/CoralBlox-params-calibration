@@ -10,10 +10,10 @@ coral_cover = rs_raw.raw .* reshape(site_k_area(dom), (1, 1, 3806))
 # Identify temporal region of interest
 temporal_range = 2008:2014
 
-for i in 1:length(limited_locations)
+for i in 1:length(LIMITED_LOCATIONS)
     # Location coral parameters
     limited_loc_pos = i # index of target location in
-    location_unique_id = limited_locations[limited_loc_pos]
+    location_unique_id = LIMITED_LOCATIONS[limited_loc_pos]
     domain_loc_pos = findfirst(x->x==location_unique_id, dom.loc_data.UNIQUE_ID)
     ltmp_loc_pos = findfirst(x->!ismissing(x) && x==location_unique_id, ltmp_reef_data.RME_UNIQUE_ID)
 

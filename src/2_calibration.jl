@@ -99,7 +99,7 @@ append!(sample_bounds, coral_bounds)
 coral_end_idx = length(sample_bounds)
 
 n_taxa = 5
-n_limited_locs = length(limited_locations)
+n_limited_locs = length(LIMITED_LOCATIONS)
 n_factors = 3 # growth, mortality, fecundity
 
 location_coef = repeat([(0.5, 2.0)], n_taxa * n_limited_locs * n_factors)

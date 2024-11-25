@@ -57,7 +57,7 @@ adjust_bounds!(sample_bounds, dhw_tol_mean_idx, 0.8, 3.0)
 # Add parameters for location-specific scaling
 n_groups = 5
 n_size_classes = 7
-n_limited_locs = length(limited_locations)
+n_limited_locs = length(LIMITED_LOCATIONS)
 n_factors = 3  # growth, mortality, fecundity
 
 # Adjust bounds for mortality rate
