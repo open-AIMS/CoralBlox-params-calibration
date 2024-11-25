@@ -59,7 +59,7 @@ function construct_location_err_title(
     err_report_str  = "RMSE: $(rmse_) | μ bnch: $(benchmark_) | "
     err_report_str *= "PCC: $(cc_) | MAEE: $(maee_) | BIAS: $(bias_)"
 
-    title_text = rich("$reef_name\n$(reef_id)\n", rich(err_report_str, fontsize=9))
+    title_text = rich("$reef_name\n$(reef_id)\n", rich(err_report_str, fontsize=15))
 
     return title_text
 end
