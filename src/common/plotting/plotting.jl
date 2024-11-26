@@ -289,6 +289,53 @@ function plot_ltmp(ltmp_n, ltmp_c, ltmp_s)::Nothing
     return nothing
 end
 
+"""
+    plot_all_regions(north_results, north_obs, central_results, central_obs, south_results, south_obs)::Figure
+
+Plot the modelled results against observations/modelled observation results.
+"""
+function plot_all_regions(
+    north_results, north_obs, central_results, central_obs, south_results, south_obs
+)::Figure
+
+    f = Figure(; size = (1600, 1600))
+    north_ax = plot_region(
+        f,
+        1,
+        1,
+        "North GBR",
+        north_obs,
+        north_results
+    )
+    central_ax = plot_region(
+        f,
+        1,
+        2,
+        "Central GBR",
+        central_obs,
+        central_results
+    )
+    south_ax = plot_region(
+        f,
+        2,
+        1,
+        "South GBR",
+        south_obs,
+        south_results;
+        showlegend=true,
+        legend_row=2,
+        legend_col=2
+    )
+    linkyaxes!(north_ax, central_ax, south_ax)
+
+    resize_to_layout!(f)
+    return f
+end
+
+"""
+    plot_region(f::Figure, row::Int64, col::Int64, title::String, obs::DataFrame, sim::YAXArray; showlegend::Bool = false, legend_row::Int64 = 2, legend_col::Int64 = 2)::Axis
+
+"""
 function plot_region(
     f::Figure,
     row::Int64,

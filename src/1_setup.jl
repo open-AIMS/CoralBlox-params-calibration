@@ -68,12 +68,6 @@ if !@isdefined(NORTH_MASK)
     const NOT_CONTAINED = (!).(NORTH_MASK .|| CENTRAL_MASK .|| SOUTH_MASK)
 end
 
-if !@isdefined(north_res) && @isdefined(s_rac)
-    north_res = s_rac[locs=NORTH_MASK]
-    central_res = s_rac[locs=CENTRAL_MASK]
-    south_res = s_rac[locs=SOUTH_MASK]
-end
-
 location_classification = CSV.read(LOC_CLASS_PATH, DataFrame)
 n_classifications = maximum(location_classification.consecutive_classification)
 
