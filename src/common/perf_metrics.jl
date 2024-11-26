@@ -16,6 +16,9 @@ function rmse(modelled, observed)
     return sqrt(mean((modelled .- observed).^2.0))
 end
 
+"""
+    bias(modelled, observed)
+"""
 function bias(modelled, observed)
     return mean(modelled .- observed)
 end
