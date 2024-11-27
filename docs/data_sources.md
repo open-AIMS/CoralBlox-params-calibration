@@ -1,8 +1,9 @@
-# Data Source
+# Data Sources
 
 The data used in the calibration is created/modified by the
 [Data-Gen-Calibration](https://github.com/DanTanAtAims/Data-Gen-Calibration) repository and
-the [Reef-Monitoring](https://github.com/DanTanAtAims/Reef-Monitoring) web scraper.
+the [Reef-Monitoring](https://github.com/DanTanAtAims/Reef-Monitoring) web scraper (private
+repository).
 
 ## Domains
 
