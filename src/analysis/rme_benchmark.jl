@@ -4,9 +4,31 @@ using ADRIA: GDF
 
 include("../common/perf_metrics.jl")
 
-# TODO write doctring explaining the analysis
 """
     rmse_scores(ltmp_data_path, rme_benchmark_path, canonical_path)
+
+RMSE (Root Mean Square Error) for both ReefModEngine and LTMP average historic data
+benchmark. In both cases, the error was computed against LTMP historic data. LTMP data for
+locations for which the field RME_UNIQUE_ID was missing and also for locations with
+duplicated data was discarded. Data for locations for which there was less than 4 years of
+data collected was also discarded. For each location this selects the first year for which
+there is LTMP data within the analyzed timeframe (2008-2022) and looks for the RME scenario
+with the closest value for that year; selects only RME years for which there is LTMP data;
+computes the RMSE score for RME data points and LTMP data; and computes the RMSE score for
+LTMP benchmark (average of LTMP data for those years and that location) and LTMP data.
+
+# Arguments
+- `ltmp_data_path` : Path to manta tow LTMP geopackage (manta_tow_data_reef_lvl.gpkg)
+- `rme_benchmark_path` : Path to RME model cover results from 2008 to 2022
+- `canonical_path` : Path to canonical GBR geopackage (canonical_gbr_2024-04-23.gpkg)
+- `ltmp_cover` : DataFrame with LTMP
+- `rme_cover` : YAXArray with ReefModEngine model cover
+
+# Returns
+NamedTuple with three elements: rme_scores (vector of RMSE scores for RME model results and
+LTMP historic data for each location), benchmark_scores (vector of RMSE scores for
+benchmark, LTMP average, and LTMP historic data), n_observations (vector with number of
+observations for each location)
 """
 function rmse_scores(
     ltmp_data_path::String,
@@ -24,7 +46,6 @@ function rmse_scores(
     ltmp_cover = ltmp_data[:, string.(start_year:end_year)]
     return rmse_scores(ltmp_cover, rme_cover)
 end
-
 function rmse_scores(ltmp_cover::DataFrame, rme_cover::YAXArray)::NamedTuple
     n_locations::Int64 = size(ltmp_cover, 1)
     rme_scores::Vector{Float64} = zeros(Float64, n_locations)
