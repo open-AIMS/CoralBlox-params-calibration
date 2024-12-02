@@ -43,6 +43,14 @@ out_dir = "..\\Outputs\\test_dir"
 result_filename = "results.dat" # relative to out_dir
 ```
 
+## Datasets
+
+### RME Data
+
+#### [rme_cover_20_reps_2008_2022.nc](datasets/rme_data/rme_cover_20_reps_2008_2022.nc)
+
+Results for 20 ReefModEngine repetitions. All repetitions use the same historic DHW scenario but were initialized with distinct initial coral cover values. These were taken from ReefMod-GBR CMIP6 counterfactuals (Apr. 2024), GCM CNRM-ESM2-1 and DHW SSP1-1.9. The original data was sliced to the timeframe from 2008 to 2022. Link: [https://data.mds.gbrrestoration.org/dataset/102.100.100/653201?view=overview](https://data.mds.gbrrestoration.org/dataset/102.100.100/653201?view=overview)
+
 ## Config File Path Descriptions
 
 ### Domain
