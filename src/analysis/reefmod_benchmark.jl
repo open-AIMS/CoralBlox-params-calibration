@@ -95,19 +95,19 @@ function _benchmark_scores(benchmark_cover, target_cover::YAXArray)
 end
 
 function _reefmod_scores(
-    rme_cover::YAXArray,
+    reefmod_cover::YAXArray,
     target_cover::Union{YAXArray, DataFrameRow},
     target_years::Vector{Int64},
     loc_idx::Int64
 )::Float64
-    rme_target_cover = rme_cover[timestep=At(target_years), location=loc_idx]
-    rme_target_cover = _rme_closest_scenario(rme_target_cover, target_cover)
-    rmse(rme_target_cover, target_cover.data)
+    reefmod_target_cover = reefmod_cover[timestep=At(target_years), location=loc_idx]
+    reefmod_target_cover = _reefmod_closest_scenario(reefmod_target_cover, target_cover)
+    rmse(reefmod_target_cover, target_cover.data)
 end
 
-function _intersect_timerange(historic_data::YAXArray, rme_cover::YAXArray)::Vector{Int64}
-    start_year = max(minimum(historic_data.timesteps), minimum(rme_cover.timestep))
-    end_year = min(maximum(historic_data.timesteps), maximum(rme_cover.timestep))
+function _intersect_timerange(historic_data::YAXArray, reefmod_cover::YAXArray)::Vector{Int64}
+    start_year = max(minimum(historic_data.timesteps), minimum(reefmod_cover.timestep))
+    end_year = min(maximum(historic_data.timesteps), maximum(reefmod_cover.timestep))
     return start_year:end_year
 end
 
@@ -117,17 +117,11 @@ function _filter_low_data_locations(datacube::YAXArray; min_n_data::Int64=4)
     return datacube[locations=target_locs]
 end
 
-function _rme_closest_scenario(rme_target_cover::YAXArray, ltmp_loc_cover::DataFrameRow)::YAXArray
-    first_year_with_ltmp_data = findmin(names(ltmp_loc_cover))[1]
-    ltmp_first_year_cover = ltmp_loc_cover[first_year_with_ltmp_data]
-    closest_scenario_idx = argmin(abs.(ltmp_first_year_cover .- rme_target_cover[1, :]))
-    return rme_target_cover[:, closest_scenario_idx]
-end
-function _rme_closest_scenario(rme_target_cover::YAXArray, transect_target_cover::YAXArray)::YAXArray
+function _reefmod_closest_scenario(reefmod_target_cover::YAXArray, transect_target_cover::YAXArray)::YAXArray
     first_transect_year = minimum(transect_target_cover.timesteps)
     transect_first_year_cover = transect_target_cover[timesteps=At(first_transect_year)]
-    closest_scenario_idx = argmin(abs.(transect_first_year_cover .- rme_target_cover[1, :]))
-    return rme_target_cover[:, closest_scenario_idx]
+    closest_scenario_idx = argmin(abs.(transect_first_year_cover .- reefmod_target_cover[1, :]))
+    return reefmod_target_cover[:, closest_scenario_idx]
 end
 
 """
@@ -145,7 +139,7 @@ function _reefmod_cover(
     canonical_locs = parse.(Int64, canonical_gpkg.RME_UNIQUE_ID)
     canonical_idx = [findfirst(hist_loc .== canonical_locs) for hist_loc in historic_locs]
 
-    # Return RME coral cover with locations in the same order as in the transect_cube
+    # Return ReefMod coral cover with locations in the same order as in the transect_cube
     reefmod_ds = open_dataset(reefmod_path)
     return reefmod_ds.coral_cover[location=canonical_idx]
 end
