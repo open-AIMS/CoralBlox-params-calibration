@@ -106,7 +106,6 @@ end
 
 function _filter_low_data_locations(datacube::YAXArray; min_n_data::Int64=4)
     has_data = .!ismissing.(datacube)
-    has_data.data
     target_locs = dropdims(sum(has_data, dims=:timesteps) .>= min_n_data, dims=:timesteps)
     return datacube[locations=target_locs]
 end
