@@ -4,6 +4,8 @@ using ADRIA: GDF
 
 include("../common/perf_metrics.jl")
 
+valid_historic_data_type() = (:ltmp, :transect)
+
 """
     rmse_scores(ltmp_data_path, rme_benchmark_path, canonical_path)
 
@@ -36,10 +38,9 @@ function rmse_scores(
     canonical_path::String,
     historic_data_type::Symbol
 )::NamedTuple
-    valid_historic_data_type = (:ltmp, :transect)
-    if historic_data_type ∉ valid_historic_data_type
-        error("`historic_data_type` is $historic_data_type. "*
-        "Valid options are $valid_historic_data_type")
+    if historic_data_type ∉ valid_historic_data_type()
+        ArgumentError("`historic_data_type` is $historic_data_type. "*
+        "Valid options are $(valid_historic_data_type())")
     end
 
     canonical_gpkg = GDF.read(canonical_path)
