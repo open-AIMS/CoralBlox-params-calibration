@@ -7,28 +7,35 @@ include("../common/perf_metrics.jl")
 valid_historic_data_type() = (:manta_tow, :transect)
 
 """
-    rmse_scores(ltmp_data_path, rme_benchmark_path, canonical_path)
+    rmse_scores(historic_data_path::String, reefmod_path::String, canonical_path::String, historic_data_type::Symbol)::NamedTuple
+    rmse_scores(historic_data::YAXArray, reefmod_cover::YAXArray)::NamedTuple
 
-RMSE (Root Mean Square Error) for both ReefModEngine and LTMP average historic data
-benchmark. In both cases, the error was computed against LTMP historic data. LTMP data for
-locations for which the field RME_UNIQUE_ID was missing and also for locations with
-duplicated data was discarded. Data for locations for which there was less than 4 years of
-data collected was also discarded. For each location this selects the first year for which
-there is LTMP data within the analyzed timeframe (2008-2022) and looks for the RME scenario
-with the closest value for that year; selects only RME years for which there is LTMP data;
-computes the RMSE score for RME data points and LTMP data; and computes the RMSE score for
-LTMP benchmark (average of LTMP data for those years and that location) and LTMP data.
+RMSE (Root Mean Square Error) for both ReefMod and LTMP average historic data benchmark.
+The error is computed against LTMP historic data (either `:manta_tow` or `"transect`). LTMP
+data for locations for which the field RME_UNIQUE_ID was missing and for locations with
+duplicated data are discarded. Data for locations for which there is less than 4 years of
+data collected are also discarded. For each location this selects the first year for which
+there is LTMP data within the analyzed timeframe and looks for the ReefMod scenario with the
+closest value for that year; selects only the ReefMod years for which there is LTMP data;
+computes the RMSE score for ReefMod data points and LTMP data; and computes the RMSE score
+for LTMP the benchmark (average of LTMP data for those years and that location) and LTMP
+data.
 
 # Arguments
-- `ltmp_data_path` : Path to manta tow LTMP geopackage (manta_tow_data_reef_lvl.gpkg)
-- `rme_benchmark_path` : Path to RME model cover results from 2008 to 2022
-- `canonical_path` : Path to canonical GBR geopackage (canonical_gbr_2024-04-23.gpkg)
-- `ltmp_cover` : DataFrame with LTMP
-- `rme_cover` : YAXArray with ReefModEngine model cover
+- `historic_data_path` : Path to historic dataset used for the analysis. When
+`historic_data_type` is `:manta_tow`, this should be the path to the manta tow LTMP
+geopackage (manta_tow_data_reef_lvl.gpkg); when `historic_data_type` is `:transect` this
+should be the path to the transect LTMP dataset (`LTMP_TRANSECT_MEANS.parquet`).
+- `reefmod_path` : Path to ReefMod model cover results from 2008 to 2022.
+- `canonical_path` : Path to canonical GBR geopackage (`canonical_gbr_2024-04-23.gpkg`).
+- `historic_data_type` : Type of historic data used for the analysis. Valid options are
+$(valid_historic_data_type())
+- `historic_data` : YAXArray with historic data
+- `reefmod_cover` : YAXArray with Reefmod model data
 
 # Returns
-NamedTuple with three elements: rme_scores (vector of RMSE scores for RME model results and
-LTMP historic data for each location), benchmark_scores (vector of RMSE scores for
+NamedTuple with three elements: rme_scores (vector of RMSE scores for ReefMod model results
+and LTMP historic data for each location), benchmark_scores (vector of RMSE scores for
 benchmark, LTMP average, and LTMP historic data), n_observations (vector with number of
 observations for each location)
 """
