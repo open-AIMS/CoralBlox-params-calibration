@@ -4,7 +4,7 @@ using ADRIA: GDF
 
 include("../common/perf_metrics.jl")
 
-valid_historic_data_type() = (:ltmp, :transect)
+valid_historic_data_type() = (:manta_tow, :transect)
 
 """
     rmse_scores(ltmp_data_path, rme_benchmark_path, canonical_path)
@@ -44,7 +44,7 @@ function rmse_scores(
     end
 
     canonical_gpkg = GDF.read(canonical_path)
-    historic_data::YAXArray = if historic_data_type==:ltmp
+    historic_data::YAXArray = if historic_data_type==:manta_tow
         _ltmp_cube(historic_data_path)
     else
         _transect_cube(historic_data_path, canonical_gpkg)
