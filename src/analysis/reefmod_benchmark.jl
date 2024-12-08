@@ -1,6 +1,7 @@
 using StatsBase
+using Parquet
 using YAXArrays, DataFrames, NetCDF
-using ADRIA: GDF
+using ADRIA: GDF, DataCube
 
 include("../common/perf_metrics.jl")
 
@@ -175,7 +176,7 @@ function _ltmp_cube(ltmp_data_path::String)::YAXArray
         ltmp_data[:,location_id] .= Matrix(ltmp_gpkg[locations .== location, timesteps])[1,:]
     end
 
-    return ADRIA.DataCube(ltmp_data, timesteps=parse.(Int64, timesteps), locations=locations)
+    return DataCube(ltmp_data, timesteps=parse.(Int64, timesteps), locations=locations)
 end
 
 """
@@ -190,7 +191,7 @@ end
 function _transect_cube(
     transect_path::String, canonical_gpkg::DataFrame
 )::YAXArray
-    transect_ds = Parquet2.Dataset(transect_path)
+    transect_ds = Parquet.read_parquet(transect_path)
     transect_df = DataFrame(transect_ds)
     transect_df.UNIQUE_ID = parse.(Int64, _transect_unique_ids(transect_df, canonical_gpkg))
     return _transect_cube(transect_df)
@@ -212,7 +213,7 @@ function _transect_cube(transect_df::DataFrame)::YAXArray
         end
     end
 
-    return ADRIA.DataCube(transect_data; timesteps=timesteps, locations=locations)
+    return DataCube(transect_data; timesteps=timesteps, locations=locations)
 end
 
 function _transect_unique_ids(
