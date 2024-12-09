@@ -1,7 +1,7 @@
 using StatsBase
 using Parquet
 using YAXArrays, DataFrames, NetCDF
-using ADRIA: GDF, DataCube
+using ADRIA: GDF, DataCube, ZeroDataCube
 
 include("../common/perf_metrics.jl")
 
@@ -83,12 +83,14 @@ function rmse_scores(
     model_cover::YAXArray{T2, 3}
 )::NamedTuple where {T1<:AbstractFloat, T2<:AbstractFloat}
     target_timesteps::Vector{Int64} = _intersect_timerange(historic_cover, model_cover)
-    historic_cover = _filter_low_data_locations(historic_cover[timesteps=At(target_timesteps)])
+    historic_cover = _filter_low_data_locations(
+        historic_cover[timesteps=At(target_timesteps)]
+    )
 
-    n_locations = size(historic_cover, :locations)
-    model_scores::Vector{Float64} = zeros(Float64, n_locations)
-    benchmark_scores::Vector{Float64} = zeros(Float64, n_locations)
-    n_observations::Vector{Int64} = zeros(Float64, n_locations)
+    locations = historic_cover.locations.val.data
+    model_scores = ZeroDataCube(; locations=locations, T=Float64)
+    benchmark_scores::Vector{Float64} = ZeroDataCube(; locations=locations, T=Float64)
+    n_observations::Vector{Int64} = ZeroDataCube(; locations=locations, T=Int64)
     for (loc_id, historic_cover_row) in enumerate(eachcol(historic_cover))
         # Identify historic years with data
         years_with_data::BitVector = .!ismissing.(collect(historic_cover_row))
@@ -96,7 +98,9 @@ function rmse_scores(
         target_years = @view(target_timesteps[years_with_data])
 
         # Fill scores
-        model_scores[loc_id] = _model_scores(model_cover, historic_target_cover, target_years, loc_id)
+        model_scores[loc_id] = _model_scores(
+            model_cover, historic_target_cover, target_years, loc_id
+        )
         benchmark_scores[loc_id] = _benchmark_scores(historic_target_cover)
         n_observations[loc_id] = length(historic_target_cover)
     end
