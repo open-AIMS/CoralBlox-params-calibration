@@ -18,10 +18,6 @@ function diff_score_barplot(
 
     fig = Figure(size=fig_size)
 
-
-    n_locs_1::Int64 = Int(floor(n_locations / 2))
-    n_locs_2::Int64 = n_locations - n_locs_1
-
     n_obs_sortperm = sortperm(n_observations)
     rme_scores_sorted = score_a[n_obs_sortperm]
     benchmark_scores_sorted = score_b[n_obs_sortperm]
@@ -29,8 +25,23 @@ function diff_score_barplot(
 
     if n_locations > 100
         # Split data into into two horizontal plots
-        ax_1 = Axis(fig[1, 1], title=title, titlesize=20, limits=limits)
-        ax_2 = Axis(fig[2, 1], xlabel=xlabel, xlabelsize=18, limits=limits)
+        n_locs_1::Int64 = Int(floor(n_locations / 2))
+        n_locs_2::Int64 = n_locations - n_locs_1
+        Δxtick = 10
+        xticks_2_labels = string.((n_locs_1+1):Δxtick:(n_locs_1+n_locs_2))
+        ax_1 = Axis(
+            fig[1, 1],
+            title=title,
+            titlesize=20,
+            limits=limits,
+            xticks=1:Δxtick:n_locs_1)
+        ax_2 = Axis(
+            fig[2, 1],
+            xlabel=xlabel,
+            xlabelsize=18,
+            limits=limits,
+            xticks=(1:Δxtick:n_locs_2, xticks_2_labels)
+        )
         dodge_diff_plot!(
             ax_1, n_locs_1, rme_scores_sorted[1:n_locs_1], benchmark_scores_sorted[1:n_locs_1],
             n_observations_sorted[1:n_locs_1], colors; dodge_gap=0.05, gap=0.3, direction=:y
