@@ -52,13 +52,9 @@ function rmse_scores(
     end
 
     canonical_gpkg = GDF.read(canonical_path)
-    historic_data::YAXArray = if historic_data_type==:manta_tow
-        _ltmp_cube(historic_data_path)
-    else
-        _transect_cube(historic_data_path, canonical_gpkg)
-    end
+    historic_function::Function = eval(Meta.parse("_$(historic_data_type)_cube"))
+    historic_data::YAXArray = historic_function(historic_data_path, canonical_gpkg)
     reefmod_cover::YAXArray = _reefmod_cover(reefmod_path, historic_data, canonical_gpkg)
-
     return rmse_scores(historic_data, reefmod_cover)
 end
 function rmse_scores(historic_data::YAXArray, reefmod_cover::YAXArray)::NamedTuple
@@ -158,7 +154,7 @@ function _remove_duplicated_locs(ltmp_data)
     return ltmp_data[ltmp_idx.∉[duplicated_idx], :]
 end
 
-function _ltmp_cube(ltmp_data_path::String)::YAXArray
+function _manta_tow_cube(ltmp_data_path::String, canonical_gpkg::DataFrame)::YAXArray
     # Load and clean up LTMP manta tow data
     ltmp_gpkg = GDF.read(ltmp_data_path)
     ltmp_gpkg = _remove_missing_unique_id(ltmp_gpkg)
