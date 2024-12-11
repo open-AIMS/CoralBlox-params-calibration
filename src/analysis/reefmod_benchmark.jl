@@ -88,9 +88,9 @@ function rmse_scores(
     )
 
     locations = historic_cover.locations.val.data
-    model_scores = ZeroDataCube(; locations=locations, T=Float64)
-    benchmark_scores::Vector{Float64} = ZeroDataCube(; locations=locations, T=Float64)
-    n_observations::Vector{Int64} = ZeroDataCube(; locations=locations, T=Int64)
+    model_scores::YAXArray{Float64} = ZeroDataCube(; locations=locations, T=Float64)
+    benchmark_scores::YAXArray{Float64} = ZeroDataCube(; locations=locations, T=Float64)
+    n_observations::YAXArray{Int64} = ZeroDataCube(; locations=locations, T=Int64)
     for (loc_id, historic_cover_row) in enumerate(eachcol(historic_cover))
         # Identify historic years with data
         years_with_data::BitVector = .!ismissing.(collect(historic_cover_row))
