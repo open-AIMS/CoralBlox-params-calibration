@@ -91,3 +91,45 @@ function _dodge_split_xticks(
     xticks_2_labels = string.((n_ticks_1+1):Δxtick:(n_ticks_1+n_ticks_2))
     return (1:Δxtick:n_ticks_1, (1:Δxtick:n_ticks_2, xticks_2_labels))
 end
+
+function diff_map(
+    rme_scores::YAXArray, benchmark_scores::YAXArray, canonical_path::String;
+    fig_size=(600, 800)
+)::Figure
+    fig = Figure(fig_size)
+    ax = Axis(fig[1, 1])
+
+    canonical_gpkg = GDF.read(canonical_path)
+
+    canonical_locs = canonical_gpkg.RME_UNIQUE_ID
+    data_loc_idx = [findfirst(loc .== canonical_locs) for loc in locations]
+    data_gpkg = canonical_gpkg[data_loc_idx, :]
+
+    # Plot canonical reefs
+    poly!(ax, canonical_gpkg.geometry)
+
+    xy_data = Vector.(eachrow(hcat(data_gpkg.LON, data_gpkg.LAT)))
+    score_diffs = (rme_scores .- benchmark_scores).data
+    positive_score_diffs = score_diffs[score_diffs.>=0]
+    negative_score_diffs = score_diffs[score_diffs.<0]
+
+    map_scatter!(ax, positive_score_diffs, xy_data[score_diffs.>=0], (:orange, 0.4))
+    map_scatter!(ax, negative_score_diffs, xy_data[score_diffs.<0], (:purple, 0.4))
+
+    legend_colors = [:orange, :purple]
+    legend_labels = ["Model Score >= Benchmark Score", "Benchmark Score > Model Score"]
+    elements = [PolyElement(polycolor=legend_colors[i]) for i in 1:length(legend_labels)]
+    Legend(fig[2, 1], elements, legend_labels, orientation=:horizontal)
+
+    fig
+end
+
+function map_scatter!(ax, data, coord_data, color)
+    min_data, max_data = extrema(data)
+    Δdata = max_data - min_data
+    normalized_data_diffs = data ./ Δdata
+    markersizes = bin_rescale(normalized_data_diffs, collect(range(20, 70, 10)))
+    for (role_id, role) in enumerate(coord_data)
+        scatter!(ax, role..., markersize=markersizes[role_id], color=color)
+    end
+end
