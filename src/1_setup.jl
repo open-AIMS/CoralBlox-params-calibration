@@ -71,13 +71,6 @@ end
 location_classification = CSV.read(LOC_CLASS_PATH, DataFrame)
 n_classifications = maximum(location_classification.consecutive_classification)
 
-# Load manta observations for reef location classes
-manta_tow_classes = open_dataset(LOC_CLASS_TARGET_PATH)
-
-# Force memory load
-manta_tow_mean = readcubedata(manta_tow_classes.mean)
-manta_tow_std = readcubedata(manta_tow_classes.std)
-
 # Load manta tow ltmp reef level data
 ltmp_reef_data = GDF.read(LTMP_REEF_DATA_PATH)
 
