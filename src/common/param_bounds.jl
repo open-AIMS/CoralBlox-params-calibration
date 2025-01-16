@@ -93,7 +93,7 @@ end
 ecorrap_params = open_dataset(ECORRAP_PARAM_PATH)
 
 # Construct linear extension parameter bounds
-linear_extension_mean = ecorrap_params.filled_lin_ext_mean
+linear_extension_mean = copy(ecorrap_params.filled_lin_ext_mean)
 linear_extension_mean[:, 7] .= 0.0
 
 lin_ext_lb = linear_extension_mean.data[:, :] .* 0.9
@@ -155,20 +155,43 @@ location_coef = fill((0.3, 1.5), n_groups * n_limited_locs * n_factors)
 coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
 
+# Number of unique biogroups used in calibration
+n_biogroups = length(unique(bioregion_groups_gpkg.ASSIGNED_BIOREGION))
+
+# Add parameters for location-specific scaling
+n_groups = 5
+n_size_classes = 7
+n_factors = 2  # growth, mortality
+
+# append bounds to sample bounds
 loc_coef_start_idx = coral_end_idx + 1
-append!(sample_bounds, location_coef)
+
+biogroup_scale_factors::Array = Array{Tuple{Float64,Float64}}(
+    undef, n_groups, n_factors, n_biogroups
+)
+biogroup_scale_factors .= Ref((0.7, 1.5))
+append!(sample_bounds, ADRIA.scale_factor_array_to_vec(biogroup_scale_factors))
 loc_coef_end_idx = length(sample_bounds)
 
 # Location-based growth scaling
+
+# Parameter indexs
+STEEPNESS_PARAM_IDX = 1
+HEIGHT_PARAM_IDX = 2
+MIDPOINT_PARAM_IDX = 3
+
 growth_acc_start_idx = loc_coef_end_idx + 1
-for _ in 1:length(TARGET_DOM_IDXS)
-    push!(sample_bounds, (-30.0, -15.0))  # steepness
-    push!(sample_bounds, (0.0, 2.0))  # height
-    push!(sample_bounds, (0.0, 0.3))  # midpoint
-end
+
+biogroup_accel_bounds::Matrix = Matrix{Tuple{Float64,Float64}}(undef, 3, n_biogroups)
+
+biogroup_accel_bounds[STEEPNESS_PARAM_IDX, :] .= [(-20.0, -15.0)]
+biogroup_accel_bounds[HEIGHT_PARAM_IDX, :] .= [(0.0, 2.0)]
+biogroup_accel_bounds[MIDPOINT_PARAM_IDX, :] .= [(0.0, 0.3)]
+
+append!(sample_bounds, ADRIA.accel_params_array_to_vec(biogroup_accel_bounds))
 growth_acc_end_idx = length(sample_bounds)
 
-sc_dist_bounds = fill((0.25, 30.0), n_limited_locs)
+sc_dist_bounds = fill((0.25, 30.0), n_biogroups)
 
 sc_dist_start_idx = growth_acc_end_idx + 1
 append!(sample_bounds, sc_dist_bounds)
@@ -182,6 +205,12 @@ global PARAM_IDXS = [
 ]
 
 global CORAL_PARAM_NAMES = coral_params.fieldname
+global SCALE_FACTOR_NAMES = ADRIA.scale_factor_array_to_vec(
+    ADRIA.generate_scale_factor_names(bioregion_groups_gpkg.ASSIGNED_BIOREGION)
+)
+global GROWTH_ACCEL_NAMES = ADRIA.accel_params_array_to_vec(
+    ADRIA.generate_growth_accel_names(bioregion_groups_gpkg.ASSIGNED_BIOREGION)
+)
 
 # Utility functions for domain and parameter calibration setup
 
@@ -223,6 +252,13 @@ function insert_init_loc_cover!(
     return nothing
 end
 
+function get_scale_factors(
+    scenario_df::DataFrame;
+    scale_factor_names::Vector{String}=SCALE_FACTOR_NAMES
+)::Array{Float64,3}
+    return ADRIA.scale_factor_vec_to_array(scenario[1, scale_factor_names])
+end
+
 """
     setup_run(dom::Domain, sampled_params::Vector{Float64}; param_names::Vector{Symbol}=CORAL_PARAM_NAMES, param_idxs=PARAM_IDXS, loc_idxs=target_dom_idxs )::Nothing
 
@@ -233,27 +269,23 @@ function setup_run(
     dom::Domain,
     sampled_params::Vector{Float64};
     param_names::Vector{Symbol}=CORAL_PARAM_NAMES,
+    scale_factor_names::Vector{String}=SCALE_FACTOR_NAMES,
+    growth_accel_names::Vector{String}=GROWTH_ACCEL_NAMES,
     param_idxs=PARAM_IDXS,
     loc_idxs=TARGET_DOM_IDXS
-)::Tuple{Domain, DataFrame, Matrix{Float64}, Array{Float64, 3}}
+)::Tuple{Domain,DataFrame}
     new_dom = deepcopy(dom)
 
     scen = ADRIA.param_table(new_dom)
     coral_param_values = sampled_params[param_idxs[1]:param_idxs[2]]
-    scen[1, param_names] = coral_param_values
-
-    growth_acc_params = reshape_growth_accel_parameters(
-        sampled_params[param_idxs[5]:param_idxs[6]]
-    )
-
-    scale_factors::Array{Float64,3} = reshape(
-        sampled_params[param_idxs[3]:param_idxs[4]], (5, 4, 3)
-    )
+    scen[!, param_names] .= coral_param_values
+    scen[!, scale_factor_names] .= sampled_params[param_idxs[3]:param_idxs[4]]
+    scen[!, growth_accel_names] .= sampled_params[param_idxs[5]:param_idxs[6]]
 
     insert_init_loc_cover!(
         new_dom,
         sampled_params[param_idxs[7]:param_idxs[8]], target_dom_idxs=loc_idxs
     )
 
-    return new_dom, scen, growth_acc_params, scale_factors
+    return new_dom, scen
 end

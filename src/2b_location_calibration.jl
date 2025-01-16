@@ -25,7 +25,7 @@ function validate_linear_extension_coefficients(
 
     for j in 1:n_locs
         tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins
-        tmp[tmp .< 0] .= 0.0
+        tmp[tmp.<0] .= 0.0
         dist_from_valid += sum(tmp)
     end
 
@@ -47,7 +47,7 @@ function validate_mortality_coefficients(
     dist_from_valid::Float64 = 0.0
     for j in 1:n_locs
         tmp = survival_vals .* mortality_coefs[:, j] .- 1
-        tmp[tmp .< 0] .= 0.0
+        tmp[tmp.<0] .= 0.0
         dist_from_valid += sum(tmp)
     end
 
@@ -76,13 +76,15 @@ function obj_func(
     param_idxs=PARAM_IDXS,
     loc_idxs=TARGET_DOM_IDXS
 )
-    dom, scen, growth_acc_params, scale_factors = setup_run(
+    dom, scen = setup_run(
         dom_raw,
         init_values;
         param_names=coral_param_names,
         param_idxs=param_idxs,
         loc_idxs=loc_idxs
     )
+
+    scale_factors = get_scale_factors(scen)
 
     corals = ADRIA.to_coral_spec(scen[1, :])
 
@@ -92,11 +94,13 @@ function obj_func(
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
     survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
 
+    # If either the linear_extension or mortality are not valid return a proportionally
+    # big error value
     lin_ext_validity = validate_linear_extension_coefficients(
-        linear_ext, scale_factors[:, :, 1]
+        linear_ext, scale_factors[:, 1, :]
     )
     mortality_validity = validate_mortality_coefficients(
-        survival_r, scale_factors[:, :, 2]
+        survival_r, scale_factors[:, 2, :]
     )
     if mortality_validity + lin_ext_validity != 0.0
         return 1e6 + (2e6 * (mortality_validity + lin_ext_validity))
@@ -207,7 +211,7 @@ function save_results_callback(
     step_interv=1000,
     result_fn="intermediate_coral_calib.dat"
 )::Nothing
-    start_time = replace(string(unix2datetime(oc.start_time)), "T"=>"_", ":"=>"")
+    start_time = replace(string(unix2datetime(oc.start_time)), "T" => "_", ":" => "")
     elapsed = oc.last_report_time - oc.start_time
     elapsed = round(elapsed; digits=2)
 
