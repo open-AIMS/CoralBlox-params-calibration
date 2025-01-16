@@ -1,7 +1,7 @@
 """
 Setup the parameter bounds and ordering for calibration.
 
-Define standard gl0obal variables for which this ordering and naming can be accessed.
+Define standard global variables for which this ordering and naming can be accessed.
 """
 
 """
