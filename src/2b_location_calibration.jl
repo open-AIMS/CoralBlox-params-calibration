@@ -7,246 +7,8 @@ using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
 
 include("./1_setup.jl")
+include("./common/param_bounds.jl")
 
-function target_param_names()
-    return [
-        "linear_extension", "mb_rate", "mean_colony_diameter_m", "fecundity", "dist_mean"
-    ]
-end
-
-function adjust_bounds!(
-    sample_bounds, coral_param_idx, scale_lb::Float64, scale_ub::Float64
-)::Nothing
-    extended_lb = first.(sample_bounds[coral_param_idx]) .* scale_lb
-    extended_ub = last.(sample_bounds[coral_param_idx]) .* scale_ub
-    sample_bounds[coral_param_idx] .= collect(zip(extended_lb, extended_ub))
-    return nothing
-end
-
-# Define parameter space to scan over
-coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
-
-# Extract just the target coral parameters
-lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx =
-    extract_param_group_idx.([coral_params], target_param_names())
-
-coral_param_idx = vcat(
-    lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx
-)
-coral_params = coral_params[sort(coral_param_idx), :]
-coral_param_names = coral_params.fieldname
-
-# Get updated parameter positions
-lin_ext_idx, mbrate_idx, coldiam_idx, fecundity_idx, dhw_tol_mean_idx =
-    extract_param_group_idx.([coral_params], target_param_names())
-
-sample_bounds = collect(zip(
-    coral_params.lower_bound,
-    coral_params.upper_bound
-))
-
-# Adjust bounds for linear extensions, fecundity and initial mean DHW tolerance
-adjust_bounds!(sample_bounds, lin_ext_idx, 0.25, 1.8)
-adjust_bounds!(sample_bounds, fecundity_idx, 0.5, 3.0)
-adjust_bounds!(sample_bounds, dhw_tol_mean_idx, 0.8, 3.0)
-
-# Add parameters for location-specific scaling
-n_groups = 5
-n_size_classes = 7
-n_limited_locs = length(limited_locations)
-n_factors = 3  # growth, mortality, fecundity
-
-# Adjust bounds for mortality rate
-# Size specific changes for each group
-for grp in 1:n_groups, sz in 1:n_size_classes
-    group_idx = extract_param_group_idx(coral_params, "$(grp)_$(sz)_mb_rate")
-
-    if sz < 4
-        sample_bounds[group_idx] .= fill((0.01, 0.6), length(group_idx))
-    else
-        ub = grp > 3 ? 0.15 : 0.4
-        sample_bounds[group_idx] .= fill((0.01, ub), length(group_idx))
-    end
-end
-
-location_coef = fill((0.3, 1.5), n_groups * n_limited_locs * n_factors)
-
-coral_start_idx = 1
-coral_end_idx = length(sample_bounds)
-
-loc_coef_start_idx = coral_end_idx + 1
-append!(sample_bounds, location_coef)
-loc_coef_end_idx = length(sample_bounds)
-
-# Location-based growth scaling
-growth_acc_start_idx = loc_coef_end_idx + 1
-for _ in 1:length(target_dom_idxs)
-    push!(sample_bounds, (-30.0, -15.0))  # steepness
-    push!(sample_bounds, (0.0, 2.0))  # height
-    push!(sample_bounds, (0.0, 0.3))  # midpoint
-end
-growth_acc_end_idx = length(sample_bounds)
-
-sc_dist_bounds = fill((0.25, 30.0), n_limited_locs)
-
-sc_dist_start_idx = growth_acc_end_idx + 1
-append!(sample_bounds, sc_dist_bounds)
-sc_dist_end_idx = length(sample_bounds)
-
-"""
-Reshape the growth acceleration parameters from a vector a matrix of shape [n_parameters ⋅ n_locs]
-"""
-function reshape_growth_accel_parameters(
-    params::Vector{Float64};
-    n_locs=length(target_dom_idxs)
-)::Matrix{Float64}
-    return reshape(params, (3, n_locs))
-end
-
-"""
-    average_class_cover(cover; loc_classes=location_classification.consecutive_classification)::Array{Float64}
-
-Calculate the average cover for each location classification.
-"""
-function average_class_cover(
-    cover;
-    loc_classes=location_classification.consecutive_classification
-)::Matrix{Float64}
-    classes = sort(unique(loc_classes))
-    n_tsteps, n_locs = size(cover)
-    class_cover::Matrix{Float64} = zeros(Float64, n_tsteps, length(classes))
-    class_mask::BitVector = Vector(repeat([true], n_locs))
-    for class in classes
-        class_mask .= loc_classes .== class
-        class_cover[:, class] .= dropdims(mean(cover[:, class_mask]; dims=2); dims=2)
-    end
-
-    return class_cover
-end
-
-function insert_init_loc_cover!(
-    dom,
-    lambdas;
-    raw_ltmp_reef_data=raw_ltmp_reef_data,
-    rm_ltmp_taxa=rm_ltmp_taxa,
-    target_dom_idxs=target_dom_idxs
-)::Nothing
-    for (idx, row_idx) in enumerate(target_dom_idxs)
-        size_class_props = size_class_distribution(lambdas[idx], ADRIA.bin_edges()[1, :])
-        loc_cov =
-            rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
-        tot_cov =
-            raw_ltmp_reef_data[
-                idx, findfirst(x -> !ismissing(x), raw_ltmp_reef_data[idx, :])
-            ] ./ dom.loc_data.k[row_idx]
-        dom.init_coral_cover[:, row_idx] .=
-            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
-    end
-
-    return nothing
-end
-
-"""
-Calculate the functional group correlation and temporal correlation between aggregated ltmp
-data created for reefmod.
-
-Uses the complement of the absolute pearson correlation coefficient such that 0 indicates
-a perfect fit, and >= 0 indicates no or negative correlation.
-
-The score indicates the mean correlation.
-"""
-function reef_taxa_error(
-    cover;
-    rm_ltmp_taxa=rm_ltmp_taxa,
-    dom_idxs=target_dom_idxs
-)
-    fg_corr::Float64 = 0.0
-    for (j, idx) in enumerate(dom_idxs)
-        non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
-        for id in eachindex(2008:2022)[non_missing_mask]
-            fg_corr +=
-                cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
-        end
-    end
-
-    return 1.0 - (fg_corr ./ length(dom_idxs))
-end
-
-"""
-    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
-
-Calculate the error between ltmp observations and the given cover array.
-"""
-function reef_error(
-    cover;
-    ltmp_obs=raw_ltmp_reef_data,
-    target_dom_idxs=target_dom_idxs
-)::Vector{Float64}
-    err_series::Vector{Float64} = zeros(Float64, 15)
-    tmp_err::Vector{Float64} = zeros(Float64, 15)
-    err_counts::Vector{Int64} = zeros(Int64, 15)
-    not_missing::BitVector = BitVector(fill(true, 15))
-    for (row_idx, loc_obs) in enumerate(eachrow(ltmp_obs))
-        if target_dom_idxs[row_idx] == -1
-            continue
-        end
-
-        not_missing .= (!).(ismissing.(loc_obs))
-        min_arg = argmin(loc_obs[not_missing])
-        max_arg = argmax(loc_obs[not_missing])
-        tmp_err[not_missing] .= MAEE_series(
-            cover[not_missing, target_dom_idxs[row_idx]], loc_obs[not_missing]
-        )
-
-        # Apply double the weight on the peak/trough of the time series
-        tmp_err[not_missing][[min_arg, max_arg]] .*= 2.0
-        err_series[not_missing] .+= tmp_err[not_missing]
-        err_counts[not_missing] .+= 1.0
-    end
-
-    if any(err_counts .== 0)
-        @debug "No reef level observation data for some years."
-        err_counts[err_counts .== 0] .= 1
-    end
-
-    return err_series ./ err_counts
-end
-
-"""
-    class_error(cover; obs_class_data=manta_tow_classes)::Vector{Float64}
-
-Calculate the average class level error per year.
-"""
-function class_error(
-    cover;
-    manta_tow_mean=manta_tow_mean,
-    manta_tow_std=manta_tow_std
-)::Vector{Float64}
-    # Preallocations
-    err_series::Vector{Float64} = zeros(Float64, 15)
-    err_counts::Vector{Int64} = zeros(Int64, 15)
-    not_missing::BitVector = BitVector(repeat([true], 15))
-
-    # Dims ~ [timesteps ⋅ classes]
-    class_cover::Matrix{Float64} = average_class_cover(cover)
-
-    for (idx, class) in enumerate(manta_tow_mean.class)
-        if class == -1
-            continue
-        end
-        not_missing .= (!).(ismissing.(manta_tow_mean[idx, :]))
-        err_series[not_missing] .+=
-            abs.(
-                (
-                    manta_tow_mean[idx, not_missing] .- class_cover[not_missing, class]
-                ) ./ manta_tow_std[idx, not_missing]
-            )
-        err_counts[not_missing] .+= 1
-    end
-    err_counts[err_counts .== 0] .= 1
-
-    return err_series ./ err_counts
-end
 
 """
     validate_linear_extension_coefficients(linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Vector{Float64})::Bool
@@ -310,36 +72,22 @@ function obj_func(
     init_values;
     dom_raw=dom,
     location_classification=location_classification.consecutive_classification,
-    start_year=start_year,
-    end_year=end_year,
-    coral_param_names=coral_param_names,
-    param_idxs=[
-        coral_start_idx, coral_end_idx,
-        loc_coef_start_idx, loc_coef_end_idx,
-        growth_acc_start_idx, growth_acc_end_idx,
-        sc_dist_start_idx, sc_dist_end_idx
-    ],
-    loc_idxs=target_dom_idxs
+    coral_param_names=CORAL_PARAM_NAMES,
+    param_idxs=PARAM_IDXS,
+    loc_idxs=TARGET_DOM_IDXS
 )
-    dom = deepcopy(dom_raw)
-
-    scen = ADRIA.param_table(dom)
-    coral_param_values = init_values[param_idxs[1]:param_idxs[2]]
-    scen[1, coral_param_names] = coral_param_values
-
-    growth_acc_params = reshape_growth_accel_parameters(
-        init_values[param_idxs[5]:param_idxs[6]]
+    dom, scen, growth_acc_params, scale_factors = setup_run(
+        dom_raw,
+        init_values;
+        param_names=coral_param_names,
+        param_idxs=param_idxs,
+        loc_idxs=loc_idxs
     )
 
     corals = ADRIA.to_coral_spec(scen[1, :])
 
     loc_k_areas = ADRIA.site_k_area(dom)
     loc_areas = ADRIA.loc_area(dom)
-
-    # Location-specific scaling for [groups] ⋅ [locations] ⋅ [growth, mortality, fecundity]
-    scale_factors::Array{Float64,3} = reshape(
-        init_values[param_idxs[3]:param_idxs[4]], (5, 4, 3)
-    )
 
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
     survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
@@ -353,8 +101,6 @@ function obj_func(
     if mortality_validity + lin_ext_validity != 0.0
         return 1e6 + (2e6 * (mortality_validity + lin_ext_validity))
     end
-
-    insert_init_loc_cover!(dom, init_values[param_idxs[7]:param_idxs[8]])
 
     res = nothing
     try
@@ -409,8 +155,8 @@ function obj_func(
     troughs = argmin_missing.(eachrow(raw_ltmp_reef_data))
     obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], peaks)]
     obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], troughs)]
-    modelled_peaks = loc_cover[CartesianIndex.(peaks, target_dom_idxs)]
-    modelled_troughs = loc_cover[CartesianIndex.(troughs, target_dom_idxs)]
+    modelled_peaks = loc_cover[CartesianIndex.(peaks, loc_idxs)]
+    modelled_troughs = loc_cover[CartesianIndex.(troughs, loc_idxs)]
 
     peaks_score = mean(abs.(modelled_peaks .- obs_peaks)) * 2.0
     troughs_score = mean(abs.(modelled_troughs .- obs_troughs)) * 2.0
@@ -427,26 +173,12 @@ function obj_func(
     return score
 end
 
-function restructure_initial_guess!(
-    init_guess::Vector{Float64};
-    n_locs=length(target_dom_idxs)
-)::Vector{Float64}
-    # use calibrated growth params as initial guess for location specific
-    growth_params::Vector{Float64} = init_guess[(end - 2):end]
-    for _ in 1:(n_locs - 1)
-        append!(init_guess, growth_params)
-    end
-    return init_guess
-end
-
-init_state = deserialize(init_cover_fn)
+init_state = deserialize(INIT_COVER_PATH)
 construct_cover!(dom, init_state, location_classification.consecutive_classification)
 
-best_score_file = joinpath(OUT_DIR, init_guess_fn)
+best_score_file = joinpath(OUT_DIR, INIT_GUESS_PATH)
 if isfile(best_score_file)
     best_init_state = deserialize(best_score_file)
-    best_init_state = restructure_initial_guess!(best_init_state)
-    append!(best_init_state, fill(2.0, length(target_dom_idxs)))
     @assert all(first.(sample_bounds) .<= best_init_state .<= last.(sample_bounds)) "Initial state is out of bounds"
 else
     best_init_state = nothing
@@ -507,14 +239,17 @@ function save_results_callback(
     best_state = best_candidate(oc)
     serialize(calib_fn, best_state)
 
-    interim_res = progress_run(best_state, coral_param_names)
+    interim_res = progress_run(best_state)
     plot_calibration(interim_res; save_fn=plot_fn)
     @info "Saved intermediate progress"
 
     return nothing
 end
 
-@info "Using $(Threads.nthreads()-1) threads."
+available_threads = Threads.nthreads()
+
+threads_display = available_threads == 1 ? available_threads : available_threads - 1
+@info "Using $(threads_display) threads."
 if isnothing(best_init_state)
     # Include additional config if using BorgMOEA
     # Method=:borg_moea,
@@ -523,7 +258,7 @@ if isnothing(best_init_state)
         obj_func;
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=Threads.nthreads() - 1,
+        NThreads=available_threads - 1,
         CallbackFunction=save_results_callback,
         CallbackInterval=0  # run at end of every step
     )
@@ -534,13 +269,13 @@ else
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
         MaxSteps=100_000,
-        NThreads=Threads.nthreads() - 1,
+        NThreads=available_threads - 1,
         CallbackFunction=save_results_callback,
-        CallbackInterval=30  # run at end of every step
+        CallbackInterval=0  # run at end of every step
     )
 end
 
-out_fn = joinpath(OUT_DIR, init_guess_fn)
+out_fn = joinpath(OUT_DIR, RESULT_FN)
 
 best_fitness(res)
 best_init_state = best_candidate(res)

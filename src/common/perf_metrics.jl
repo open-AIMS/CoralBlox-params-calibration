@@ -40,13 +40,6 @@ function MAEE_series(sim, obs)
     return ℯ.^((abs_err) .* (1.0 .+ abs_err / 1.0)) .- 1.0
 end
 
-# """
-# Asymmetric MAEE which penalizes under-estimates more than over-estimates.
-# """
-# function MAEE_series(sim, obs)
-#     return abs.((1.0 .+ (sim .< obs)) .* ((sim ./ obs) .- 1.0))
-# end
-
 function temporal_variability(x::AbstractVector{<:Real}; w=[0.9, 0.1])
     return mean([mean(x), std(x)], weights(w))
 end
@@ -59,13 +52,13 @@ function constant_error_statistics(
     filename,
     stat_func=mean
 )::DataFrame
-    north_ind::Int64 = findfirst(x -> x >= start_year, ltmp_north.Year)
-    central_ind::Int64 = findfirst(x -> x >= start_year, ltmp_central.Year)
-    south_ind::Int64 = findfirst(x -> x >= start_year, ltmp_south.Year)
+    north_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_north.Year)
+    central_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_central.Year)
+    south_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_south.Year)
 
-    north_end::Int64 = findfirst(x -> x >= end_year, ltmp_north.Year) - 1
-    central_end::Int64 = findfirst(x -> x >= end_year, ltmp_central.Year) -1
-    south_end::Int64 = findfirst(x -> x >= end_year, ltmp_south.Year) - 1
+    north_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_north.Year) - 1
+    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) -1
+    south_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_south.Year) - 1
 
     north_xs = ltmp_north.Year[north_ind:north_end]
     central_xs = ltmp_central.Year[central_ind:central_end]
@@ -120,15 +113,15 @@ function constant_error_statistics(
 end
 
 function create_error_statistics(filename::String)::DataFrame
-    @info "Computing Error Statistics for time period: $(start_year) - $(end_year)"
+    @info "Computing Error Statistics for time period: $(START_YEAR) - $(END_YEAR)"
 
-    north_ind::Int64 = findfirst(x -> x >= start_year, ltmp_north.Year)
-    central_ind::Int64 = findfirst(x -> x >= start_year, ltmp_central.Year)
-    south_ind::Int64 = findfirst(x -> x >= start_year, ltmp_south.Year)
+    north_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_north.Year)
+    central_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_central.Year)
+    south_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_south.Year)
 
-    north_end::Int64 = findfirst(x -> x >= end_year, ltmp_north.Year) - 1
-    central_end::Int64 = findfirst(x -> x >= end_year, ltmp_central.Year) -1
-    south_end::Int64 = findfirst(x -> x >= end_year, ltmp_south.Year) - 1
+    north_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_north.Year) - 1
+    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) -1
+    south_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_south.Year) - 1
 
     north_xs = ltmp_north.Year[north_ind:north_end]
     central_xs = ltmp_central.Year[central_ind:central_end]
@@ -185,8 +178,8 @@ end
 function collect_error_stats(
     raw_data,
     ltmp_loc_idx;
-    obs_data=all_ltmp_reef,
-    obs_idxs=all_ltmp_idxs,
+    obs_data=ALL_LTMP_REEF,
+    obs_idxs=ALL_LTMP_IDXS,
     obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
     loc_k_areas=ADRIA.site_k_area(dom),
     loc_areas=ADRIA.loc_area(dom)
@@ -198,7 +191,12 @@ function collect_error_stats(
 
     obs_loc_data = obs_data[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
-    obs_tf = (start_year:end_year)[not_missing_obs]
+
+    if !any(not_missing_obs)
+        return NaN, NaN, NaN, NaN, NaN
+    end
+
+    obs_tf = (START_YEAR:END_YEAR)[not_missing_obs]
 
     sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
     reef_id = obs_loc_labels[ltmp_loc_idx]
@@ -212,11 +210,128 @@ function collect_error_stats(
     s = length(sim_data[not_missing_obs])
     benchmark_::Float64 = rmse(fill(μ_obs, s), obs_loc_data[not_missing_obs])
 
-    @info "Location $(reef_id)"
-    @info "RMSE:       $(trunc(rmse_, digits=4))"
-    @info "Benchmark:  $(trunc(benchmark_, digits=4))"
-    @info "Pearsons R: $(trunc(cc_, digits=4))"
-    @info "MAEE:       $(trunc(maee_, digits=4))"
-    @info "Bias:       $(trunc(bias_, digits=4))"
     return rmse_, benchmark_, cc_, maee_, bias_
+end
+
+"""
+    average_class_cover(cover; loc_classes=location_classification.consecutive_classification)::Array{Float64}
+
+Calculate the average cover for each location classification.
+"""
+function average_class_cover(
+    cover;
+    loc_classes=location_classification.consecutive_classification
+)::Matrix{Float64}
+    classes = sort(unique(loc_classes))
+    n_tsteps, n_locs = size(cover)
+    class_cover::Matrix{Float64} = zeros(Float64, n_tsteps, length(classes))
+    class_mask::BitVector = Vector(repeat([true], n_locs))
+    for class in classes
+        class_mask .= loc_classes .== class
+        class_cover[:, class] .= dropdims(mean(cover[:, class_mask]; dims=2); dims=2)
+    end
+
+    return class_cover
+end
+
+"""
+Calculate the functional group correlation and temporal correlation between aggregated ltmp
+data created for reefmod.
+
+Uses the complement of the absolute pearson correlation coefficient such that 0 indicates
+a perfect fit, and >= 0 indicates no or negative correlation.
+
+The score indicates the mean correlation.
+"""
+function reef_taxa_error(
+    cover;
+    rm_ltmp_taxa=rm_ltmp_taxa,
+    dom_idxs=TARGET_DOM_IDXS
+)
+    fg_corr::Float64 = 0.0
+    for (j, idx) in enumerate(dom_idxs)
+        non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
+        for id in eachindex(2008:2022)[non_missing_mask]
+            fg_corr +=
+                cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
+        end
+    end
+
+    return 1.0 - (fg_corr ./ length(dom_idxs))
+end
+
+"""
+    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
+
+Calculate the error between ltmp observations and the given cover array.
+"""
+function reef_error(
+    cover;
+    ltmp_obs=raw_ltmp_reef_data,
+    target_dom_idxs=TARGET_DOM_IDXS
+)::Vector{Float64}
+    err_series::Vector{Float64} = zeros(Float64, 15)
+    tmp_err::Vector{Float64} = zeros(Float64, 15)
+    err_counts::Vector{Int64} = zeros(Int64, 15)
+    not_missing::BitVector = BitVector(fill(true, 15))
+    for (row_idx, loc_obs) in enumerate(eachrow(ltmp_obs))
+        if target_dom_idxs[row_idx] == -1
+            continue
+        end
+
+        not_missing .= (!).(ismissing.(loc_obs))
+        min_arg = argmin(loc_obs[not_missing])
+        max_arg = argmax(loc_obs[not_missing])
+        tmp_err[not_missing] .= MAEE_series(
+            cover[not_missing, target_dom_idxs[row_idx]], loc_obs[not_missing]
+        )
+
+        # Apply double the weight on the peak/trough of the time series
+        tmp_err[not_missing][[min_arg, max_arg]] .*= 2.0
+        err_series[not_missing] .+= tmp_err[not_missing]
+        err_counts[not_missing] .+= 1.0
+    end
+
+    if any(err_counts .== 0)
+        @debug "No reef level observation data for some years."
+        err_counts[err_counts .== 0] .= 1
+    end
+
+    return err_series ./ err_counts
+end
+
+"""
+    class_error(cover; obs_class_data=manta_tow_classes)::Vector{Float64}
+
+Calculate the average class level error per year.
+"""
+function class_error(
+    cover;
+    manta_tow_mean=manta_tow_mean,
+    manta_tow_std=manta_tow_std
+)::Vector{Float64}
+    # Preallocations
+    err_series::Vector{Float64} = zeros(Float64, 15)
+    err_counts::Vector{Int64} = zeros(Int64, 15)
+    not_missing::BitVector = BitVector(repeat([true], 15))
+
+    # Dims ~ [timesteps ⋅ classes]
+    class_cover::Matrix{Float64} = average_class_cover(cover)
+
+    for (idx, class) in enumerate(manta_tow_mean.class)
+        if class == -1
+            continue
+        end
+        not_missing .= (!).(ismissing.(manta_tow_mean[idx, :]))
+        err_series[not_missing] .+=
+            abs.(
+                (
+                    manta_tow_mean[idx, not_missing] .- class_cover[not_missing, class]
+                ) ./ manta_tow_std[idx, not_missing]
+            )
+        err_counts[not_missing] .+= 1
+    end
+    err_counts[err_counts .== 0] .= 1
+
+    return err_series ./ err_counts
 end

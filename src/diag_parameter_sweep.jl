@@ -52,23 +52,23 @@ sweep = [ed != 0 ? collect(st:step:ed) : zeros(step_size+1) for (st, step, ed) i
 sweep_values = hcat(sweep...)
 for (sw_id, pset) in enumerate(eachrow(sweep_values))
     @info "Running sweep $(sw_id) - $(target_param_group)"
-    sweep_res = sweep_run(dom, pset, coral_param_names, target_dom_idxs)
+    sweep_res = sweep_run(dom, pset, coral_param_names, TARGET_DOM_IDXS)
 
-    modelled_locs = convert_to_ltmp_values(sweep_res)[:, target_dom_idxs]
+    modelled_locs = convert_to_ltmp_values(sweep_res)[:, TARGET_DOM_IDXS]
     obs_locs = raw_ltmp_reef_data'
 
     f = Figure(size=(900, 600))
     max_col = 2
     row = Ref(1)
     col = Ref(1)
-    for (i, loc) in enumerate(target_dom_idxs)
+    for (i, loc) in enumerate(TARGET_DOM_IDXS)
         reef_name = dom.loc_data[loc, :GBR_NAME]
         reef_id = dom.loc_data[loc, :UNIQUE_ID]
 
         ax = Axis(
             f[row[], col[]],
             title="$reef_name\n$(reef_id)",
-            xticks=(1:15, string.(start_year:end_year)),
+            xticks=(1:15, string.(START_YEAR:END_YEAR)),
             xticklabelrotation=45
         )
         scatter!(ax, obs_locs[:, i], color=(:red, 0.5))

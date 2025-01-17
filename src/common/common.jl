@@ -12,28 +12,41 @@ using ADRIA
 using ADRIA: GDF, AG, DimensionalData
 
 
-global config = TOML.parsefile("calib_config.toml")
-global path_configs = config["data_paths"]
+global CONFIG = TOML.parsefile("calib_config.toml")
 
-global reefmod_domain_path = path_configs["reefmod_domain"]
-global rme_domain_path = path_configs["rme_domain"]
-global canonical_path = path_configs["canonical_path"]
-global init_guess_fn = path_configs["init_guess_fn"]  # optional
+# Configuration sections
+global DOMAIN_CONFIG         = CONFIG["Domains"]
+global GEOSPATIAL_CONFIG     = CONFIG["Geospatial"]
+global TARGET_CONFIG         = CONFIG["Observations"]
+global INITIALISATION_CONFIG = CONFIG["Initialisation"]
+global OUTPUT_CONFIG         = CONFIG["Outputs"]
 
-global manta_tow_class_path = joinpath(pwd(), "../", path_configs["manta_tow_path"])  # target data for location classes
-global historic_dhw_path = joinpath(rme_domain_path, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
-global ltmp_reef_data_path = joinpath(pwd(), "../", path_configs["ltmp_reef_data"])  # target data for ltmp locs
-global composition_path = joinpath(pwd(), "../", path_configs["composition_netcdf"])
+# ADRIA Domain paths
+global REEFMOD_DOMAIN_PATH = DOMAIN_CONFIG["reefmod_domain"]
+global RME_DOMAIN_PATH     = DOMAIN_CONFIG["rme_domain"]
+global HISTORIC_DHW_PATH   = joinpath(RME_DOMAIN_PATH, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
 
-global ltmp_shp = joinpath(pwd(), "../", path_configs["ltmp_shp"])
-global ltmp_modelled_obs = joinpath(pwd(), "../", path_configs["ltmp_modelled_obs"])
-global classification_path = joinpath(pwd(), "../", path_configs["classification_path"])  # location classes
-global init_cover_fn = joinpath(pwd(), "../", path_configs["init_cover_fn"])
+# Geospatial filepaths
+global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"]
+global LTMP_SHP_PATH  = GEOSPATIAL_CONFIG["ltmp_shp"]
+global LOC_CLASS_PATH = GEOSPATIAL_CONFIG["classification_path"] # location classes
 
-global OUT_DIR = path_configs["out_dir"]
+# Calibration Target / Observational Data
+global LOC_CLASS_TARGET_PATH  = TARGET_CONFIG["manta_tow_path"]  # target data for location classes
+global LTMP_REEF_DATA_PATH    = TARGET_CONFIG["ltmp_reef_data"]  # target data for ltmp locs
+global COMPOSITION_PATH       = TARGET_CONFIG["composition_netcdf"]
+global LTMP_MODELLED_OBS_PATH = TARGET_CONFIG["ltmp_modelled_obs"]
 
-global start_year = 2008
-global end_year = 2022
+# Initialisation filepaths
+global INIT_COVER_PATH  = INITIALISATION_CONFIG["init_cover_filepath"]
+global INIT_GUESS_PATH  = INITIALISATION_CONFIG["init_guess_filepath"]  # optiona;
+
+# Output filepaths
+global OUT_DIR   = OUTPUT_CONFIG["out_dir"]
+global RESULT_FN = OUTPUT_CONFIG["result_filename"]
+
+const START_YEAR = 2008
+const END_YEAR = 2022
 global n_scenarios = 16
 
 if !@isdefined(OPTIONS)
