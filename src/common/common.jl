@@ -99,3 +99,38 @@ function extract_param_group(model_spec::DataFrame, needle::String)::DataFrame
     group_pos = extract_param_group_idx(model_spec, needle)
     return model_spec[group_pos, :]
 end
+
+"""
+To minimize the number of index vectors being passed around and copies being created, define
+an immutable struct to provide an interface to move between indexing between different
+arrays the refer to the same locations.
+"""
+struct LocationDataStore
+    # Data fields
+    domain_gpkg::DataFrame
+    ltmp_coral_cover::DataFrame
+    coral_composition::YAXArray
+    # Index Fields
+    ltmp_cover_to_domain::Vector{Int64}
+    composition_to_domain::Vector{Int64}
+end
+
+"""
+    ltmp_cover_idx_to_domain(loc_data_store::LocationDataStore, ltmp_cover_idx::Int64)
+
+Given an index of a location in the ltmp reef coral cover dataframe, return the index of the
+same location in the domain geopackage.
+"""
+function ltmp_cover_idx_to_domain(loc_data_store::LocationDataStore, ltmp_cover_idx::Int64)
+    return loc_data_store.ltmp_cover_to_domain[ltmp_cover_idx]
+end
+
+"""
+    composition_idx_to_domain(loc_data_store::LocationDataStore, composition_idx::Int64)
+
+Given an index of a location in the coral composition yaxarray, return the index of the
+same location in the domain geopackage.
+"""
+function composition_idx_to_domain(loc_data_store::LocationDataStore, composition_idx::Int64)
+    return loc_data_store.composition_to_domain[composition_idx]
+end
