@@ -144,19 +144,12 @@ adjust_bounds!(sample_bounds, dhw_tol_mean_idx, 0.8, 3.0)
 set_bounds!(sample_bounds, lin_ext_idx, lin_ext_lb, lin_ext_ub)
 set_bounds!(sample_bounds, mbrate_idx, mb_rate_lb, mb_rate_ub)
 
-# Add parameters for location-specific scaling
-n_groups = 5
-n_size_classes = 7
-n_limited_locs = length(LIMITED_LOCATIONS)
-n_factors = 3  # growth, mortality, fecundity
-
-location_coef = fill((0.3, 1.5), n_groups * n_limited_locs * n_factors)
-
 coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
 
 # Number of unique biogroups used in calibration
-n_biogroups = length(unique(bioregion_groups_gpkg.ASSIGNED_BIOREGION))
+const BIOGROUPS_ORDERING = sort(unique(bioregion_groups_gpkg.ASSIGNED_BIOREGION))
+n_biogroups = length(BIOGROUPS_ORDERING)
 
 # Add parameters for location-specific scaling
 n_groups = 5
@@ -191,7 +184,7 @@ biogroup_accel_bounds[MIDPOINT_PARAM_IDX, :] .= [(0.0, 0.3)]
 append!(sample_bounds, ADRIA.accel_params_array_to_vec(biogroup_accel_bounds))
 growth_acc_end_idx = length(sample_bounds)
 
-sc_dist_bounds = fill((0.25, 30.0), n_biogroups)
+sc_dist_bounds = fill((0.25, 20.0), n_biogroups)
 
 sc_dist_start_idx = growth_acc_end_idx + 1
 append!(sample_bounds, sc_dist_bounds)
@@ -206,10 +199,10 @@ global PARAM_IDXS = [
 
 global CORAL_PARAM_NAMES = coral_params.fieldname
 global SCALE_FACTOR_NAMES = ADRIA.scale_factor_array_to_vec(
-    ADRIA.generate_scale_factor_names(bioregion_groups_gpkg.ASSIGNED_BIOREGION)
+    ADRIA.generate_scale_factor_names(BIOGROUPS_ORDERING)
 )
 global GROWTH_ACCEL_NAMES = ADRIA.accel_params_array_to_vec(
-    ADRIA.generate_growth_accel_names(bioregion_groups_gpkg.ASSIGNED_BIOREGION)
+    ADRIA.generate_growth_accel_names(BIOGROUPS_ORDERING)
 )
 
 # Utility functions for domain and parameter calibration setup
@@ -233,20 +226,32 @@ manta tow total cover. Use the given lambda calculation
 function insert_init_loc_cover!(
     dom,
     lambdas;
-    raw_ltmp_reef_data=raw_ltmp_reef_data,
-    rm_ltmp_taxa=rm_ltmp_taxa,
-    target_dom_idxs=TARGET_DOM_IDXS
+    observations::LocationDataStore=COMBINED_STORE,
+    biogroup_ord::Vector{Int64}=BIOGROUPS_ORDERING,
 )::Nothing
-    for (idx, row_idx) in enumerate(TARGET_DOM_IDXS)
-        size_class_props = size_class_distribution(lambdas[idx], ADRIA.bin_edges()[1, :])
-        loc_cov =
-            rm_ltmp_taxa[2, :, idx] .* size_class_props' ./ sum(rm_ltmp_taxa[2, :, idx])
+    # Change the coral composition of location for which we have data
+    for (idx, dom_idx) in enumerate(observations.composition_to_domain)
+        # Maintain the original cover levels but change the composition
+        tmp_cover::Float64 = sum(dom.init_coral_cover[:, dom_idx])
+        non_missing_idx::Int64 = findfirst(
+            x -> !ismissing(x), observations.coral_composition[:, 1, idx].data
+        )
+        size_class_props = size_class_distribution(
+            lambdas[findfirst(biogroup_ord .== dom.loc_data.ASSIGNED_BIOREGION[dom_idx])],
+            ADRIA.bin_edges()[1, :]
+        )
+        loc_cov = observations.coral_composition.data[
+            non_missing_idx, :, idx
+        ] .* size_class_props' ./ sum(observations.coral_composition[non_missing_idx, :, idx])
+        dom.init_coral_cover[:, dom_idx] .=
+            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tmp_cover
+    end
+    for (idx, dom_idx) in enumerate(observations.ltmp_cover_to_domain)
         tot_cov =
-            raw_ltmp_reef_data[
-                idx, findfirst(x -> !ismissing(x), raw_ltmp_reef_data[idx, :])
-            ] ./ dom.loc_data.k[row_idx]
-        dom.init_coral_cover[:, row_idx] .=
-            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tot_cov
+            observations.ltmp_coral_cover[
+                idx, findfirst(x -> !ismissing(x), observations.ltmp_coral_cover[idx, :])
+            ] ./ dom.loc_data.k[dom_idx]
+        dom.init_coral_cover[:, dom_idx] .*= tot_cov ./ sum(dom.init_coral_cover[:, dom_idx])
     end
 
     return nothing
@@ -256,7 +261,7 @@ function get_scale_factors(
     scenario_df::DataFrame;
     scale_factor_names::Vector{String}=SCALE_FACTOR_NAMES
 )::Array{Float64,3}
-    return ADRIA.scale_factor_vec_to_array(scenario[1, scale_factor_names])
+    return ADRIA.scale_factor_vec_to_array(collect(scenario_df[1, scale_factor_names]), 5, length(BIOGROUPS_ORDERING), 2)
 end
 
 """
@@ -272,19 +277,20 @@ function setup_run(
     scale_factor_names::Vector{String}=SCALE_FACTOR_NAMES,
     growth_accel_names::Vector{String}=GROWTH_ACCEL_NAMES,
     param_idxs=PARAM_IDXS,
-    loc_idxs=TARGET_DOM_IDXS
 )::Tuple{Domain,DataFrame}
     new_dom = deepcopy(dom)
 
     scen = ADRIA.param_table(new_dom)
     coral_param_values = sampled_params[param_idxs[1]:param_idxs[2]]
-    scen[!, param_names] .= coral_param_values
-    scen[!, scale_factor_names] .= sampled_params[param_idxs[3]:param_idxs[4]]
-    scen[!, growth_accel_names] .= sampled_params[param_idxs[5]:param_idxs[6]]
+    scen[!, param_names] .= coral_param_values'
+    insertcols!(scen, (scale_factor_names .=> Ref([1.0]))...)
+    scen[!, scale_factor_names] .= sampled_params[param_idxs[3]:param_idxs[4]]'
+    insertcols!(scen, (growth_accel_names .=> Ref([1.0]))...)
+    scen[!, growth_accel_names] .= sampled_params[param_idxs[5]:param_idxs[6]]'
 
     insert_init_loc_cover!(
         new_dom,
-        sampled_params[param_idxs[7]:param_idxs[8]], target_dom_idxs=loc_idxs
+        sampled_params[param_idxs[7]:param_idxs[8]]
     )
 
     return new_dom, scen
