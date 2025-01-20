@@ -212,23 +212,32 @@ all_composition_to_domain::Vector{Int64} = [
     findfirst(dom.loc_data.UNIQUE_ID .== uniq_id) for uniq_id in composition_data.location
 ]
 
+"""
+Construct data store for calibration, validation, and combined data sets.
+
+Seperate the ltmp manta unique ids, from the observation data.
+"""
+
 const CALIBRATION_STORE::LocationDataStore = LocationDataStore(
     dom.loc_data,
-    calibration_df,
+    calibration_df.RME_UNIQUE_ID,
+    calibration_df[:, 2:end],
     composition_data.mean[location=calibration_mask],
     cal_ltmp_to_domain,
     cal_composition_to_domain
 )
 const VALIDATION_STORE::LocationDataStore = LocationDataStore(
     dom.loc_data,
-    calibration_df,
+    validation_df.RME_UNIQUE_ID,
+    validation_df[:, 2:end],
     composition_data.mean[location=validation_mask],
     val_ltmp_to_domain,
     val_composition_to_domain
 )
 const COMBINED_STORE::LocationDataStore = LocationDataStore(
     dom.loc_data,
-    ltmp_reef_data,
+    ltmp_reef_data.RME_UNIQUE_ID,
+    ltmp_reef_data[:, 2:end],
     composition_data.mean,
     all_ltmp_to_domain,
     all_composition_to_domain
