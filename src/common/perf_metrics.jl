@@ -181,18 +181,13 @@ end
 function collect_error_stats(
     raw_data,
     ltmp_loc_idx;
-    obs_data=ALL_LTMP_REEF,
-    obs_idxs=ALL_LTMP_IDXS,
-    obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID,
+    observations::LocationDataStore=CALIBRATION_STORE,
     loc_k_areas=ADRIA.site_k_area(dom),
     loc_areas=ADRIA.loc_area(dom)
 )
     loc_cover = dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
-    if obs_idxs[ltmp_loc_idx] == -1
-        return Figure()
-    end
 
-    obs_loc_data = obs_data[ltmp_loc_idx, :]
+    obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
 
     if !any(not_missing_obs)
@@ -201,8 +196,9 @@ function collect_error_stats(
 
     obs_tf = (START_YEAR:END_YEAR)[not_missing_obs]
 
-    sim_data = loc_cover[:, obs_idxs[ltmp_loc_idx]]
-    reef_id = obs_loc_labels[ltmp_loc_idx]
+    domain_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
+    sim_data = loc_cover[:, domain_idx]
+    reef_id = get_ltmp_loc_unique_id(ltmp_loc_idx)
 
     rmse_::Float64 = rmse(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     cc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
@@ -248,11 +244,10 @@ The score indicates the mean correlation.
 """
 function reef_taxa_error(
     cover;
-    rm_ltmp_taxa=rm_ltmp_taxa,
-    dom_idxs=TARGET_DOM_IDXS
+    observations::LocationDataStore=CALIBRATION_STORE
 )
     fg_corr::Float64 = 0.0
-    for (j, idx) in enumerate(dom_idxs)
+    for (j, idx) in enumerate(observations.composition_to_domain)
         non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
         for id in eachindex(2008:2022)[non_missing_mask]
             fg_corr +=
@@ -266,27 +261,28 @@ end
 """
     reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
 
-Calculate the error between ltmp observations and the given cover array.
+Calculate the error between ltmp observations and the given cover array. Defaults to the
+calibration data store.
 """
 function reef_error(
     cover;
-    ltmp_obs=raw_ltmp_reef_data,
-    target_dom_idxs=TARGET_DOM_IDXS
+    observations::LocationDataStore=CALIBRATION_STORE,
 )::Vector{Float64}
-    err_series::Vector{Float64} = zeros(Float64, 15)
-    tmp_err::Vector{Float64} = zeros(Float64, 15)
-    err_counts::Vector{Int64} = zeros(Int64, 15)
-    not_missing::BitVector = BitVector(fill(true, 15))
-    for (row_idx, loc_obs) in enumerate(eachrow(ltmp_obs))
-        if target_dom_idxs[row_idx] == -1
-            continue
-        end
+    n_years::Int64 = size(cover, 1)
+    err_series::Vector{Float64} = zeros(Float64, n_years)
+    tmp_err::Vector{Float64} = zeros(Float64, n_years)
+    err_counts::Vector{Int64} = zeros(Int64, n_years)
+    not_missing::BitVector = BitVector(fill(true, n_years))
+
+    domain_idx::Int64 = -1
+    for (row_idx, loc_obs) in enumerate(eachrow(observations.ltmp_coral_cover))
+        domain_idx = ltmp_cover_idx_to_domain(observations, domain_idx)
 
         not_missing .= (!).(ismissing.(loc_obs))
         min_arg = argmin(loc_obs[not_missing])
         max_arg = argmax(loc_obs[not_missing])
         tmp_err[not_missing] .= MAEE_series(
-            cover[not_missing, target_dom_idxs[row_idx]], loc_obs[not_missing]
+            cover[not_missing, domain_idx], loc_obs[not_missing]
         )
 
         # Apply double the weight on the peak/trough of the time series

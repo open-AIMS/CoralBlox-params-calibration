@@ -70,10 +70,6 @@ if !@isdefined(OPTIONS)
     global OPTIONS = true
 end
 
-include("./perf_metrics.jl")
-include("./plotting/plotting.jl")
-include("./plotting/progress.jl")
-
 
 # julia> include("path to gist.jl")
 # julia> create_compare_plot("plot file name.png")
@@ -108,6 +104,7 @@ arrays the refer to the same locations.
 struct LocationDataStore
     # Data fields
     domain_gpkg::DataFrame
+    ltmp_unique_ids::Vector{String}
     ltmp_coral_cover::DataFrame
     coral_composition::YAXArray
     # Index Fields
@@ -134,3 +131,17 @@ same location in the domain geopackage.
 function composition_idx_to_domain(loc_data_store::LocationDataStore, composition_idx::Int64)
     return loc_data_store.composition_to_domain[composition_idx]
 end
+
+function get_ltmp_loc_unique_id(loc_data_store::LocationDataStore, ltmp_idx::Int64)::String
+    return loc_data_store.ltmp_unique_ids[ltmp_idx]
+end
+
+function get_composition_loc_unique_id(
+    loc_data_store::LocationDataStore, composition_idx::Int64
+)::String
+    return loc_data_store.coral_composition.location[composition_idx]
+end
+
+include("./perf_metrics.jl")
+include("./plotting/plotting.jl")
+include("./plotting/progress.jl")
