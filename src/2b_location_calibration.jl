@@ -74,14 +74,13 @@ function obj_func(
     location_classification=location_classification.consecutive_classification,
     coral_param_names=CORAL_PARAM_NAMES,
     param_idxs=PARAM_IDXS,
-    loc_idxs=TARGET_DOM_IDXS
+    observations::LocationDataStore=CALIBRATION_STORE
 )
     dom, scen = setup_run(
         dom_raw,
         init_values;
         param_names=coral_param_names,
         param_idxs=param_idxs,
-        loc_idxs=loc_idxs
     )
 
     scale_factors = get_scale_factors(scen)
@@ -108,7 +107,7 @@ function obj_func(
 
     res = nothing
     try
-        res = ADRIA.run_model(dom, scen[1, :], scale_factors, growth_acc_params, loc_idxs)
+        res = ADRIA.run_model(dom, scen[1, :])
     catch err
         if !(err isa AssertionError)
             rethrow(err)
@@ -155,12 +154,12 @@ function obj_func(
     last_non_zero = findlast(x -> x != 0, reef_error_series)
 
     # Mean Absolute Error for peaks and troughs
-    peaks = argmax_missing.(eachrow(raw_ltmp_reef_data))
-    troughs = argmin_missing.(eachrow(raw_ltmp_reef_data))
+    peaks = argmax_missing.(eachrow(observations.ltmp_coral_cover))
+    troughs = argmin_missing.(eachrow(observation.ltmp_coral_cover))
     obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], peaks)]
     obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], troughs)]
-    modelled_peaks = loc_cover[CartesianIndex.(peaks, loc_idxs)]
-    modelled_troughs = loc_cover[CartesianIndex.(troughs, loc_idxs)]
+    modelled_peaks = loc_cover[CartesianIndex.(peaks, observations.ltmp_cover_to_domain)]
+    modelled_troughs = loc_cover[CartesianIndex.(troughs, observations.ltmp_cover_to_domain)]
 
     peaks_score = mean(abs.(modelled_peaks .- obs_peaks)) * 2.0
     troughs_score = mean(abs.(modelled_troughs .- obs_troughs)) * 2.0

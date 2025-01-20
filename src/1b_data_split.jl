@@ -7,6 +7,8 @@ using Random
 
 # Geopackage containing both the bioregions and the grouped bioregion indices
 bioregion_groups_gpkg = GDF.read(BIOREGION_GROUPS_PATH)
+
+dom.loc_data[!, :ASSIGNED_BIOREGION] .= bioregion_groups_gpkg.ASSIGNED_BIOREGION
 # Coral Composition Data
 composition_data = open_dataset(COMPOSITION_PATH)
 
