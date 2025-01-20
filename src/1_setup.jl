@@ -71,53 +71,5 @@ end
 location_classification = CSV.read(LOC_CLASS_PATH, DataFrame)
 n_classifications = maximum(location_classification.consecutive_classification)
 
-# Load manta tow ltmp reef level data
-ltmp_reef_data = GDF.read(LTMP_REEF_DATA_PATH)
-
-# Order year columns in ascending order
-ltmp_reef_years = parse.(Int64, names(ltmp_reef_data)[5:end])
-ltmp_reef_perm = sortperm(ltmp_reef_years) .+ 4
-
-ltmp_reef_data_names = names(ltmp_reef_data)
-ltmp_reef_data_names[5:end] .= ltmp_reef_data_names[ltmp_reef_perm]
-
-# Rorder columns
-ltmp_reef_data = select!(ltmp_reef_data, ltmp_reef_data_names...)
-
-# Rescale to be proportions
-ltmp_reef_data[:, 5:end] ./= 100
-first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
-raw_ltmp_reef_data = Matrix(ltmp_reef_data[:, first_yr_idx:end])
-
-# For each ltmp location calculate the row index for the domain
-ALL_LTMP_IDXS = [
-    ismissing(id) ? -1 : findfirst(
-        x -> x == id,
-        dom.loc_data.UNIQUE_ID
-    ) for id in ltmp_reef_data.RME_UNIQUE_ID
-]
-ALL_LTMP_REEF = copy(raw_ltmp_reef_data)
-
-# Calibration Locations
-LIMITED_LOCATIONS = ["16015100104", "16025100104", "14114100104", "18075100104"]
-location_names = ["Mackay Reef", "Opal Reef", "Macgillivray Reef", "John Brewer Reef"]
-limited_loc_idxs = [findfirst(x -> !ismissing(x) && x == id, ltmp_reef_data.RME_UNIQUE_ID) for id in LIMITED_LOCATIONS]
-raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
-
-composition_data = open_dataset(COMPOSITION_PATH)
-
-# For each target location get its row index in the domain
-TARGET_DOM_IDXS = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in LIMITED_LOCATIONS]
-
-# Extract the ltmp data for each target location
-temporal_range = START_YEAR:END_YEAR
-# [year ⋅ taxa ⋅ locs]
-rm_ltmp_taxa = Array{Union{Missing,Float64}}(missing, length(temporal_range), 5, 4)
-for (j, loc_name) in enumerate(location_names)
-    rm_ltmp_taxa[:, :, j] .= composition_data.mean[location=At(loc_name)].data[(2008-1992+1):(2008-1992)+length(temporal_range), :]
-end
-
-dom.loc_data[!, :depth_med] .= canonical_gpkg.depth_med
-
 # set ADRIA Env variable to prevent an error during run_model
 ENV["ADRIA_DEBUG"] = false
