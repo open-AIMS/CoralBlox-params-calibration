@@ -73,9 +73,12 @@ for non_uniq_id in non_unique_ltmp_locs
     delete!(ltmp_reef_data, to_delete)
 end
 
-# Since data has been aggregated between a few locations Reef IDs, GBRMPA IDs and
+# Since a few rows have been combined Reef IDs, GBRMPA IDs and
 # geometries are no longer accurate, remove these columns to prevent future errors
-select!(ltmp_reef_data, Not(:REEF_ID, :GBRMPA_ID))
+select!(ltmp_reef_data, Not(:REEF_ID, :GBRMPA_ID, :geometry))
+
+# Select calibration years and id column
+select!(ltmp_reef_data, [:RME_UNIQUE_ID, Symbol.(START_YEAR:END_YEAR)...])
 first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
 
 """
@@ -89,8 +92,6 @@ struct LocationDataStore
     ltmp_coral_cover::DataFrame
     coral_composition::YAXArray
     # Index Fields
-    domain_to_ltmp_cover::Vector{Int64}
-    domain_to_composition::Vector{Int64}
     ltmp_cover_to_domain::Vector{Int64}
     composition_to_domain::Vector{Int64}
 end
@@ -113,28 +114,6 @@ same location in the domain geopackage.
 """
 function composition_idx_to_domain(loc_data_store::LocationDataStore, composition_idx::Int64)
     return loc_data_store.composition_to_domain[composition_idx]
-end
-
-"""
-    domain_idx_to_ltmp_cover(loc_data_store::LocationDataStore, domain_idx::Int64)
-
-Given the index of a location in the domain geopackage, return the index of the same
-location in the ltmp reef coral cover dataframe. The majority of domain locations do not
-have a ltmp manta tow data.
-"""
-function domain_idx_to_ltmp_cover(loc_data_store::LocationDataStore, domain_idx::Int64)
-    return loc_data_store.domain_to_ltmp_cover[domain_idx]
-end
-
-"""
-    domain_idx_to_composition(loc_data_store::LocationDataStore, domain_idx::Int64)::Int64
-
-Given the index of a location in the domain geopackage, return the index of the same
-location in the coral composition yaxarray. The majority of domain locations do not have
-a coral composition data.
-"""
-function domain_idx_to_composition(loc_data_store::LocationDataStore, domain_idx::Int64)::Int64
-    return loc_data_store.domain_to_composition[domain_idx]
 end
 
 """
@@ -178,6 +157,28 @@ function split_indices(location_idxs::Vector{Int64}; calibration_proportion::Flo
     return shuffled_idxs[1:n_validation_data], shuffled_idxs[n_validation_data+1:end]
 end
 
+function create_location_datastore(
+    domain::Domain,
+    cover_data::DataFrame,
+    composition_data::YAXArray
+)::LocationDataStore
+    ltmp_cover_to_domain = [
+        findfirst(domain.loc_data .== ltmp_id) for ltmp_id in cover_data.RME_UNIQUE_ID
+    ]
+    domain_to_ltmp_cover = [
+        findfirst(cover_data.RME_UNIQUE_DATA .== id) for id in domain.loc_data.UNIQUE_ID
+    ]
+    return LocationDataStore(
+        domain.loc_data,
+        cover_data,
+        composition_data,
+        domain_to_ltmp_cover,
+        [],
+        ltmp_cover_to_domain,
+        []
+    )
+end
+
 unique_biogroup_ids = unique(bioregion_groups_gpkg.ASSIGNED_BIOREGION)
 sufficient_data_mask = sufficient_data.(eachrow(ltmp_reef_data[:, first_yr_idx:end]))
 ltmp_reef_data = ltmp_reef_data[sufficient_data_mask, :]
@@ -202,3 +203,67 @@ calibration_splits = vcat(last.(biogroup_data_splits)...)
 
 validation_df = ltmp_reef_data[validation_splits, :]
 calibration_df = ltmp_reef_data[calibration_splits, :]
+
+cal_ltmp_to_domain::Vector{Int64} = [
+    findfirst(
+        dom.loc_data.UNIQUE_ID .== uniq_id
+    ) for uniq_id in calibration_df.RME_UNIQUE_ID
+]
+val_ltmp_to_domain::Vector{Int64} = [
+    findfirst(
+        dom.loc_data.UNIQUE_ID .== uniq_id
+    ) for uniq_id in validation_df.RME_UNIQUE_ID
+]
+all_ltmp_to_domain::Vector{Int64} = [
+    findfirst(
+        dom.loc_data.UNIQUE_ID .== uniq_id
+    ) for uniq_id in ltmp_reef_data.RME_UNIQUE_ID
+]
+
+# Prevent composition data from validation data 'leaking' into calibration dataset
+calibration_comp_ids::Vector{String} = [
+    uniq_id for uniq_id in composition_data.location
+    if !(uniq_id in validation_df.RME_UNIQUE_ID)
+]
+calibration_mask::BitVector = (!).(in.(
+    composition_data.location, Ref(validation_df.RME_UNIQUE_ID)
+))
+validation_comp_ids::Vector{String} = [
+    uniq_id for uniq_id in composition_data.location
+    if (uniq_id in validation_df.RME_UNIQUE_ID)
+]
+validation_mask::BitVector = in.(
+    composition_data.location, Ref(validation_df.RME_UNIQUE_ID)
+)
+
+cal_composition_to_domain::Vector{Int64} = [
+    findfirst(dom.loc_data.UNIQUE_ID .== uniq_id) for uniq_id in calibration_comp_ids
+]
+val_composition_to_domain::Vector{Int64} = [
+    findfirst(dom.loc_data.UNIQUE_ID .== uniq_id) for uniq_id in validation_comp_ids
+]
+all_composition_to_domain::Vector{Int64} = [
+    findfirst(dom.loc_data.UNIQUE_ID .== uniq_id) for uniq_id in composition_data.location
+]
+
+const CALIBRATION_STORE::LocationDataStore = LocationDataStore(
+    dom.loc_data,
+    calibration_df,
+    composition_data.mean[location=calibration_mask],
+    cal_ltmp_to_domain,
+    cal_composition_to_domain
+)
+const VALIDATION_STORE::LocationDataStore = LocationDataStore(
+    dom.loc_data,
+    calibration_df,
+    composition_data.mean[location=validation_mask],
+    val_ltmp_to_domain,
+    val_composition_to_domain
+)
+const COMBINED_STORE::LocationDataStore = LocationDataStore(
+    dom.loc_data,
+    ltmp_reef_data,
+    composition_data.mean,
+    all_ltmp_to_domain,
+    all_composition_to_domain
+)
