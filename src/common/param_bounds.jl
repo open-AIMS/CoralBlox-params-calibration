@@ -4,6 +4,8 @@ Setup the parameter bounds and ordering for calibration.
 Define standard global variables for which this ordering and naming can be accessed.
 """
 
+import Base: copy
+
 """
     target_param_names()
 """
@@ -175,16 +177,16 @@ MIDPOINT_PARAM_IDX = 3
 
 growth_acc_start_idx = loc_coef_end_idx + 1
 
-biogroup_accel_bounds::Matrix = Matrix{Tuple{Float64,Float64}}(undef, 3, n_biogroups)
+biogroup_accel_bounds::Matrix = Matrix{Tuple{Float64,Float64}}(undef, n_biogroups, 3)
 
-biogroup_accel_bounds[STEEPNESS_PARAM_IDX, :] .= [(-20.0, -15.0)]
-biogroup_accel_bounds[HEIGHT_PARAM_IDX, :] .= [(0.0, 2.0)]
-biogroup_accel_bounds[MIDPOINT_PARAM_IDX, :] .= [(0.0, 0.3)]
+biogroup_accel_bounds[:, STEEPNESS_PARAM_IDX] .= [(-20.0, -15.0)]
+biogroup_accel_bounds[:, HEIGHT_PARAM_IDX] .= [(0.0, 2.0)]
+biogroup_accel_bounds[:, MIDPOINT_PARAM_IDX] .= [(0.0, 0.3)]
 
 append!(sample_bounds, ADRIA.accel_params_array_to_vec(biogroup_accel_bounds))
 growth_acc_end_idx = length(sample_bounds)
 
-sc_dist_bounds = fill((0.25, 20.0), n_biogroups)
+sc_dist_bounds = fill((0.25, 2.0), n_biogroups)
 
 sc_dist_start_idx = growth_acc_end_idx + 1
 append!(sample_bounds, sc_dist_bounds)
@@ -234,13 +236,13 @@ function insert_init_loc_cover!(
         # Maintain the original cover levels but change the composition
         tmp_cover::Float64 = sum(dom.init_coral_cover[:, dom_idx])
         non_missing_idx::Int64 = findfirst(
-            x -> !ismissing(x), observations.coral_composition[:, 1, idx].data
+            x -> !ismissing(x), observations.coral_composition[:, 1, idx]
         )
         size_class_props = size_class_distribution(
-            lambdas[findfirst(biogroup_ord .== dom.loc_data.ASSIGNED_BIOREGION[dom_idx])],
+            lambdas[findfirst(biogroup_ord .== dom.loc_data.GROUPED_BIOREGION[dom_idx])],
             ADRIA.bin_edges()[1, :]
         )
-        loc_cov = observations.coral_composition.data[
+        loc_cov = observations.coral_composition[
             non_missing_idx, :, idx
         ] .* size_class_props' ./ sum(observations.coral_composition[non_missing_idx, :, idx])
         dom.init_coral_cover[:, dom_idx] .=
@@ -261,7 +263,30 @@ function get_scale_factors(
     scenario_df::DataFrame;
     scale_factor_names::Vector{String}=SCALE_FACTOR_NAMES
 )::Array{Float64,3}
-    return ADRIA.scale_factor_vec_to_array(collect(scenario_df[1, scale_factor_names]), 5, length(BIOGROUPS_ORDERING), 2)
+    return ADRIA.scale_factor_vec_to_array(
+        collect(scenario_df[1, scale_factor_names]), 5, length(BIOGROUPS_ORDERING), 2
+    )
+end
+
+function copy(dom::ReefModDomain)::ReefModDomain
+    return ReefModDomain(
+        dom.name,
+        dom.RCP,
+        dom.env_layer_md,
+        dom.scenario_invoke_time,
+        dom.conn,
+        dom.loc_data,
+        dom.loc_id_col,
+        dom.cluster_id_col,
+        dom.init_coral_cover,
+        dom.coral_growth,
+        dom.loc_ids,
+        dom.dhw_scens,
+        dom.wave_scens,
+        dom.cyclone_mortality_scens,
+        dom.model,
+        dom.sim_constants
+    )
 end
 
 """
@@ -278,7 +303,9 @@ function setup_run(
     growth_accel_names::Vector{String}=GROWTH_ACCEL_NAMES,
     param_idxs=PARAM_IDXS,
 )::Tuple{Domain,DataFrame}
-    new_dom = deepcopy(dom)
+    # The only changes between domain objects is initial coral cover
+    new_dom = copy(dom)
+    new_dom.init_coral_cover = copy(dom.init_coral_cover)
 
     scen = ADRIA.param_table(new_dom)
     coral_param_values = sampled_params[param_idxs[1]:param_idxs[2]]

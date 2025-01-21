@@ -20,14 +20,11 @@ Run ADRIA-CoralBlox with calibrated parameters.
 """
 function progress_run(interm_params)
 
-    new_dom, new_scen, growth_acc_params, scale_factors = setup_run(dom, interm_params)
+    new_dom, new_scen = setup_run(dom, interm_params)
 
     calib_res = ADRIA.run_model(
         new_dom,
         new_scen[1, :],
-        scale_factors,
-        growth_acc_params,
-        TARGET_DOM_IDXS
     )
 
     return calib_res

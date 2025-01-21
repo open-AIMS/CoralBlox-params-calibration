@@ -17,3 +17,5 @@ docs/build/
 calib_config.toml
 
 Outputs/*
+
+src/statprof/

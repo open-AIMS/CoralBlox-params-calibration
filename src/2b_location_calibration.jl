@@ -93,7 +93,7 @@ function obj_func(
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
     survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
 
-    # If either the linear_extension or mortality are not valid return a proportionally
+    # If either the linear_extension or mortality are not validiinn return a proportionally
     # big error value
     lin_ext_validity = validate_linear_extension_coefficients(
         linear_ext, scale_factors[:, 1, :]
@@ -153,11 +153,13 @@ function obj_func(
     first_non_zero = findfirst(x -> x != 0, reef_error_series)
     last_non_zero = findlast(x -> x != 0, reef_error_series)
 
+    n_ltmp_locs::Int64 = length(observations.ltmp_cover_to_domain)
+
     # Mean Absolute Error for peaks and troughs
     peaks = argmax_missing.(eachrow(observations.ltmp_coral_cover))
-    troughs = argmin_missing.(eachrow(observation.ltmp_coral_cover))
-    obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], peaks)]
-    obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], troughs)]
+    troughs = argmin_missing.(eachrow(observations.ltmp_coral_cover))
+    obs_peaks = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, peaks)]
+    obs_troughs = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, troughs)]
     modelled_peaks = loc_cover[CartesianIndex.(peaks, observations.ltmp_cover_to_domain)]
     modelled_troughs = loc_cover[CartesianIndex.(troughs, observations.ltmp_cover_to_domain)]
 
@@ -172,6 +174,7 @@ function obj_func(
         troughs_score
     )
     score += fg_corr * 2.0
+    @info "score: $(score)"
 
     return score
 end
@@ -242,8 +245,8 @@ function save_results_callback(
     best_state = best_candidate(oc)
     serialize(calib_fn, best_state)
 
-    interim_res = progress_run(best_state)
-    plot_calibration(interim_res; save_fn=plot_fn)
+    # interim_res = progress_run(best_state)
+    # plot_calibration(interim_res; save_fn=plot_fn)
     @info "Saved intermediate progress"
 
     return nothing

@@ -248,14 +248,15 @@ function reef_taxa_error(
 )
     fg_corr::Float64 = 0.0
     for (j, idx) in enumerate(observations.composition_to_domain)
-        non_missing_mask = (!).(ismissing.(rm_ltmp_taxa[:, 1, j]))
+        non_missing_mask = (!).(ismissing.(observations.coral_composition[:, 1, j]))
         for id in eachindex(2008:2022)[non_missing_mask]
-            fg_corr +=
-                cor(cover[id, :, idx], rm_ltmp_taxa[id, :, j]) ./ count(non_missing_mask)
+            fg_corr += cor(
+                cover[id, :, idx], observations.coral_composition[id, :, j]
+            ) ./ count(non_missing_mask)
         end
     end
 
-    return 1.0 - (fg_corr ./ length(dom_idxs))
+    return 1.0 - (fg_corr ./ length(observations.composition_to_domain))
 end
 
 """
@@ -276,7 +277,7 @@ function reef_error(
 
     domain_idx::Int64 = -1
     for (row_idx, loc_obs) in enumerate(eachrow(observations.ltmp_coral_cover))
-        domain_idx = ltmp_cover_idx_to_domain(observations, domain_idx)
+        domain_idx = ltmp_cover_idx_to_domain(observations, row_idx)
 
         not_missing .= (!).(ismissing.(loc_obs))
         min_arg = argmin(loc_obs[not_missing])
