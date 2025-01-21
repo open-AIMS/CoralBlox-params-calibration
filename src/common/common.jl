@@ -105,8 +105,8 @@ struct LocationDataStore
     # Data fields
     domain_gpkg::DataFrame
     ltmp_unique_ids::Vector{String}
-    ltmp_coral_cover::DataFrame
-    coral_composition::YAXArray
+    ltmp_coral_cover::Array{Union{Missing, Float64}, 2}
+    coral_composition::Array{Union{Missing, Float64}, 3}
     # Index Fields
     ltmp_cover_to_domain::Vector{Int64}
     composition_to_domain::Vector{Int64}

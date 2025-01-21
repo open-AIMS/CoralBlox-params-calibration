@@ -8,7 +8,7 @@ using Random
 # Geopackage containing both the bioregions and the grouped bioregion indices
 bioregion_groups_gpkg = GDF.read(BIOREGION_GROUPS_PATH)
 
-dom.loc_data[!, :ASSIGNED_BIOREGION] .= bioregion_groups_gpkg.ASSIGNED_BIOREGION
+dom.loc_data[!, :GROUPED_BIOREGION] .= bioregion_groups_gpkg.ASSIGNED_BIOREGION
 # Coral Composition Data
 composition_data = open_dataset(COMPOSITION_PATH)
 
@@ -62,7 +62,7 @@ for non_uniq_id in non_unique_ltmp_locs
 
     # Iterate over each year calculating the mean coral cover
     for col_idx in first_yr_idx:size(ltmp_reef_data, 2)
-        if all(ismissing(non_unique_df[:, col_idx]))
+        if all(ismissing.(non_unique_df[:, col_idx]))
             continue
         end
         ltmp_reef_data[first_entry_idx, col_idx] = mean(
@@ -169,6 +169,8 @@ biogroup_data_splits = split_indices.(biogroup_ltmp_idxs; calibration_proportion
 validation_splits = vcat(first.(biogroup_data_splits)...)
 calibration_splits = vcat(last.(biogroup_data_splits)...)
 
+select!(ltmp_reef_data, Not(:BIOGROUP_IDS))
+
 validation_df = ltmp_reef_data[validation_splits, :]
 calibration_df = ltmp_reef_data[calibration_splits, :]
 
@@ -223,24 +225,24 @@ Seperate the ltmp manta unique ids, from the observation data.
 const CALIBRATION_STORE::LocationDataStore = LocationDataStore(
     dom.loc_data,
     calibration_df.RME_UNIQUE_ID,
-    calibration_df[:, 2:end],
-    composition_data.mean[location=calibration_mask],
+    Matrix(calibration_df[:, 2:end]),
+    composition_data.mean[location=calibration_mask, timestep=At(START_YEAR:END_YEAR)].data[:, :, :], # force load into memory
     cal_ltmp_to_domain,
     cal_composition_to_domain
 )
 const VALIDATION_STORE::LocationDataStore = LocationDataStore(
     dom.loc_data,
     validation_df.RME_UNIQUE_ID,
-    validation_df[:, 2:end],
-    composition_data.mean[location=validation_mask],
+    Matrix(validation_df[:, 2:end]),
+    composition_data.mean[location=validation_mask, timestep=At(START_YEAR:END_YEAR)].data[:, :, :],
     val_ltmp_to_domain,
     val_composition_to_domain
 )
 const COMBINED_STORE::LocationDataStore = LocationDataStore(
     dom.loc_data,
     ltmp_reef_data.RME_UNIQUE_ID,
-    ltmp_reef_data[:, 2:end],
-    composition_data.mean,
+    Matrix(ltmp_reef_data[:, 2:end]),
+    composition_data.mean[timestep=At(START_YEAR:END_YEAR)].data[:, :, :],
     all_ltmp_to_domain,
     all_composition_to_domain
 )
