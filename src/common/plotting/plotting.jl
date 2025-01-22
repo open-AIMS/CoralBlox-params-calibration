@@ -47,11 +47,15 @@ statistics for the location.
 function construct_location_err_title(
     raw_data,
     ltmp_loc_idx;
-    domain_idx=ALL_LTMP_IDXS[ltmp_loc_idx],
-    reef_name=dom.loc_data.GBR_NAME[domain_idx],
-    reef_id=ltmp_reef_data.RME_UNIQUE_ID[ltmp_loc_idx]
+    observations::LocationDataStore=COMBINED_STORE,
 )::Makie.RichText
-    rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(raw_data, ltmp_loc_idx)
+    domain_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
+    reef_name::String = observations.domain_gpkg.GBR_NAME[domain_idx]
+    reef_id::String = get_ltmp_loc_unique_id(observations, ltmp_loc_idx)
+
+    rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(
+        raw_data, ltmp_loc_idx; observations=observations
+    )
     rmse_, benchmark_, cc_, maee_, bias_ = trunc.(
         [rmse_, benchmark_, cc_, maee_, bias_], digits=4
     )
@@ -59,22 +63,18 @@ function construct_location_err_title(
     err_report_str  = "RMSE: $(rmse_) | μ bnch: $(benchmark_) | "
     err_report_str *= "PCC: $(cc_) | MAEE: $(maee_) | BIAS: $(bias_)"
 
-    title_text = rich("$reef_name\n$(reef_id)\n", rich(err_report_str, fontsize=15))
+    title_text = rich("$(reef_name)\n$(reef_id)\n", rich(err_report_str, fontsize=15))
 
     return title_text
 end
 
-"""
-    plot_modelled_v_ltmp(raw_data, ltmp_loc_idx, domain_loc_idx)
-
-Plot the modelled coral cover results against observed LTMP manta tow data. Return the
-scatter and line object for use in legends
-"""
 function plot_modelled_v_ltmp(
     raw_data,
-    ltmp_loc_idx,
-    domain_loc_idx
+    ltmp_loc_idx;
+    observations::LocationDataStore=COMBINED_STORE,
+    dom=dom
 )
+    domain_loc_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
     loc_k_area = ADRIA.site_k_area(dom)[domain_loc_idx]
     loc_area   = ADRIA.loc_area(dom)[domain_loc_idx]
 
@@ -82,13 +82,12 @@ function plot_modelled_v_ltmp(
         sum(raw_data[:, :, domain_loc_idx], dims=2),
     dims=2) .* loc_k_area ./ loc_area
 
-    obs_loc_data = ALL_LTMP_REEF[ltmp_loc_idx, :]
+    obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
     obs_tf = (START_YEAR:END_YEAR)[not_missing_obs]
 
     obs = scatter!(obs_tf, obs_loc_data[not_missing_obs], color=(:red, 0.5), markersize=20)
     sim = lines!(2008:2022, loc_cover, color=:red)
-
     return obs, sim
 end
 
@@ -100,24 +99,20 @@ function location_comparison(
     raw_data,
     ltmp_loc_idx,
     save_dir;
-    obs_idxs=ALL_LTMP_IDXS,
-    obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID
+    observations::LocationDataStore=COMBINED_STORE
 )::Figure
-    domain_loc_idx = obs_idxs[ltmp_loc_idx]
-
-    # Some LTMP locations do not have a corresponding domain location
-    if domain_loc_idx == -1
-        return Figure()
-    end
-
     # Extra information specific to the given location
-    reef_id = obs_loc_labels[ltmp_loc_idx]
+    reef_id = observations.ltmp_unique_ids[ltmp_loc_idx]
 
-    title_text = construct_location_err_title(raw_data, ltmp_loc_idx)
+    title_text = construct_location_err_title(
+        raw_data,
+        ltmp_loc_idx;
+        observations=observations
+    )
 
     f = Figure(; size=(1000, 600))
     Axis(f[1, 1], xlabel="Year", ylabel="relative total area", title=title_text)
-    obs, sim = plot_modelled_v_ltmp(raw_data, ltmp_loc_idx, domain_loc_idx)
+    obs, sim = plot_modelled_v_ltmp(raw_data, ltmp_loc_idx; observations=observations)
     Legend(
         f[1, 2],
         [obs, sim],
