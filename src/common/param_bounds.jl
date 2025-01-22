@@ -164,7 +164,8 @@ loc_coef_start_idx = coral_end_idx + 1
 biogroup_scale_factors::Array = Array{Tuple{Float64,Float64}}(
     undef, n_groups, n_factors, n_biogroups
 )
-biogroup_scale_factors .= Ref((0.7, 1.5))
+biogroup_scale_factors[:, 1, :] .= Ref((0.7, 1.5))
+biogroup_scale_factors[:, 2, :] .= Ref((-1.0, 1.0))
 append!(sample_bounds, ADRIA.scale_factor_array_to_vec(biogroup_scale_factors))
 loc_coef_end_idx = length(sample_bounds)
 
