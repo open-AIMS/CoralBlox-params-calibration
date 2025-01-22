@@ -264,19 +264,30 @@ function save_results_callback(
 
     # Otherwise, save intermediate progress!
     global LAST_SAVE = datetime2unix(now(UTC))
-    plot_fn = joinpath(OUT_DIR, "calib_progress_$(start_time)_$(elapsed).png")
+    region_plot_fn = joinpath(OUT_DIR, "region_plots", "calib_progress_region_$(start_time)_$(elapsed).png")
+    taxa_cover_plot_fn = joinpath(OUT_DIR, "taxa_cover", "calib_progress_taxa_cover_$(start_time)_$(elapsed).png")
+    taxa_pop_plot_fn = joinpath(OUT_DIR, "taxa_pop", "calib_progress_pop_cover_$(start_time)_$(elapsed).png")
     calib_fn = joinpath(OUT_DIR, result_fn)
     best_state = best_candidate(oc)
     serialize(calib_fn, best_state)
 
-    # interim_res = progress_run(best_state)
-    # plot_calibration(interim_res; save_fn=plot_fn)
+    interim_res = progress_run(best_state)
+    f = plot_all_regions(dom, interim_res)
+    save(region_plot_fn, f)
+    f = taxa_cover_proportions(interim_res.raw)
+    save(taxa_cover_plot_fn, f)
+    f = taxa_population_proportions(interim_res.raw)
+    save(taxa_pop_plot_fn, f)
     @info "Saved intermediate progress"
 
     return nothing
 end
 
 available_threads = Threads.nthreads()
+
+mkpath(joinpath(OUT_DIR, "region_plots"))
+mkpath(joinpath(OUT_DIR, "taxa_cover"))
+mkpath(joinpath(OUT_DIR, "taxa_pop"))
 
 threads_display = available_threads == 1 ? available_threads : available_threads - 1
 @info "Using $(threads_display) threads."
