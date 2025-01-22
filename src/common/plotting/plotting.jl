@@ -290,10 +290,31 @@ function plot_ltmp(ltmp_n, ltmp_c, ltmp_s)::Nothing
 end
 
 """
+    plot_all_regions(dom, model_results; region_masks=[NORTH_MASK, CENTRAL_MASK, SOUTH_MASK], ref_years=START_YEAR:END_YEAR)::Figure
     plot_all_regions(north_results, north_obs, central_results, central_obs, south_results, south_obs)::Figure
 
 Plot the modelled results against observations/modelled observation results.
 """
+function plot_all_regions(
+    dom,
+    model_results;
+    region_masks=[NORTH_MASK, CENTRAL_MASK, SOUTH_MASK],
+    ref_years=START_YEAR:END_YEAR
+)::Figure
+    s_rac = (dropdims(sum(model_results.raw, dims=2), dims=2) .* site_k_area(dom)') ./ loc_area(dom)'
+
+    ref_years = START_YEAR:END_YEAR
+
+    north_res = ADRIA.DataCube(s_rac[:, NORTH_MASK, :]; timesteps=ref_years, sites=1:count(NORTH_MASK), scenarios=1:1)
+    central_res = ADRIA.DataCube(s_rac[:, CENTRAL_MASK, :]; timesteps=ref_years, sites=1:count(CENTRAL_MASK), scenarios=1:1)
+    south_res = ADRIA.DataCube(s_rac[:, SOUTH_MASK, :]; timesteps=ref_years, sites=1:count(SOUTH_MASK), scenarios=1:1)
+
+    f = plot_all_regions(
+        north_res, ltmp_north, central_res, ltmp_central, south_res, ltmp_south
+    )
+
+    return f
+end
 function plot_all_regions(
     north_results, north_obs, central_results, central_obs, south_results, south_obs
 )::Figure
