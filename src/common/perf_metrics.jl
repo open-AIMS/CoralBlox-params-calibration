@@ -198,7 +198,7 @@ function collect_error_stats(
 
     domain_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
     sim_data = loc_cover[:, domain_idx]
-    reef_id = get_ltmp_loc_unique_id(ltmp_loc_idx)
+    reef_id = get_ltmp_loc_unique_id(observations, ltmp_loc_idx)
 
     rmse_::Float64 = rmse(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     cc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
