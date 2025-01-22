@@ -51,28 +51,6 @@ function validate_linear_extension_coefficients(
     return dist_from_valid
 end
 
-"""
-    validate_mortality_coefficients(mortality_vals::Matrix{Float64}, mortality_coefs::Vector{Float64})::Bool
-
-Ensure that the sampled mortality values and location coefficients guarentee values between
-0 and 1.
-"""
-function validate_mortality_coefficients(
-    mortality_vals::Matrix{Float64}, mortality_coefs::Matrix{Float64}
-)::Float64
-    n_locs::Int64 = size(mortality_coefs, 2)
-    survival_vals::Matrix{Float64} = 1 .- mortality_vals
-
-    dist_from_valid::Float64 = 0.0
-    for j in 1:n_locs
-        tmp = survival_vals .* mortality_coefs[:, j] .- 1
-        tmp[tmp.<0] .= 0.0
-        dist_from_valid += sum(tmp)
-    end
-
-    return dist_from_valid
-end
-
 function _to_group_size(flat_vec::Vector{Float64})::Matrix{Float64}
     return permutedims(reshape(flat_vec, (7, 5)), (2, 1))
 end
@@ -120,12 +98,9 @@ function obj_func(
     lin_ext_validity = validate_linear_extension_coefficients(
         linear_ext, scale_factors[:, 1, :]
     )
-    mortality_validity = validate_mortality_coefficients(
-        survival_r, scale_factors[:, 2, :]
-    )
-    if mortality_validity + lin_ext_validity + gbr_wide_scalar_validity != 0.0
+    if lin_ext_validity + gbr_wide_scalar_validity != 0.0
         return 1e6 + (
-            2e6 * (mortality_validity + lin_ext_validity + gbr_wide_scalar_validity)
+            2e6 * (lin_ext_validity + gbr_wide_scalar_validity)
         )
     end
 
