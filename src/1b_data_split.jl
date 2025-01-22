@@ -164,6 +164,7 @@ biogroup_ltmp_idxs = [
     ) for biogrp_id in unique_biogroup_ids
 ]
 
+Random.seed!(1)
 biogroup_data_splits = split_indices.(biogroup_ltmp_idxs; calibration_proportion=0.75)
 
 validation_splits = vcat(first.(biogroup_data_splits)...)
@@ -189,6 +190,27 @@ all_ltmp_to_domain::Vector{Int64} = [
         dom.loc_data.UNIQUE_ID .== uniq_id
     ) for uniq_id in ltmp_reef_data.RME_UNIQUE_ID
 ]
+
+calibration_unique_ids::Vector{String} = dom.loc_data.UNIQUE_ID[cal_ltmp_to_domain]
+validation_unique_ids::Vector{String} = dom.loc_data.UNIQUE_ID[val_ltmp_to_domain]
+used_unique_ids::Vector{String} = vcat(calibration_unique_ids, validation_unique_ids)
+
+calibration_biogroups::Vector{Int64} = dom.loc_data.GROUPED_BIOREGION[cal_ltmp_to_domain]
+validation_biogroups::Vector{Int64} = dom.loc_data.GROUPED_BIOREGION[val_ltmp_to_domain]
+used_biogroups::Vector{Int64} = vcat(calibration_biogroups, validation_biogroups)
+
+cal_or_val::Vector{String} = vcat(
+    fill("calibration", length(cal_ltmp_to_domain)),
+    fill("validation", length(val_ltmp_to_domain))
+)
+
+calib_valid_split::DataFrame = DataFrame(
+    :UNIQUE_IDS => used_unique_ids,
+    :BIOGROUP => used_biogroups,
+    :USAGE => cal_or_val
+)
+CSV.write(joinpath(OUT_DIR, "calibration_split.csv"), calib_valid_split)
+@info "Saving calibration/validation split to $(joinpath(OUT_DIR, "calibration_split.csv"))"
 
 # Prevent composition data from validation data 'leaking' into calibration dataset
 calibration_comp_ids::Vector{String} = [
