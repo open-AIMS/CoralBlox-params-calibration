@@ -9,6 +9,25 @@ using BlackBoxOptim: init_rng!
 include("./1_setup.jl")
 include("./common/param_bounds.jl")
 
+"""
+    validate_gbr_wide_scalar_mean(linear_ext_scalar::Matrix{Float64}, survival_scalar::Matrix{Float64})::Float64
+
+The average parameter scalar should between [0.95, 1.05] for linear extension and
+[-0.05, 0.05] for background mortality.
+"""
+function validate_gbr_wide_scalar_mean(
+    linear_ext_scalar::Matrix{Float64},
+    survival_scalar::Matrix{Float64}
+)::Float64
+    mean_lin_ext_scalar::Vector{Float64} = dropdims(mean(linear_ext_scalar, dims=2), dims=2)
+    mean_survival_scalar::Vector{Float64} = dropdims(mean(survival_scalar, dims=2), dims=2)
+
+    lin_ext_within_bounds::BitVector = (!).(0.95 .<= mean_lin_ext_scalar .<= 1.05)
+    survival_within_bounds::BitVector = (!).(-0.05 .<= mean_survival_scalar .<= 0.05)
+    return sum(abs.(mean_lin_ext_scalar .- 1.0)[lin_ext_within_bounds]) +
+           sum(abs.(mean_survival_scalar)[survival_within_bounds])
+end
+
 
 """
     validate_linear_extension_coefficients(linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Vector{Float64})::Bool
@@ -95,14 +114,19 @@ function obj_func(
 
     # If either the linear_extension or mortality are not validiinn return a proportionally
     # big error value
+    gbr_wide_scalar_validity = validate_gbr_wide_scalar_mean(
+        scale_factors[:, 1, :], scale_factors[:, 2, :]
+    )
     lin_ext_validity = validate_linear_extension_coefficients(
         linear_ext, scale_factors[:, 1, :]
     )
     mortality_validity = validate_mortality_coefficients(
         survival_r, scale_factors[:, 2, :]
     )
-    if mortality_validity + lin_ext_validity != 0.0
-        return 1e6 + (2e6 * (mortality_validity + lin_ext_validity))
+    if mortality_validity + lin_ext_validity + gbr_wide_scalar_validity != 0.0
+        return 1e6 + (
+            2e6 * (mortality_validity + lin_ext_validity + gbr_wide_scalar_validity)
+        )
     end
 
     res = nothing
