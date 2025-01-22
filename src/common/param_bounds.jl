@@ -11,7 +11,7 @@ import Base: copy
 """
 function target_param_names()
     return [
-        "linear_extension", "mb_rate", "fecundity", "dist_mean"
+        "linear_extension", "mb_rate", "dist_mean"
     ]
 end
 
@@ -117,17 +117,17 @@ mb_rate_ub = flatten_group_size(mb_rate_ub)
 coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
 
 # Extract just the target coral parameters
-lin_ext_idx, mbrate_idx, fecundity_idx, dhw_tol_mean_idx =
+lin_ext_idx, mbrate_idx, dhw_tol_mean_idx =
     extract_param_group_idx.([coral_params], target_param_names())
 
 coral_param_idx = vcat(
-    lin_ext_idx, mbrate_idx, fecundity_idx, dhw_tol_mean_idx
+    lin_ext_idx, mbrate_idx, dhw_tol_mean_idx
 )
 coral_params = coral_params[sort(coral_param_idx), :]
 coral_param_names = coral_params.fieldname
 
 # Get updated parameter positions
-lin_ext_idx, mbrate_idx, fecundity_idx, dhw_tol_mean_idx =
+lin_ext_idx, mbrate_idx, dhw_tol_mean_idx =
     extract_param_group_idx.([coral_params], target_param_names())
 
 lin_ext_idx = sc_fg_param_idxs("linear_extension", coral_params)
@@ -138,8 +138,7 @@ sample_bounds = collect(zip(
     coral_params.upper_bound
 ))
 
-# Adjust bounds for fecundity and initial mean DHW tolerance
-adjust_bounds!(sample_bounds, fecundity_idx, 0.5, 3.0)
+# Adjust bounds for initial mean DHW tolerance
 adjust_bounds!(sample_bounds, dhw_tol_mean_idx, 0.8, 3.0)
 
 # Set bounds for linear extension and mb rate from ecorrap data
