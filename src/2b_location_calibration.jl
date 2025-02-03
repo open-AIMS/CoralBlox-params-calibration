@@ -173,7 +173,6 @@ function obj_func(
         troughs_score
     )
     score += fg_corr * 2.0
-    @info "score: $(score)"
 
     return score
 end
