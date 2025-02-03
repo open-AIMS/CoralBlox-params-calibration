@@ -27,36 +27,36 @@ end
 global CONFIG = TOML.parsefile("calib_config.toml")
 
 # Configuration sections
-global DOMAIN_CONFIG         = CONFIG["Domains"]
-global GEOSPATIAL_CONFIG     = CONFIG["Geospatial"]
-global TARGET_CONFIG         = CONFIG["Observations"]
+global DOMAIN_CONFIG = CONFIG["Domains"]
+global GEOSPATIAL_CONFIG = CONFIG["Geospatial"]
+global TARGET_CONFIG = CONFIG["Observations"]
 global INITIALISATION_CONFIG = CONFIG["Initialisation"]
-global OUTPUT_CONFIG         = CONFIG["Outputs"]
+global OUTPUT_CONFIG = CONFIG["Outputs"]
 
 # ADRIA Domain paths
 global REEFMOD_DOMAIN_PATH = DOMAIN_CONFIG["reefmod_domain"]
-global RME_DOMAIN_PATH     = DOMAIN_CONFIG["rme_domain"]
-global HISTORIC_DHW_PATH   = joinpath(RME_DOMAIN_PATH, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
+global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
+global HISTORIC_DHW_PATH = joinpath(RME_DOMAIN_PATH, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
 
 # Geospatial filepaths
-global CANONICAL_PATH        = GEOSPATIAL_CONFIG["canonical_path"]
-global LTMP_SHP_PATH         = GEOSPATIAL_CONFIG["ltmp_shp"]
-global LOC_CLASS_PATH        = GEOSPATIAL_CONFIG["classification_path"] # location classes
+global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"]
+global LTMP_SHP_PATH = GEOSPATIAL_CONFIG["ltmp_shp"]
+global LOC_CLASS_PATH = GEOSPATIAL_CONFIG["classification_path"] # location classes
 global BIOREGION_GROUPS_PATH = GEOSPATIAL_CONFIG["bioregion_group_gpkg"]
 
 # Calibration Target / Observational Data
-global LOC_CLASS_TARGET_PATH  = TARGET_CONFIG["manta_tow_path"]  # target data for location classes
-global LTMP_REEF_DATA_PATH    = TARGET_CONFIG["ltmp_reef_data"]  # target data for ltmp locs
-global COMPOSITION_PATH       = TARGET_CONFIG["composition_netcdf"]
+global LOC_CLASS_TARGET_PATH = TARGET_CONFIG["manta_tow_path"]  # target data for location classes
+global LTMP_REEF_DATA_PATH = TARGET_CONFIG["ltmp_reef_data"]  # target data for ltmp locs
+global COMPOSITION_PATH = TARGET_CONFIG["composition_netcdf"]
 global LTMP_MODELLED_OBS_PATH = TARGET_CONFIG["ltmp_modelled_obs"]
 
 # Initialisation filepaths
-global INIT_COVER_PATH    = INITIALISATION_CONFIG["init_cover_filepath"]
-global INIT_GUESS_PATH    = INITIALISATION_CONFIG["init_guess_filepath"]  # optional
+global INIT_COVER_PATH = INITIALISATION_CONFIG["init_cover_filepath"]
+global INIT_GUESS_PATH = INITIALISATION_CONFIG["init_guess_filepath"]  # optional
 global ECORRAP_PARAM_PATH = INITIALISATION_CONFIG["ecorrap_param_filepath"]
 
 # Output filepaths
-global OUT_DIR   = OUTPUT_CONFIG["out_dir"]
+global OUT_DIR = OUTPUT_CONFIG["out_dir"]
 global RESULT_FN = OUTPUT_CONFIG["result_filename"]
 
 const START_YEAR = 2008
@@ -105,8 +105,8 @@ struct LocationDataStore
     # Data fields
     domain_gpkg::DataFrame
     ltmp_unique_ids::Vector{String}
-    ltmp_coral_cover::Array{Union{Missing, Float64}, 2}
-    coral_composition::Array{Union{Missing, Float64}, 3}
+    ltmp_coral_cover::Array{Union{Missing,Float64},2} # [location x timesteps]
+    coral_composition::Array{Union{Missing,Float64},3} # [location x taxa x year]
     # Index Fields
     ltmp_cover_to_domain::Vector{Int64}
     composition_to_domain::Vector{Int64}
