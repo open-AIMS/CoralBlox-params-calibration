@@ -17,17 +17,19 @@ composition_data = open_dataset(COMPOSITION_PATH)
 ltmp_reef_data = GDF.read(LTMP_REEF_DATA_PATH)
 
 # Order year columns in ascending order
-ltmp_reef_years = parse.(Int64, names(ltmp_reef_data)[5:end])
-ltmp_reef_perm = sortperm(ltmp_reef_years) .+ 4
-
 ltmp_reef_data_names = names(ltmp_reef_data)
-ltmp_reef_data_names[5:end] .= ltmp_reef_data_names[ltmp_reef_perm]
+start_year_column = 6
+year_columns = (start_year_column:lastindex(ltmp_reef_data_names))
+ltmp_reef_years = parse.(Int64, ltmp_reef_data_names[year_columns])
+ltmp_reef_perm = sortperm(ltmp_reef_years) .+ (start_year_column - 1)
+
+ltmp_reef_data_names[year_columns] .= ltmp_reef_data_names[ltmp_reef_perm]
 
 # Re-order columns
 ltmp_reef_data = select!(ltmp_reef_data, ltmp_reef_data_names...)
 
 # Rescale to be proportions
-ltmp_reef_data[:, 5:end] ./= 100
+ltmp_reef_data[:, year_columns] ./= 100
 
 # Remove manta tow observations that did not overlap with a reef polygon or was not
 # sufficiently close to a reef polygon
