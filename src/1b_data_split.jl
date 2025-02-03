@@ -164,6 +164,7 @@ biogroup_ltmp_idxs = [
     ) for biogrp_id in unique_biogroup_ids
 ]
 
+# TODO: check if split exists in csv, and split according to csv.
 Random.seed!(1)
 biogroup_data_splits = split_indices.(biogroup_ltmp_idxs; calibration_proportion=0.75)
 
@@ -263,7 +264,7 @@ const VALIDATION_STORE::LocationDataStore = LocationDataStore(
 const COMBINED_STORE::LocationDataStore = LocationDataStore(
     dom.loc_data,
     ltmp_reef_data.RME_UNIQUE_ID,
-    Matrix(ltmp_reef_data[:, 2:end]),
+    Matrix(ltmp_reef_data[:, 2:end]), # [location x timestep]
     composition_data.mean[timestep=At(START_YEAR:END_YEAR)].data[:, :, :],
     all_ltmp_to_domain,
     all_composition_to_domain

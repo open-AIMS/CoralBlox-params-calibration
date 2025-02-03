@@ -115,6 +115,7 @@ be **overwritten**.
 
 ```julia-repl
 julia> include("1_setup.jl")
+julia> include("1b_data_split.jl")
 julia> include("3_regional_analysis.jl")
 julia> include("4_location_analysis.jl")
 ```
