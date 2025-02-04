@@ -44,16 +44,16 @@ function plot_calibration(calib_res; save_fn="calib_progress.png")
     for (i, loc) in enumerate(TARGET_DOM_IDXS)
         reef_id = dom.loc_data[loc, :UNIQUE_ID]
 
-        ltmp_loc_pos = findfirst(x->!ismissing(x) && x==reef_id, ltmp_reef_data.RME_UNIQUE_ID)
+        ltmp_loc_pos = findfirst(x -> !ismissing(x) && x == reef_id, ltmp_reef_data.RME_UNIQUE_ID)
 
-        title_text = construct_location_err_title(calib_res.raw, ltmp_loc_pos)
+        title_text = _location_err_title(calib_res.raw, ltmp_loc_pos)
         Axis(
             f[row[], col[]],
             title=title_text,
             xticks=(1:15, string.(START_YEAR:END_YEAR)),
             xticklabelrotation=45
         )
-        plot_modelled_v_ltmp(calib_res.raw, ltmp_loc_pos, loc)
+        plot_modelled_v_ltmp!(calib_res.raw, ltmp_loc_pos, loc)
 
         if col[] < max_col
             col[] += 1
