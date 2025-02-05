@@ -708,7 +708,8 @@ f = plot_taxa_props(<Location Name or ID>, rs.raw[:, :, location_idx])
 """
 function plot_taxa_props(
     loc::String,
-    cover
+    cover;
+    opts::Dict=Dict()
 )::Figure
     f = Figure(; size=(1300, 900))
     ax_opts = Dict(
@@ -717,30 +718,39 @@ function plot_taxa_props(
         :title => "$(loc): Functional Group Cover Proportions",
         :limits => (nothing, nothing, 0, 1)
     )
-    plot_taxa_props!(f, 1, cover; ax_opts=ax_opts)
+    plot_taxa_props!(f, 1, cover; ax_opts=ax_opts, opts=opts)
     return f
 end
 function plot_taxa_props!(
     fig::Figure,
     ax_row::Int64,
     cover;
-    ax_opts::Dict=Dict()
+    ax_opts::Dict=Dict(),
+    opts::Dict=Dict()
 )::Nothing
     ax_opts = Dict(ax_opts..., :xlabel => "Year", :ylabel => "Prop. Coral Composition",)
     ax_taxa = Axis(fig[ax_row, 1]; ax_opts...)
-    taxa_plot = plot_taxa_props!(ax_taxa, cover)
+    taxa_plot = plot_taxa_props!(ax_taxa, cover; opts=opts)
     Legend(fig[ax_row, 2], taxa_plot)
     nothing
 end
 function plot_taxa_props!(
     ax::Axis,
-    cover
+    cover;
+    opts::Dict=Dict()
 )::Axis
+    color = get(opts, :color, :seaborn_colorblind6)
     cover = reshape(cover, (15, 7, 5))
     cover = dropdims(sum(cover, dims=2), dims=2) ./ dropdims(sum(cover, dims=(2, 3)), dims=2)
     cover = permutedims(cover, (2, 1))
     xs = 2008:2022
-    series!(xs, cover, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
+    series!(
+        xs,
+        cover,
+        color=color,
+        labels=String.(ADRIA.functional_group_names()),
+        linewidth=3,
+    )
     return ax
 end
 
