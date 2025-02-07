@@ -104,6 +104,7 @@ function rmse_scores(
         benchmark_scores[loc_id] = _benchmark_scores(historic_target_cover)
         n_observations[loc_id] = length(historic_target_cover)
     end
+
     return (
         model_scores=model_scores,
         benchmark_scores=benchmark_scores,
