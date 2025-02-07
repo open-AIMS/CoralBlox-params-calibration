@@ -12,7 +12,7 @@ valid_historic_data_type() = (:manta_tow, :transect)
     rmse_scores(historic_cover::YAXArray{Union{Missing, T1}, 2},model_cover::YAXArray{T2, 3})::NamedTuple where {T1<:AbstractFloat, T2<:AbstractFloat}
 
 RMSE (Root Mean Square Error) for both ReefMod and LTMP average historic data benchmark.
-The error is computed against LTMP historic data (either `:manta_tow` or `"transect`). LTMP
+The error is computed against LTMP historic data (either `:manta_tow` or `:transect`). LTMP
 data for locations for which the field RME_UNIQUE_ID was missing and for locations with
 duplicated data are discarded. Data for locations for which there is less than 4 years of
 data collected are also discarded. For each location this selects the first year for which
