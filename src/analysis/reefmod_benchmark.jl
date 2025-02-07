@@ -36,10 +36,11 @@ $(valid_historic_data_type())
 `(timestep ⋅ location ⋅ scenario)`.
 
 # Returns
-NamedTuple with three elements: rme_scores (vector of RMSE scores for ReefMod model results
-and historic data for each location), benchmark_scores (vector of RMSE scores for
-benchmark, historic average, and historic data), n_observations (vector with number of
-observations for each location)
+NamedTuple with three elements:
+    - rme_scores (vector of RMSE scores for ReefMod model results and historic data for
+each location);
+    - benchmark_scores (vector of RMSE scores for benchmark, historic average;
+    - historic data), n_observations (vector with number of observations for each location);
 
 # Example
 ```
