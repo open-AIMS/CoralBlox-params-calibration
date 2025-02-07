@@ -266,7 +266,7 @@ function _transect_cube(
 end
 
 """
-    For each row in `transect_df`, find the correspondent `canonical_gpkg`'s "RME_UNIQUE_ID"
+    For each row in `transect_df`, find the corresponding `canonical_gpkg`'s "RME_UNIQUE_ID"
 that matches that row's reef.
 """
 function _transect_unique_ids(
