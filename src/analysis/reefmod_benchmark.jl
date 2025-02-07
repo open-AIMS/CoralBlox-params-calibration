@@ -13,14 +13,16 @@ valid_historic_data_type() = (:manta_tow, :transect)
 
 RMSE (Root Mean Square Error) for both ReefMod and LTMP average historic data benchmark.
 The error is computed against LTMP historic data (either `:manta_tow` or `"transect`). LTMP
-data for locations for which the field RME_UNIQUE_ID was missing and for locations with
+data for locations for which the field `RME_UNIQUE_ID` was missing and for locations with
 duplicated data are discarded. Data for locations for which there is less than 4 years of
-data collected are also discarded. For each location this selects the first year for which
-there is LTMP data within the analyzed timeframe and looks for the ReefMod scenario with the
-closest value for that year; selects only the ReefMod years for which there is LTMP data;
-computes the RMSE score for ReefMod data points and LTMP data; and computes the RMSE score
-for LTMP the benchmark (average of LTMP data for those years and that location) and LTMP
-data.
+data collected are also discarded.
+
+# Extended help
+For each location this selects the first year for which there is LTMP data within the
+analyzed timeframe and looks for the ReefMod scenario with the closest value for that year;
+selects only the ReefMod years for which there is LTMP data; computes the RMSE score for
+ReefMod data points and LTMP data; and computes the RMSE score for LTMP the benchmark
+(average of LTMP data for those years and that location) and LTMP data.
 
 # Arguments
 - `historic_data_path` : Path to historic dataset used for the analysis. When
