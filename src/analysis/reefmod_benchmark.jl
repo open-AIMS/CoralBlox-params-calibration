@@ -5,7 +5,7 @@ using ADRIA: GDF, DataCube, ZeroDataCube
 
 include("../common/perf_metrics.jl")
 
-valid_historic_data_type() = (:manta_tow, :transect)
+_historic_data_load_functions() = (manta_tow = _manta_tow_cube, transect=_transect_cube)
 
 """
     rmse_scores(historic_data_path::String, reefmod_path::String, canonical_path::String, historic_data_type::Symbol)::NamedTuple
@@ -32,7 +32,7 @@ should be the path to the transect LTMP dataset (`LTMP_TRANSECT_MEANS.parquet`).
 - `reefmod_path` : Path to ReefMod model cover results from 2008 to 2022.
 - `canonical_path` : Path to canonical GBR geopackage (`canonical_gbr_2024-04-23.gpkg`).
 - `historic_data_type` : Type of historic data used for the analysis. Valid options are
-$(valid_historic_data_type())
+$(keys(_historic_data_load_functions()))
 - `historic_data` : YAXArray with historic data with dimensions `(timesteps ⋅ locations)`.
 - `model_cover` : YAXArray with ReefMod model cover with dimensions
 `(timestep ⋅ location ⋅ scenario)`.
@@ -68,17 +68,16 @@ function rmse_scores(
     canonical_path::String,
     historic_data_type::Symbol
 )::NamedTuple
-    if historic_data_type ∉ valid_historic_data_type()
-        ArgumentError("`historic_data_type` is $historic_data_type. "*
-        "Valid options are $(valid_historic_data_type())")
+    if historic_data_type ∉ keys(_historic_data_load_functions())
+        throw(ArgumentError("`historic_data_type` is $historic_data_type. "*
+        "Valid options are $(keys(_historic_data_load_functions()))"))
     end
 
     canonical_gpkg = GDF.read(canonical_path)
-    historic_function::Function = eval(Meta.parse("_$(historic_data_type)_cube"))
-    historic_cover::YAXArray = historic_function(historic_data_path, canonical_gpkg)
-
-    # The cover used here comes from ReefMod model, but that can change in the future
+    load_historic_cube::Function = _historic_data_load_functions()[historic_data_type]
+    historic_cover::YAXArray = load_historic_cube(historic_data_path, canonical_gpkg)
     model_cover::YAXArray = _reefmod_cover(reefmod_path, historic_cover, canonical_gpkg)
+
     return rmse_scores(historic_cover, model_cover)
 end
 function rmse_scores(
