@@ -24,6 +24,24 @@ selects only the ReefMod years for which there is LTMP data; computes the RMSE s
 ReefMod data points and LTMP data; and computes the RMSE score for LTMP the benchmark
 (average of LTMP data for those years and that location) and LTMP data.
 
+# Examples
+```
+reefmod_path = "datasets/rme_data/rme_cover_20_reps_2008_2022.nc"
+canonical_path = "datasets/spatial_data/canonical_gbr_2024-04-23.gpkg"
+
+transect_data_path = "datasets/ltmp_data/LTMP_TRANSECT_MEANS.parquet"
+transect_data_type = :transect
+model_scores_transect, benchmark_scores_transect, n_observations_transect = rmse_scores(
+    transect_data_path, reefmod_path, canonical_path, transect_data_type
+)
+
+manta_tow_data_path = "datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"
+manta_tow_data_type = :manta_tow
+model_scores_manta_tow, benchmark_scores_manta_tow, n_observations_manta_tow = rmse_scores(
+    manta_tow_data_path, reefmod_path, canonical_path, manta_tow_data_type
+)
+```
+
 # Arguments
 - `historic_data_path` : Path to historic dataset used for the analysis. When
 `historic_data_type` is `:manta_tow`, this should be the path to the manta tow LTMP
@@ -43,24 +61,6 @@ NamedTuple with three elements:
 each location);
     - benchmark_scores (vector of RMSE scores for benchmark, historic average;
     - historic data), n_observations (vector with number of observations for each location);
-
-# Example
-```
-reefmod_path = "datasets/rme_data/rme_cover_20_reps_2008_2022.nc"
-canonical_path = "datasets/spatial_data/canonical_gbr_2024-04-23.gpkg"
-
-transect_data_path = "datasets/ltmp_data/LTMP_TRANSECT_MEANS.parquet"
-transect_data_type = :transect
-model_scores_transect, benchmark_scores_transect, n_observations_transect = rmse_scores(
-    transect_data_path, reefmod_path, canonical_path, transect_data_type
-)
-
-manta_tow_data_path = "datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"
-manta_tow_data_type = :manta_tow
-model_scores_manta_tow, benchmark_scores_manta_tow, n_observations_manta_tow = rmse_scores(
-    manta_tow_data_path, reefmod_path, canonical_path, manta_tow_data_type
-)
-```
 """
 function rmse_scores(
     historic_data_path::String,
@@ -149,6 +149,8 @@ function _model_scores(
 end
 
 """
+    _model_closest_scenario(model_target_cover::YAXArray{T1, 2}, historic_target_cover::YAXArray{Union{Missing, T2}, 1})::YAXArray{T1, 1} where {T1<:AbstractFloat, T2<:AbstractFloat}
+
 Find scenario in model_target_cover whose cover at the first year is closest to the
 historic_target_cover first year cover.
 """
@@ -268,7 +270,9 @@ function _transect_cube(
 end
 
 """
-    For each row in `transect_df`, find the correspondent `canonical_gpkg`'s "RME_UNIQUE_ID"
+    _transect_unique_ids(transect_df::DataFrame, canonical_gpkg::DataFrame)::Vector{String}
+
+For each row in `transect_df`, find the correspondent `canonical_gpkg`'s "RME_UNIQUE_ID"
 that matches that row's reef.
 """
 function _transect_unique_ids(
