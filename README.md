@@ -65,6 +65,7 @@ Paths to geopackages, shapefiles and geospatial location data.
 - `canonical_path` : Path to canonical geopackage
 - `ltmp_shp` : Path to LTMP regional shape files
 - `classification_path` : CSV file contains location classes in the same order as the ADRIA domain.
+- `bioregion_group_gpkg` : <!-- TODO -->
 
 ### Observations
 

@@ -32,8 +32,8 @@ end
 """
     validate_linear_extension_coefficients(linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Vector{Float64})::Bool
 
-Check that the sampled linear extension values and location coefficients guarentee values that
-do not exceed the size class bin widths.
+Check that the sampled linear extension values and location coefficients guarantee values
+that do not exceed the size class bin widths.
 """
 function validate_linear_extension_coefficients(
     linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Matrix{Float64}
@@ -90,7 +90,7 @@ function obj_func(
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
     survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
 
-    # If either the linear_extension or mortality are not validiinn return a proportionally
+    # If either the linear_extension or mortality are not valid return a proportionally
     # big error value
     gbr_wide_scalar_validity = validate_gbr_wide_scalar_mean(
         scale_factors[:, 1, :], scale_factors[:, 2, :]

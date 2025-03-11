@@ -9,20 +9,19 @@ using Random
 bioregion_groups_gpkg = GDF.read(BIOREGION_GROUPS_PATH)
 
 dom.loc_data[!, :GROUPED_BIOREGION] .= bioregion_groups_gpkg.ASSIGNED_BIOREGION
+
 # Coral Composition Data
 composition_data = open_dataset(COMPOSITION_PATH)
-
 
 # Load manta tow ltmp reef level data
 ltmp_reef_data = GDF.read(LTMP_REEF_DATA_PATH)
 
 # Order year columns in ascending order
 ltmp_reef_data_names = names(ltmp_reef_data)
-start_year_column = 6
+start_year_column = findfirst(ltmp_reef_data_names .== "1993") # 6
 year_columns = (start_year_column:lastindex(ltmp_reef_data_names))
 ltmp_reef_years = parse.(Int64, ltmp_reef_data_names[year_columns])
 ltmp_reef_perm = sortperm(ltmp_reef_years) .+ (start_year_column - 1)
-
 ltmp_reef_data_names[year_columns] .= ltmp_reef_data_names[ltmp_reef_perm]
 
 # Re-order columns
@@ -89,7 +88,7 @@ first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
 """
     sufficient_data(df_row::DataFrameRow)
 
-Ltmp Coral Cover locations with atleast 4 observations that span more then 10 years are
+Ltmp Coral Cover locations with at least 4 observations that span more then 10 years are
 considered to have sufficient data to be used for calibration.
 """
 function sufficient_data(df_row::DataFrameRow)

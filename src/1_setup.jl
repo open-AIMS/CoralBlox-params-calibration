@@ -23,7 +23,7 @@ if (!@isdefined(dom) || reload_domain)
 
     # Available DHW data starts 1985 - 2022
     target_years = string.(START_YEAR:END_YEAR)
-    locs = collect(caxes(dom.dhw_scens)[2])
+    locs = collect(dom.dhw_scens.locs)
 
     n_timesteps = length(target_years)
     n_locs = length(locs)
@@ -35,7 +35,7 @@ if (!@isdefined(dom) || reload_domain)
 end
 
 function ltmp_period(ltmp_region_name::String, ltmp_data::DataFrame, START_YEAR::Int64, END_YEAR::Int64)::BitVector
-    region_tf = ltmp_data[ltmp_data.Region .== ltmp_region_name, :Year]
+    region_tf = ltmp_data[ltmp_data.Region.==ltmp_region_name, :Year]
     return (region_tf .>= START_YEAR) .& (region_tf .<= END_YEAR)
 end
 
@@ -61,15 +61,22 @@ if !@isdefined(region_shps)
     region_shps = GDF.read(LTMP_SHP_PATH)
 end
 
+function _region_shape_mask(dom, region_shapes, idx)::BitVector
+    region_shape = region_shapes.geometry[idx]
+    return [AG.contains(region_shape, AG.centroid(poly)) for poly in dom.loc_data.geom]
+end
+
 if !@isdefined(NORTH_MASK)
-    const NORTH_MASK = BitVector([AG.contains(region_shps.geometry[1], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
-    const CENTRAL_MASK = BitVector([AG.contains(region_shps.geometry[2], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
-    const SOUTH_MASK = BitVector([AG.contains(region_shps.geometry[3], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
+    const NORTH_MASK = _region_shape_mask(dom, region_shps, 1)  # .&& ltmp_loc_mask
+    const CENTRAL_MASK = _region_shape_mask(dom, region_shps, 2)  # .&& ltmp_loc_mask
+    const SOUTH_MASK = _region_shape_mask(dom, region_shps, 3)  # .&& ltmp_loc_mask
     const NOT_CONTAINED = (!).(NORTH_MASK .|| CENTRAL_MASK .|| SOUTH_MASK)
 end
 
 location_classification = CSV.read(LOC_CLASS_PATH, DataFrame)
-n_classifications = maximum(location_classification.consecutive_classification)
+
+# ? Delete
+# ? n_classifications = maximum(location_classification.consecutive_classification)
 
 # set ADRIA Env variable to prevent an error during run_model
 ENV["ADRIA_DEBUG"] = false
