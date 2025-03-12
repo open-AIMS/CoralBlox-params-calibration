@@ -22,6 +22,7 @@ Create a `calib_config.toml` file with the following entries:
 [Domains]
 reefmod_domain = "<path to ReefMod dataset>"
 rme_domain = "<path to RME dataset>"
+historic_cyclone_mortality = "<path to historic cyclone mortality dataset>"
 
 [Geospatial]
 canonical_path = "<path to canonical gpkg>"

@@ -31,7 +31,7 @@ if (!@isdefined(dom) || reload_domain)
     dhw_data = reshape(Matrix(dhw_data_df[:, target_years])', n_timesteps, n_locs, 1)
     dom.dhw_scens = ADRIA.DataCube(dhw_data; timesteps=target_years, locs=locs, scenarios=1:1)
 
-    new_cyclone_mortality_scens = open_dataset("../ltmp_data/new_cyclone_mortality_scens.nc").cyclone_mortality_scens
+    new_cyclone_mortality_scens = open_dataset(HISTORIC_CYCLONE_MORTALITY_PATH).cyclone_mortality_scens
     dom.cyclone_mortality_scens .= new_cyclone_mortality_scens
 
     reload_domain = false
