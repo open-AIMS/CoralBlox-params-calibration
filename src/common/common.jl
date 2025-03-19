@@ -141,5 +141,4 @@ function get_composition_loc_unique_id(
 end
 
 include("./perf_metrics.jl")
-include("./plotting/plotting.jl")
-include("./plotting/progress.jl")
+include("../plot/plot.jl")

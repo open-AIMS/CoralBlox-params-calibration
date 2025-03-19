@@ -3,7 +3,7 @@ using ProgressMeter
 
 include("./common/common.jl")
 include("./common/cover_construction.jl")
-include("./common/plotting/plotting.jl")
+include("./plot/plot.jl")
 include("1_setup.jl")
 include("common/param_bounds.jl")
 
@@ -57,19 +57,36 @@ validation_save_dir::String = joinpath(OUT_DIR, "validation_locations")
 mkpath(calibration_save_dir)
 mkpath(validation_save_dir)
 
-cyc_scens = _mortality_to_cyc_category(copy(dom.cyclone_mortality_scens[scenarios=1, species=5]))
+# cyc_scens = _mortality_to_cyc_category(copy(dom.cyclone_mortality_scens[scenarios=1, species=5]))
+cyc_scens = dom.cyclone_mortality_scens[scenarios=1]
 dhw_scens = dom.dhw_scens[scenarios=1]
 disturbances_path = "C:/Users/pribeiro/AIMS/Code/ltmp_calibration/ltmp_data/disturbances.nc"
 disturbances = open_dataset(disturbances_path).layer
 
-@showprogress desc = "Plotting calibration locations." for i in 1:length(CALIBRATION_STORE.ltmp_cover_to_domain)
+rmse_diff_map = plot_rmse_diff_map(rs_raw.raw; observations=VALIDATION_STORE)
+save(joinpath(OUT_DIR, "rmse_diff_map.png"), rmse_diff_map)
+
+pearson_coeff_map = plot_pearson_coeff_map(rs_raw.raw; observations=VALIDATION_STORE)
+save(joinpath(OUT_DIR, "pearson_coeff_map.png"), pearson_coeff_map)
+
+validation_ids = ["16015100104", "23048100104", "19209100104", "14137100104"]
+include("./plot/plot.jl")
+loc_comparison_fig = plot_location_comparison_highlights(rs_raw.raw, validation_ids,
+    cyc_scens, dhw_scens, disturbances; observations=VALIDATION_STORE)
+save(joinpath(OUT_DIR, "loc_comparison.png"), loc_comparison_fig)
+
+n_calibration_locs = length(CALIBRATION_STORE.ltmp_cover_to_domain)
+@showprogress desc = "Plotting calibration locations." for i in 1:n_calibration_locs
     reef_id = CALIBRATION_STORE.ltmp_unique_ids[i]
-    f = location_comparison(dom, rs_raw.raw, i, cyc_scens, dhw_scens, disturbances; observations=CALIBRATION_STORE)
+    f = plot_location_comparison(rs_raw.raw, i, dhw_scens, cyc_scens, disturbances;
+        observations=CALIBRATION_STORE)
     save(joinpath(calibration_save_dir, "loc_$(reef_id).png"), f)
 end
-@showprogress desc = "Plotting validation locations." for i in 1:length(VALIDATION_STORE.ltmp_cover_to_domain)
+n_validation_locs = length(VALIDATION_STORE.ltmp_cover_to_domain)
+@showprogress desc = "Plotting validation locations." for i in 1:n_validation_locs
     reef_id = VALIDATION_STORE.ltmp_unique_ids[i]
-    f = location_comparison(dom, rs_raw.raw, i, cyc_scens, dhw_scens, disturbances; observations=VALIDATION_STORE)
+    f = plot_location_comparison(rs_raw.raw, i, dhw_scens, cyc_scens, disturbances;
+        observations=VALIDATION_STORE)
     save(joinpath(validation_save_dir, "loc_$(reef_id).png"), f)
 end
 
@@ -106,3 +123,6 @@ count_ = 0
     global maee_ += tmp[4] / length(VALIDATION_STORE.ltmp_cover_to_domain)
     global bias_ += tmp[5] / length(VALIDATION_STORE.ltmp_cover_to_domain)
 end
+
+mean(getindex.(collect_error_stats.([rs_raw.raw], collect(1:length(VALIDATION_STORE.ltmp_cover_to_domain)); observations=VALIDATION_STORE), 1))
+mean(getindex.(collect_error_stats.([rs_raw.raw], collect(1:length(VALIDATION_STORE.ltmp_cover_to_domain)); observations=VALIDATION_STORE), 2))

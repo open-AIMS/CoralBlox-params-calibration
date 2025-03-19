@@ -1,4 +1,4 @@
-include("plot_helpers.jl")
+# TODO Rename/organize this file
 
 """
     plot_class_size_props(init_cover, class_idx)::Figure
@@ -40,195 +40,100 @@ function plot_class_properties(
     return f
 end
 
-function plot_modelled_v_ltmp!(
-    fig::Figure,
-    ax_row::Int64,
-    raw_data,
-    ltmp_loc_idx;
+function plot_rmse_diff_map(
+    raw_data::Array{Float64,3};
+    fig_opts::Dict=Dict(),
     observations::LocationDataStore=COMBINED_STORE,
-    dom=dom,
-    axis_opts::Dict=Dict()
-)::Nothing
-    ax = Axis(fig[ax_row, 1]; axis_opts...)
-    obs, sim = plot_modelled_v_ltmp!(ax, raw_data, ltmp_loc_idx; observations=observations)
-    Legend(f[ax_row, 2], [obs, sim], ["LTMP", "CoralBlox"], "Coral Cover")
-    return nothing
-end
-function plot_modelled_v_ltmp!(
-    ax::Axis,
-    raw_data,
-    ltmp_loc_idx;
-    observations::LocationDataStore=COMBINED_STORE,
-    dom=dom
-)
-    domain_loc_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
-    loc_k_area = ADRIA.site_k_area(dom)[domain_loc_idx]
-    loc_area = ADRIA.loc_area(dom)[domain_loc_idx]
-
-    loc_cover = dropdims(
-        sum(raw_data[:, :, domain_loc_idx], dims=2),
-        dims=2) .* loc_k_area ./ loc_area
-
-    obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
-    not_missing_obs = (!).(ismissing.(obs_loc_data))
-    obs_tf = (START_YEAR:END_YEAR)[not_missing_obs]
-
-    obs = scatter!(ax, obs_tf, obs_loc_data[not_missing_obs], color=(:red, 0.5), markersize=20)
-    sim = lines!(ax, 2008:2022, loc_cover, color=:red)
-    return obs, sim
-end
-
-"""
-    location_comparison( raw_data,  ltmp_loc_idx,  save_dir;  obs_idxs=ALL_LTMP_IDXS,  obs_loc_labels=ltmp_reef_data.RME_UNIQUE_ID)::Figure
-Plot LTMP Manta Tow Coral Cover against the modelled cover output given the LTMP location index.
-"""
-function location_comparison(
-    dom,
-    raw_data,
-    ltmp_loc_idx,
-    cyc_scens,
-    dhw_scens,
-    disturbances;
-    observations::LocationDataStore=COMBINED_STORE
 )::Figure
-    # Extra information specific to the given location
-    reef_id = observations.ltmp_unique_ids[ltmp_loc_idx]
+    n_validation_obs = length(observations.ltmp_unique_ids)
+    ltmp_loc_indexes = collect(1:n_validation_obs)
 
-    f = Figure(; size=(1000, 1000))
+    error_stats = collect_error_stats.([raw_data], ltmp_loc_indexes; observations=observations)
+    rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
+    rmse_diffs = benchmark_ .- rmse_
 
-    title_text = _location_err_title(
-        raw_data,
-        ltmp_loc_idx;
-        observations=observations
+    fig_size = get(fig_opts, :size, (500, 700))
+    fig = Figure(size=fig_size)
+    ax = Axis(fig[1, 1], title="Benchmark RMSE - Model RMSE", titlesize=18, xlabelsize=15,
+        ylabelsize=15, xlabel="Longitude", ylabel="Latitude")
+    domain_gpkg = observations.domain_gpkg
+    observation_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈[observations.ltmp_unique_ids], :]
+
+    poly!.(ax, domain_gpkg.geom, color=:gray)
+    poly!.(ax, observation_gpkg.geom, color=:red)
+    scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD;
+        markersize=35, color=rmse_diffs, colormap=:bam, alpha=0.8,
+        strokewidth=1, strokecolor=(:gray, 0.1)
+    )
+    max_val, min_val = extrema(rmse_diffs)
+    up_limit = maximum(abs.((max_val, min_val)))
+    lower_limit = -up_limit
+    Colorbar(
+        fig[1, 2];
+        limits=(lower_limit, up_limit), colormap=:bam, label="Model RMSE - Benchmark RMSE"
     )
 
-    start_year, end_year = extrema(cyc_scens.timesteps)
-    xlimits = (start_year - 0.5, end_year + 0.5)
-    xticks = start_year:end_year
-
-    cover_limits = (xlimits, nothing)
-    base_axis_opts::Dict = Dict(
-        :xlabelsize => 20,
-        :ylabelsize => 20,
-        :xticks => xticks,
-        :xticklabelrotation => pi / 6,
-        :limits => cover_limits,
-    )
-
-    # Plot LTMP and CoralBlox covers
-    # cover_limits = (xlimits, (0, maximum(raw_data) * 1.1))
-    modelled_v_ltmp_row = 1
-    modelled_ltmp_axis_opts = Dict(
-        base_axis_opts..., :title => title_text, :ylabel => "Relative total cover",
-    )
-    plot_modelled_v_ltmp!(
-        f, modelled_v_ltmp_row, raw_data, ltmp_loc_idx;
-        observations=observations, axis_opts=modelled_ltmp_axis_opts
-    )
-
-    # Plot CoralBlox Observed DHW and Cyclone Categories
-    ax_opts_coralblox_disturbances = Dict(base_axis_opts..., :ylabel => "DHW", :height => 100)
-    ax_row_coralblox_disturbances = 2
-    loc_dhw_scens = dhw_scens[locs=At(reef_id)]
-    loc_cyc_scens = cyc_scens[locations=At(reef_id)]
-    plot_coralblox_disturbances!(
-        f, ax_row_coralblox_disturbances, loc_dhw_scens, loc_cyc_scens;
-        axis_opts=ax_opts_coralblox_disturbances,
-    )
-
-    if reef_id ∈ disturbances.locations
-        loc_ltmp_disturbances = disturbances[locations=At(reef_id)]
-        ax_row_ltmp_disturbances = 3
-        plot_ltmp_disturbances!(
-            f, ax_row_ltmp_disturbances, loc_ltmp_disturbances;
-            axis_opts=ax_opts_coralblox_disturbances
-        )
-        ax_row_taxa = 4
-    else
-        @warn("Reef $reef_id / $ltmp_loc_idx not found in LTMP disturbances DataFrame")
-        ax_row_taxa = 3
-    end
-
-    cb_loc_id = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
-    cover = rs_raw.raw[:, :, cb_loc_id]
-    plot_taxa_props!(f, ax_row_taxa, cover; ax_opts=base_axis_opts)
-    return f
+    return fig
 end
 
-function plot_coralblox_disturbances!(
-    fig::Figure, ax_row::Int64, loc_dhw_scens, loc_cyclone_scens; axis_opts::Dict=Dict()
-)::Nothing
-    ax_dhw = Axis(fig[ax_row, 1]; axis_opts...)
-    dhw_plot = lines!(
-        ax_dhw,
-        parse.(Int64, loc_dhw_scens.timesteps),
-        collect(loc_dhw_scens.data),
-        color=:orange,
-        linestyle=:dot,
-        linewidth=4
-    )
+function plot_pearson_coeff_map(
+    raw_data::Array{Float64,3};
+    fig_opts::Dict=Dict(),
+    observations::LocationDataStore=COMBINED_STORE,
+)::Figure
+    raw_data = rs_raw.raw
+    n_validation_obs = length(observations.ltmp_unique_ids)
+    ltmp_loc_indexes = collect(1:n_validation_obs)
 
-    ax_cyclone = Axis(fig[ax_row, 1]; axis_opts...)
-    hidespines!(ax_cyclone)
-    hidedecorations!(ax_cyclone)
-    plotted_vlines, plotted_scens = plot_cyclone_scens!(ax_cyclone, loc_cyclone_scens)
+    error_stats = collect_error_stats.([raw_data], ltmp_loc_indexes; observations=observations)
+    rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
 
-    Legend(
-        fig[ax_row, 2],
-        [dhw_plot, plotted_vlines...], ["Observed DHW",
-            plotted_scens...],
-        "CoralBlox Disturbances"
-    )
-    return nothing
-end
+    fig_size = get(fig_opts, :size, (500, 700))
+    fig = Figure(size=fig_size)
+    ax = Axis(fig[1, 1], title="Pearson's Correlation Coefficient", titlesize=18, xlabelsize=15,
+        ylabelsize=15, xlabel="Longitude", ylabel="Latitude")
+    domain_gpkg = observations.domain_gpkg
+    observation_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈[observations.ltmp_unique_ids], :]
+    poly!.(ax, domain_gpkg.geom, color=:gray)
+    poly!.(ax, observation_gpkg.geom, color=:red)
+    scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD, markersize=35,
+        color=cc_, colormap=:bam, alpha=0.8, strokewidth=1, strokecolor=(:gray, 0.1))
+    max_val, min_val = extrema(cc_)
+    up_limit = maximum(abs.((max_val, min_val)))
+    lower_limit = -up_limit
+    Colorbar(fig[1, 2], limits=(lower_limit, up_limit), colormap=:bam,
+        label="Model RMSE - Benchmark RMSE")
 
-function plot_cyclone_scens!(ax::Axis, cyc_scens)
-    unique_scens = sort(unique(cyc_scens)[unique(cyc_scens).>0])
-    plotted_cyc_vlines = []
-    plotted_cyc_scens = []
-    for scen in unique_scens
-        target_years = collect(cyc_scens[cyc_scens.==scen].timesteps)
-        vline = vlines!(
-            ax,
-            target_years,
-            color=Int64(scen + 1),
-            colormap=(:grayC10),
-            colorrange=(5, 1),
-            linestyle=:dash,
-            linewidth=3,
-            ymin=0
-        )
-        push!(plotted_cyc_vlines, vline)
-        push!(plotted_cyc_scens, "Cyc. Category: $(Int64(scen))")
-    end
-    return plotted_cyc_vlines, plotted_cyc_scens
+    return fig
 end
 
 function plot_ltmp_disturbances!(
-    fig::Figure, ax_row::Int64, loc_disturbances; axis_opts::Dict=Dict()
+    fig::Union{Figure,GridLayout}, ax_row::Int64, loc_disturbances; axis_opts::Dict=Dict()
 )::Nothing
     limits = get(axis_opts, :limits, nothing)
     xlimits = !isnothing(limits) ? limits[1] : nothing
     axis_opts[:limits] = (xlimits, (0, 1))
     #@info(axis_opts[:limits])
-    axis_opts = Dict(axis_opts..., :yticks => [0, 1], :yticklabelsize => 0, :height => 100)
+    axis_opts = Dict(
+        axis_opts...,
+        :yticks => [0, 1],
+        :yticklabelsize => 0,
+        :ylabel => "Disturbances",
+    )
 
     ax_ltmp = Axis(fig[ax_row, 1]; axis_opts...)
 
 
     disturbance_vlines, disturbance_types = plot_ltmp_disturbances!(ax_ltmp, loc_disturbances)
-    Legend(fig[ax_row, 2], [disturbance_vlines...], [disturbance_types...], "LTMP Disturbances")
+
     return nothing
 end
-function plot_ltmp_disturbances!(ax::Axis, loc_disturbances; colormap=:seaborn_bright6)
+function plot_ltmp_disturbances!(ax::Axis, loc_disturbances)
     disturbances_types = collect(loc_disturbances.disturbances)
     n_disturbances_types = length(disturbances_types)
-    colorrange = (1, n_disturbances_types)
-
     disturbances_years = collect(loc_disturbances.timesteps)
     plotted_vlines = []
     plotted_types = []
-    _colors = ["#1f77b4", "#2ca02c", "#9467bd", "#17becf", "#bcbd22", "#e377c2"]
     for (disturbance_type_idx, disturbance_type) in enumerate(disturbances_types)
         disturbance_years_mask = loc_disturbances[disturbances=At(disturbance_type)] .== 1
         if any(disturbance_years_mask)
@@ -237,8 +142,8 @@ function plot_ltmp_disturbances!(ax::Axis, loc_disturbances; colormap=:seaborn_b
                 disturbances_years[disturbance_years_mask],
                 color=disturbance_type_idx,
                 linewidth=3,
-                colormap=colormap,
-                colorrange=colorrange
+                colormap=COLORMAPS.ltmp_disturbances,
+                colorrange=(1, n_disturbances_types)
             )
             push!(plotted_vlines, vline)
             push!(plotted_types, disturbance_type)
@@ -271,7 +176,7 @@ function taxa_cover_proportions(raw_data)::Figure
         limits=(nothing, nothing, 0, 1)
     )
     sr = series!(xs, cover, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
-    Legend(f[1, 2], ax, framevisible=false)
+    # Legend(f[1, 2], ax, framevisible=false)
     return f
 end
 
@@ -303,7 +208,7 @@ function taxa_population_proportions(raw_data)::Figure
         limits=(nothing, nothing, 0, 1)
     )
     sr = series!(xs, population, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
-    Legend(f[1, 2], ax, framevisible=false)
+    #Legend(f[1, 2], ax, framevisible=false)
     return f
 end
 
@@ -722,16 +627,16 @@ function plot_taxa_props(
     return f
 end
 function plot_taxa_props!(
-    fig::Figure,
+    fig::Union{Figure,GridLayout},
     ax_row::Int64,
     cover;
     ax_opts::Dict=Dict(),
     opts::Dict=Dict()
 )::Nothing
-    ax_opts = Dict(ax_opts..., :xlabel => "Year", :ylabel => "Prop. Coral Composition",)
+    ax_opts = Dict(ax_opts..., :xlabel => "Year", :ylabel => "Proportional Cover",)
     ax_taxa = Axis(fig[ax_row, 1]; ax_opts...)
     taxa_plot = plot_taxa_props!(ax_taxa, cover; opts=opts)
-    Legend(fig[ax_row, 2], taxa_plot)
+    # Legend(fig[ax_row, 2], taxa_plot)
     nothing
 end
 function plot_taxa_props!(
@@ -739,7 +644,7 @@ function plot_taxa_props!(
     cover;
     opts::Dict=Dict()
 )::Axis
-    color = get(opts, :color, :seaborn_colorblind6)
+    color = COLORMAPS.taxa
     cover = reshape(cover, (15, 7, 5))
     cover = dropdims(sum(cover, dims=2), dims=2) ./ dropdims(sum(cover, dims=(2, 3)), dims=2)
     cover = permutedims(cover, (2, 1))
