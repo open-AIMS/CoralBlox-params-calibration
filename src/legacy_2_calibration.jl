@@ -1,3 +1,5 @@
+# ! This file should probably be deleted
+
 using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
 
@@ -160,7 +162,7 @@ function class_error(
             )
         err_counts[not_missing] .+= 1
     end
-    err_counts[err_counts .== 0] .= 1
+    err_counts[err_counts.==0] .= 1
 
     return err_series ./ err_counts
 end
@@ -235,7 +237,7 @@ function reef_error(
     end
     if any(err_counts .== 0)
         @debug "No reef level observation data for some years."
-        err_counts[err_counts .== 0] .= 1
+        err_counts[err_counts.==0] .= 1
     end
 
     return err_series ./ err_counts
@@ -255,7 +257,7 @@ function validate_linear_extension_coefficients(
     dist_from_valid::Float64 = 0.0
     for j in 1:n_locs
         tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins
-        tmp[tmp .< 0] .= 0.0
+        tmp[tmp.<0] .= 0.0
         dist_from_valid += sum(tmp)
     end
     return dist_from_valid
@@ -276,7 +278,7 @@ function validate_mortality_coefficients(
     dist_from_valid::Float64 = 0.0
     for j in 1:n_locs
         tmp = survival_vals .* mortality_coefs[:, j] .- 1
-        tmp[tmp .< 0] .= 0.0
+        tmp[tmp.<0] .= 0.0
         dist_from_valid += sum(tmp)
     end
     return dist_from_valid
