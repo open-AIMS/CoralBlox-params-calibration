@@ -35,7 +35,7 @@ global OUTPUT_CONFIG         = CONFIG["Outputs"]
 # ADRIA Domain paths
 global REEFMOD_DOMAIN_PATH = DOMAIN_CONFIG["reefmod_domain"]
 global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
-global HISTORIC_DHW_PATH = joinpath(RME_DOMAIN_PATH, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
+global HISTORIC_DHW_PATH = DOMAIN_CONFIG["historic_dhw"] #joinpath(RME_DOMAIN_PATH, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
 global HISTORIC_CYCLONE_MORTALITY_PATH = DOMAIN_CONFIG["historic_cyclone_mortality"]
 
 # Geospatial filepaths

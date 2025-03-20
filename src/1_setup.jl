@@ -18,19 +18,9 @@ if (!@isdefined(dom) || reload_domain)
     @info "Loading ReefModDomain"
     dom = ADRIA.load_domain(ReefModDomain, REEFMOD_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
 
-    @info "Attaching historic DHW"
-    dhw_data_df = CSV.read(HISTORIC_DHW_PATH, DataFrame)
-
-    # Available DHW data starts 1985 - 2022
-    target_years = string.(START_YEAR:END_YEAR)
-    locs = collect(dom.dhw_scens.locs)
-
-    n_timesteps = length(target_years)
-    n_locs = length(locs)
-
-    dhw_data = reshape(Matrix(dhw_data_df[:, target_years])', n_timesteps, n_locs, 1)
-    dom.dhw_scens = ADRIA.DataCube(dhw_data; timesteps=target_years, locs=locs, scenarios=1:1)
-
+    @info "Attaching historic DHW and Cyclone/COTS data"
+    dhw_scens = open_dataset(HISTORIC_DHW_PATH).dhw_scens
+    dom.dhw_scens = dhw_scens[timesteps=At(START_YEAR:END_YEAR)]
     new_cyclone_mortality_scens = open_dataset(HISTORIC_CYCLONE_MORTALITY_PATH).cyclone_mortality_scens
     dom.cyclone_mortality_scens .= new_cyclone_mortality_scens
 
