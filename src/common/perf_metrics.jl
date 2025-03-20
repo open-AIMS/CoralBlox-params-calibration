@@ -335,3 +335,17 @@ function class_error(
 
     return err_series ./ err_counts
 end
+
+function rmse_diff(rs_raw::Array{Float64,3}, observations::LocationDataStore)::Vector{Float64}
+    n_validation_locs = length(observations.ltmp_cover_to_domain)
+    model_rmse = zeros(Float64, n_validation_locs)
+    benchmark_rmse = zeros(Float64, n_validation_locs)
+    for i in 1:n_validation_locs
+        rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(
+            rs_raw, i; observations=observations
+        )
+        model_rmse[i] = rmse_
+        benchmark_rmse[i] = benchmark_
+    end
+    return benchmark_rmse .- model_rmse
+end
