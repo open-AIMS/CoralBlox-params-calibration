@@ -13,7 +13,7 @@ end
 Calculate Root Mean Squared Error
 """
 function rmse(modelled, observed)
-    return sqrt(mean((modelled .- observed).^2.0))
+    return sqrt(mean((modelled .- observed) .^ 2.0))
 end
 
 """
@@ -35,12 +35,12 @@ Assign error that increases exponentially with distance to observed/"true" data.
 """
 function MAEE(sim, obs)
     abs_err = abs.(sim .- obs)
-    mean(ℯ.^((abs_err) .* (1.0 .+ abs_err ./ 1.0)) .- 1.0)
+    mean(ℯ .^ ((abs_err) .* (1.0 .+ abs_err ./ 1.0)) .- 1.0)
 end
 
 function MAEE_series(sim, obs)
     abs_err = abs.(sim .- obs)
-    return ℯ.^((abs_err) .* (1.0 .+ abs_err / 1.0)) .- 1.0
+    return ℯ .^ ((abs_err) .* (1.0 .+ abs_err / 1.0)) .- 1.0
 end
 
 function temporal_variability(x::AbstractVector{<:Real}; w=[0.9, 0.1])
@@ -60,7 +60,7 @@ function constant_error_statistics(
     south_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_south.Year)
 
     north_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_north.Year) - 1
-    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) -1
+    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) - 1
     south_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_south.Year) - 1
 
     north_xs = ltmp_north.Year[north_ind:north_end]
@@ -123,7 +123,7 @@ function create_error_statistics(filename::String)::DataFrame
     south_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_south.Year)
 
     north_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_north.Year) - 1
-    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) -1
+    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) - 1
     south_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_south.Year) - 1
 
     north_xs = ltmp_north.Year[north_ind:north_end]
@@ -294,7 +294,7 @@ function reef_error(
 
     if any(err_counts .== 0)
         @debug "No reef level observation data for some years."
-        err_counts[err_counts .== 0] .= 1
+        err_counts[err_counts.==0] .= 1
     end
 
     return err_series ./ err_counts
@@ -331,7 +331,7 @@ function class_error(
             )
         err_counts[not_missing] .+= 1
     end
-    err_counts[err_counts .== 0] .= 1
+    err_counts[err_counts.==0] .= 1
 
     return err_series ./ err_counts
 end
