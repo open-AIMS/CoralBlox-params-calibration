@@ -27,29 +27,26 @@ dom, scen = setup_run(
 
 rs_raw = ADRIA.run_model(dom, scen[1, :])
 
-f = plot_all_regions(
+f_all_regions = plot_all_regions(
     dom, rs_raw
 )
 
-save_dir = OUT_DIR
+# save_dir = OUT_DIR
 
-mkpath(save_dir)
+mkpath(OUT_DIR)
 
-save(joinpath(save_dir, "locs_reg.png"), f)
+save(joinpath(OUT_DIR, "locs_reg.png"), f_all_regions)
 
-f = taxa_cover_proportions(rs_raw.raw)
+f_taxa_cover = taxa_cover_proportions(rs_raw.raw)
+save(joinpath(OUT_DIR, "locs_taxa_cov.png"), f_taxa_cover)
 
-save(joinpath(save_dir, "locs_taxa_cov.png"), f)
+f_taxa_pop = taxa_population_proportions(rs_raw.raw)
+save(joinpath(OUT_DIR, "locs_taxa_pop.png"), f_taxa_pop)
 
-f = taxa_population_proportions(rs_raw.raw)
+f_size_class = temporal_size_class_proportions(rs_raw.raw)
+save(joinpath(OUT_DIR, "locs_size.png"), f_size_class)
 
-save(joinpath(save_dir, "locs_taxa_pop.png"), f)
-
-f = temporal_size_class_proportions(rs_raw.raw)
-
-save(joinpath(save_dir, "locs_size.png"), f)
-
-mkpath("$(save_dir)/loc_plots")
+mkpath("$(OUT_DIR)/loc_plots")
 
 calibration_save_dir::String = joinpath(OUT_DIR, "calibration_locations")
 validation_save_dir::String = joinpath(OUT_DIR, "validation_locations")
@@ -70,7 +67,6 @@ pearson_coeff_map = plot_pearson_coeff_map(rs_raw.raw; observations=VALIDATION_S
 save(joinpath(OUT_DIR, "pearson_coeff_map.png"), pearson_coeff_map)
 
 validation_ids = ["16015100104", "23048100104", "19209100104", "14137100104"]
-include("./plot/plot.jl")
 loc_comparison_fig = plot_location_comparison_highlights(rs_raw.raw, validation_ids,
     cyc_scens, dhw_scens, disturbances; observations=VALIDATION_STORE)
 save(joinpath(OUT_DIR, "loc_comparison.png"), loc_comparison_fig)
@@ -82,6 +78,7 @@ n_calibration_locs = length(CALIBRATION_STORE.ltmp_cover_to_domain)
         observations=CALIBRATION_STORE)
     save(joinpath(calibration_save_dir, "loc_$(reef_id).png"), f)
 end
+
 n_validation_locs = length(VALIDATION_STORE.ltmp_cover_to_domain)
 @showprogress desc = "Plotting validation locations." for i in 1:n_validation_locs
     reef_id = VALIDATION_STORE.ltmp_unique_ids[i]
@@ -89,6 +86,17 @@ n_validation_locs = length(VALIDATION_STORE.ltmp_cover_to_domain)
         observations=VALIDATION_STORE)
     save(joinpath(validation_save_dir, "loc_$(reef_id).png"), f)
 end
+
+include("./plot/plot.jl")
+
+rmse_diff_validation = sort(rmse_diff(rs_raw.raw, VALIDATION_STORE))
+f_rmse_diff_validation = plot_rmse_scatter(rmse_diff_validation, "Validation")
+save(joinpath(OUT_DIR, "rmse_diff_validation.png"), f_rmse_diff_validation)
+
+
+rmse_diff_calibration = sort(rmse_diff(rs_raw.raw, CALIBRATION_STORE))
+f_rmse_diff_calibration = plot_rmse_scatter(rmse_diff_calibration, "Calibration")
+save(joinpath(OUT_DIR, "rmse_diff_calibration.png"), f_rmse_diff_calibration)
 
 rmse_ = 0.0
 benchmark_ = 0.0

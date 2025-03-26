@@ -7,11 +7,11 @@ Plot LTMP Manta Tow Coral Cover against the modelled cover output given the LTMP
 function plot_location_comparison(
     raw_data::Array{Float64,3},
     reef_id::String,
-    dhw_scens::AbstractMatrix{Float64},
+    dhw_scens::AbstractMatrix{T},
     cyc_scens::AbstractArray{Float64,3},
     disturbances;
     observations::LocationDataStore=COMBINED_STORE
-)::Figure
+)::Figure where {T<:Real}
     ltmp_loc_index = findfirst(VALIDATION_STORE.ltmp_unique_ids .== reef_id)
     return plot_location_comparison(
         raw_data, ltmp_loc_index, cyc_scens, dhw_scens, disturbances;
@@ -21,11 +21,11 @@ end
 function plot_location_comparison(
     raw_data::Array{Float64,3},
     ltmp_loc_idx::Int64,
-    dhw_scens::AbstractMatrix{Float64},
+    dhw_scens::AbstractMatrix{T},
     cyc_scens::AbstractArray{Float64,3},
     disturbances;
     observations::LocationDataStore=COMBINED_STORE
-)::Figure
+)::Figure where {T<:Real}
     # Extra information specific to the given location
     reef_id = observations.ltmp_unique_ids[ltmp_loc_idx]
 
@@ -177,7 +177,7 @@ function plot_location_comparison_highlights(
             :height => 100
         )
         ax_row_coralblox_disturbances::Int64 = 2
-        loc_dhw_scens::YAXArray{Float64,1} = dhw_scens[locs=At(reef_id)]
+        loc_dhw_scens::YAXArray{Float32,1} = dhw_scens[locs=At(reef_id)]
         loc_cyc_scens::YAXArray{Float64,2} = cyc_scens[locations=At(reef_id)]
         plot_coralblox_disturbances!(
             ax, ax_row_coralblox_disturbances, loc_dhw_scens, loc_cyc_scens;
@@ -258,7 +258,7 @@ end
 function plot_coralblox_disturbances!(
     fig::Union{Figure,GridLayout},
     ax_row::Int64,
-    loc_dhw_scens::AbstractVector{Float64},
+    loc_dhw_scens::AbstractVector{Float32},
     loc_cyclone_scens::AbstractMatrix{Float64};
     axis_opts::Dict=Dict()
 )::Nothing
@@ -281,11 +281,10 @@ function legend_coralblox_disturbances!(f::Figure, row::Int64; col::Int64=2)
     )
 end
 
-function plot_dhw_scens!(ax::Axis, dhw_scens::AbstractVector{Float64})
-    lines!(
-        ax, parse.(Int64, dhw_scens.timesteps), collect(dhw_scens.data),
-        color=:orange, linestyle=:dot, linewidth=4
-    )
+function plot_dhw_scens!(ax::Axis, dhw_scens::AbstractVector{Float32})
+    dhw_data::Vector{Float64} = Float64.(collect(dhw_scens))
+    timesteps::Vector{Int64} = collect(dhw_scens.timesteps.val.data.data)
+    return lines!(ax, timesteps, dhw_data, color=:orange, linestyle=:dot, linewidth=4)
 end
 
 function plot_cyclone_scens!(ax::Axis, cyc_scens::AbstractMatrix{Float64})::Nothing
@@ -300,7 +299,7 @@ function legend_ltmp_disturbances!(
 )
     disturbance_mask = read(dropdims(sum(loc_disturbances, dims=1), dims=1) .> 0)
     colors = Makie.ColorSchemes.seaborn_bright6[disturbance_mask]
-    labels = collect(loc_disturbances.disturbances)[disturbance_mask]
+    labels = collect(loc_disturbances.disturbances.val)[disturbance_mask]
     return legend_ltmp_disturbances!(f, row, colors, labels; col=col)
 end
 function legend_ltmp_disturbances!(
