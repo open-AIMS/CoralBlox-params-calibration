@@ -19,10 +19,15 @@ if (!@isdefined(dom) || reload_domain)
     dom = ADRIA.load_domain(ReefModDomain, REEFMOD_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
 
     @info "Attaching historic DHW and Cyclone/COTS data"
-    dhw_scens = open_dataset(HISTORIC_DHW_PATH).dhw_scens
-    dom.dhw_scens = dhw_scens[timesteps=At(START_YEAR:END_YEAR)]
+    new_dhw_scens = open_dataset(HISTORIC_DHW_PATH).dhw_scens
+    dom.dhw_scens .= read(new_dhw_scens[timesteps=At(START_YEAR:END_YEAR), scenarios=1])
+    dhw_replaced = read(dom.dhw_scens[:, :, 1]) == Float32.(read(new_dhw_scens[timesteps=At(START_YEAR:END_YEAR), scenarios=1]))
+    @info("DHWs replaced: $(dhw_replaced)")
+
     new_cyclone_mortality_scens = open_dataset(HISTORIC_CYCLONE_MORTALITY_PATH).cyclone_mortality_scens
-    dom.cyclone_mortality_scens .= new_cyclone_mortality_scens
+    dom.cyclone_mortality_scens .= read(new_cyclone_mortality_scens)
+    cyclones_replaced = dom.cyclone_mortality_scens == read(new_cyclone_mortality_scens)
+    @info("Cyclones replaced: $(cyclones_replaced)")
 
     reload_domain = false
 end
