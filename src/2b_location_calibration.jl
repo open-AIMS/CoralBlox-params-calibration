@@ -6,7 +6,6 @@ Attempt to calibrate location-specific scaling as well.
 using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
 
-include("./1_setup.jl")
 include("./common/param_bounds.jl")
 
 """
