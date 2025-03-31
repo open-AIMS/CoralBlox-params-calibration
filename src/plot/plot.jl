@@ -1,6 +1,6 @@
 COLORMAPS = (
     ltmp_disturbances=:seaborn_bright6,
-    taxa=:Paired_5
+    taxa=:seaborn_colorblind6
 )
 
 FONT_SIZES = (
