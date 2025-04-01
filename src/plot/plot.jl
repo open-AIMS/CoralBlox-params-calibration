@@ -21,6 +21,6 @@ BASE_AXIS_OPTS::Dict = Dict(
 include("./plot_helpers.jl")
 
 include("./location_comparison.jl")
-include("./rmse.jl")
+include("./metrics.jl")
 include("./progress.jl")
 include("./plotting.jl")

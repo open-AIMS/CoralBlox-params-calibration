@@ -115,6 +115,13 @@ function constant_error_statistics(
     return err_csv
 end
 
+function _loc_cover(
+    raw_data;
+    loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom)
+)
+    dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
+end
+
 function collect_error_stats(
     raw_data,
     ltmp_loc_idx;
@@ -122,7 +129,7 @@ function collect_error_stats(
     loc_k_areas=ADRIA.site_k_area(dom),
     loc_areas=ADRIA.loc_area(dom)
 )
-    loc_cover = dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
+    loc_cover = _loc_cover(raw_data; loc_k_areas=loc_k_areas, loc_areas=loc_areas)
 
     obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
@@ -285,4 +292,42 @@ function rmse_diff(rs_raw::Array{Float64,3}, observations::LocationDataStore)::V
         benchmark_rmse[i] = benchmark_
     end
     return benchmark_rmse .- model_rmse
+end
+
+function pcc_locs(raw_data::Array{Float64,3}, observations::LocationDataStore)
+    n_locs = length(observations.ltmp_cover_to_domain)
+    pccs = zeros(Float64, n_locs)
+
+    # obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
+    obs_loc_data = observations.ltmp_coral_cover
+    not_missing_obs = (!).(ismissing.(obs_loc_data))
+
+    loc_cover = _loc_cover(raw_data)
+    domain_idxs = ltmp_cover_idx_to_domain.(Ref(observations), 1:n_locs)
+    sim_data = loc_cover[:, domain_idxs]
+
+    for i in 1:n_locs
+        pccs[i] = cor(sim_data[not_missing_obs[i, :], i], obs_loc_data[i, not_missing_obs[i, :]])
+    end
+
+    return pccs
+end
+
+"""
+Use the Fisher transformation to calculate the average correlation coefficient.
+
+Refs:
+- https://stats.stackexchange.com/questions/8019/averaging-correlation-values?utm_source=chatgpt.com
+- https://www.tandfonline.com/doi/abs/10.1080/00221309809595548
+"""
+function average_cc(cc_data)
+    # Apply fisher transformation
+    f_data = atanh.(cc_data)
+
+    # Calculate confidence intervals and mean
+    f_lower_bound = tanh(quantile(f_data, 0.025))
+    f_upper_bound = tanh(quantile(f_data, 0.975))
+    f_mean = tanh(mean(f_data))
+
+    return f_lower_bound, f_mean, f_upper_bound
 end

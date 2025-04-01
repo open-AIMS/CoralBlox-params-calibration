@@ -87,16 +87,21 @@ n_validation_locs = length(VALIDATION_STORE.ltmp_cover_to_domain)
     save(joinpath(validation_save_dir, "loc_$(reef_id).png"), f)
 end
 
-include("./plot/plot.jl")
-
 rmse_diff_validation = sort(rmse_diff(rs_raw.raw, VALIDATION_STORE))
 f_rmse_diff_validation = plot_rmse_scatter(rmse_diff_validation, "Validation")
 save(joinpath(OUT_DIR, "rmse_diff_validation.png"), f_rmse_diff_validation)
 
-
 rmse_diff_calibration = sort(rmse_diff(rs_raw.raw, CALIBRATION_STORE))
 f_rmse_diff_calibration = plot_rmse_scatter(rmse_diff_calibration, "Calibration")
 save(joinpath(OUT_DIR, "rmse_diff_calibration.png"), f_rmse_diff_calibration)
+
+pcc_validation = pcc_locs(rs_raw.raw, VALIDATION_STORE)
+f_pcc_validation = plot_pcc_scatter(pcc_validation)
+save(joinpath(OUT_DIR, "pcc_validation.png"), f_pcc_validation)
+
+pcc_calibration = pcc_locs(rs_raw.raw, CALIBRATION_STORE)
+f_pcc_calibration = plot_pcc_scatter(pcc_calibration)
+save(joinpath(OUT_DIR, "pcc_calibration.png"), f_pcc_calibration)
 
 rmse_ = 0.0
 benchmark_ = 0.0
