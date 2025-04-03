@@ -149,7 +149,7 @@ coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
 
 # Number of unique biogroups used in calibration
-const BIOGROUPS_ORDERING = sort(unique(bioregion_groups_gpkg.ASSIGNED_BIOREGION))
+const BIOGROUPS_ORDERING = sort(unique(canonical_gpkg.SPATIAL_GROUPING))
 n_biogroups = length(BIOGROUPS_ORDERING)
 
 # Add parameters for location-specific scaling
