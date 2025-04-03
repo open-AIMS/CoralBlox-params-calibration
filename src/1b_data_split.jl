@@ -5,10 +5,7 @@ both calibration and validation data for every bioregion group.
 
 using Random
 
-# Geopackage containing both the bioregions and the grouped bioregion indices
-bioregion_groups_gpkg = GDF.read(BIOREGION_GROUPS_PATH)
-
-dom.loc_data[!, :GROUPED_BIOREGION] .= bioregion_groups_gpkg.ASSIGNED_BIOREGION
+dom.loc_data[!, :GROUPED_BIOREGION] .= canonical_gpkg.SPATIAL_GROUPING
 
 # Coral Composition Data
 composition_data = open_dataset(COMPOSITION_PATH)
@@ -148,7 +145,7 @@ function create_location_datastore(
     )
 end
 
-unique_biogroup_ids = unique(bioregion_groups_gpkg.ASSIGNED_BIOREGION)
+unique_biogroup_ids = unique(canonical_gpkg.SPATIAL_GROUPING)
 sufficient_data_mask = sufficient_data.(eachrow(ltmp_reef_data[:, first_yr_idx:end]))
 ltmp_reef_data = ltmp_reef_data[sufficient_data_mask, :]
 
@@ -157,7 +154,7 @@ ltmp_cover_to_domain = [
         x -> x == uniq_id, dom.loc_data.UNIQUE_ID
     ) for uniq_id in ltmp_reef_data.RME_UNIQUE_ID
 ]
-ltmp_reef_data[!, :BIOGROUP_IDS] .= bioregion_groups_gpkg.ASSIGNED_BIOREGION[ltmp_cover_to_domain]
+ltmp_reef_data[!, :BIOGROUP_IDS] .= canonical_gpkg.SPATIAL_GROUPING[ltmp_cover_to_domain]
 
 biogroup_ltmp_idxs = [
     findall(

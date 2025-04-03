@@ -42,7 +42,6 @@ global HISTORIC_CYCLONE_MORTALITY_PATH = DOMAIN_CONFIG["historic_cyclone_mortali
 global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"]
 global LTMP_SHP_PATH = GEOSPATIAL_CONFIG["ltmp_shp"]
 global LOC_CLASS_PATH = GEOSPATIAL_CONFIG["classification_path"]            # location classes
-global BIOREGION_GROUPS_PATH = GEOSPATIAL_CONFIG["bioregion_group_gpkg"]
 
 # Calibration Target / Observational Data
 global LOC_CLASS_TARGET_PATH = TARGET_CONFIG["manta_tow_path"]              # target data for location classes
