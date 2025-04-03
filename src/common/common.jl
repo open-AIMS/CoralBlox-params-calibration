@@ -26,11 +26,11 @@ end
 global CONFIG = TOML.parsefile("calib_config.toml")
 
 # Configuration sections
-global DOMAIN_CONFIG         = CONFIG["Domains"]
-global GEOSPATIAL_CONFIG     = CONFIG["Geospatial"]
-global TARGET_CONFIG         = CONFIG["Observations"]
+global DOMAIN_CONFIG = CONFIG["Domains"]
+global GEOSPATIAL_CONFIG = CONFIG["Geospatial"]
+global TARGET_CONFIG = CONFIG["Observations"]
 global INITIALISATION_CONFIG = CONFIG["Initialisation"]
-global OUTPUT_CONFIG         = CONFIG["Outputs"]
+global OUTPUT_CONFIG = CONFIG["Outputs"]
 
 # ADRIA Domain paths
 global REEFMOD_DOMAIN_PATH = DOMAIN_CONFIG["reefmod_domain"]
@@ -55,7 +55,7 @@ global INIT_GUESS_PATH = INITIALISATION_CONFIG["init_guess_filepath"]       # op
 global ECORRAP_PARAM_PATH = INITIALISATION_CONFIG["ecorrap_param_filepath"]
 
 # Output filepaths
-global OUT_DIR   = OUTPUT_CONFIG["out_dir"]
+global OUT_DIR = OUTPUT_CONFIG["out_dir"]
 global RESULT_FN = OUTPUT_CONFIG["result_filename"]
 
 const START_YEAR = 2008
@@ -102,8 +102,8 @@ struct LocationDataStore
     # Data fields
     domain_gpkg::DataFrame
     ltmp_unique_ids::Vector{String}
-    ltmp_coral_cover::Array{Union{Missing, Float64}, 2}
-    coral_composition::Array{Union{Missing, Float64}, 3}
+    ltmp_coral_cover::Array{Union{Missing,Float64},2}
+    coral_composition::Array{Union{Missing,Float64},3}
     # Index Fields
     ltmp_cover_to_domain::Vector{Int64}
     composition_to_domain::Vector{Int64}
