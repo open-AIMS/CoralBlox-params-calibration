@@ -57,7 +57,7 @@ mkpath(validation_save_dir)
 # cyc_scens = _mortality_to_cyc_category(copy(dom.cyclone_mortality_scens[scenarios=1, species=5]))
 cyc_scens = dom.cyclone_mortality_scens[scenarios=1]
 dhw_scens = dom.dhw_scens[scenarios=1]
-disturbances_path = "C:/Users/pribeiro/AIMS/Code/ltmp_calibration/ltmp_data/disturbances.nc"
+disturbances_path = "C:/Users/pribeiro/AIMS/Code/ltmp_calibration/datasets/ltmp_data/disturbances.nc"
 disturbances = open_dataset(disturbances_path).layer
 
 rmse_diff_map = plot_rmse_diff_map(rs_raw.raw; observations=VALIDATION_STORE)
