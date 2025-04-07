@@ -16,13 +16,13 @@ construct_cover!(
 # ----- LOAD CALIBRATED RESULTS -----
 
 coral_param_fn = joinpath(OUT_DIR, RESULT_FN)
-coral_params = deserialize(coral_param_fn)
+calibrated_params = deserialize(coral_param_fn)
 
 # Load values into scenario dataframe
 
 dom, scen = setup_run(
     dom,
-    coral_params
+    calibrated_params
 )
 
 rs_raw = ADRIA.run_model(dom, scen[1, :])
