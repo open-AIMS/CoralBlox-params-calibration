@@ -57,20 +57,6 @@ function sc_fg_param_idxs(param_name::String, coral_df::DataFrame)::Vector{Int64
 end
 
 """
-    adjust_bounds!(sample_bounds, coral_param_idx, scale_lb::Float64, scale_ub::Float64)::Nothing
-
-Scale the given parameter bounds by the given scale factors inplace.
-"""
-function adjust_bounds!(
-    sample_bounds, coral_param_idx, scale_lb::Float64, scale_ub::Float64
-)::Nothing
-    extended_lb = first.(sample_bounds[coral_param_idx]) .* scale_lb
-    extended_ub = last.(sample_bounds[coral_param_idx]) .* scale_ub
-    sample_bounds[coral_param_idx] .= collect(zip(extended_lb, extended_ub))
-    return nothing
-end
-
-"""
     set_bounds!(sample_bounds, coral_param_idxs, lower_bounds::Vector{Float64}, upper_bounds::Vector{Float64})::Nothing
 """
 function set_bounds!(
@@ -139,7 +125,7 @@ sample_bounds = collect(zip(
 ))
 
 # Adjust bounds for initial mean DHW tolerance
-adjust_bounds!(sample_bounds, dhw_tol_mean_idx, 0.8, 3.0)
+sample_bounds[dhw_tol_mean_idx] .= collect(zip(coral_params[dhw_tol_mean_idx, :lower_bound], coral_params[dhw_tol_mean_idx, :val]))
 
 # Set bounds for linear extension and mb rate from ecorrap data
 set_bounds!(sample_bounds, lin_ext_idx, lin_ext_lb, lin_ext_ub)
