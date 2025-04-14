@@ -64,7 +64,7 @@ function plot_rmse_diff_map(
     rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
     rmse_diffs = benchmark_ .- rmse_
 
-    fig_size = get(fig_opts, :size, (500, 700))
+    fig_size = get(fig_opts, :size, FIG_SIZE[:map])
     fig = Figure(size=fig_size)
     ax = Axis(fig[1, 1], title="Benchmark RMSE - Model RMSE", titlesize=18, xlabelsize=15,
         ylabelsize=15, xlabel="Longitude", ylabel="Latitude")
@@ -100,7 +100,7 @@ function plot_pearson_coeff_map(
     error_stats = collect_error_stats.([raw_data], ltmp_loc_indexes; observations=observations)
     rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
 
-    fig_size = get(fig_opts, :size, (500, 700))
+    fig_size = get(fig_opts, :size, FIG_SIZE[:map])
     fig = Figure(size=fig_size)
     ax = Axis(fig[1, 1], title="Pearson's Correlation Coefficient", titlesize=18, xlabelsize=15,
         ylabelsize=15, xlabel="Longitude", ylabel="Latitude")

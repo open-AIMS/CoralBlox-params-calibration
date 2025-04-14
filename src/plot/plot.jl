@@ -17,6 +17,10 @@ BASE_AXIS_OPTS::Dict = Dict(
     :limits => ((START_YEAR - 0.5, END_YEAR + 0.5), nothing),
 )
 
+FIG_SIZE::Dict = Dict(
+    :map => (500, 650),
+)
+
 # Load helpers before everything else
 include("./plot_helpers.jl")
 
