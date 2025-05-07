@@ -10,7 +10,8 @@ function plot_location_comparison(
     dhw_scens::AbstractMatrix{T},
     cyc_scens::AbstractArray{Float64,3},
     disturbances;
-    observations::LocationDataStore=COMBINED_STORE
+    observations::LocationDataStore=COMBINED_STORE,
+    hide_disturbances=false
 )::Figure where {T<:Real}
     ltmp_loc_index = findfirst(VALIDATION_STORE.ltmp_unique_ids .== reef_id)
     return plot_location_comparison(
@@ -24,7 +25,8 @@ function plot_location_comparison(
     dhw_scens::AbstractMatrix{T},
     cyc_scens::AbstractArray{Float64,3},
     disturbances;
-    observations::LocationDataStore=COMBINED_STORE
+    observations::LocationDataStore=COMBINED_STORE,
+    hide_disturbances=false
 )::Figure where {T<:Real}
     # Extra information specific to the given location
     reef_id = observations.ltmp_unique_ids[ltmp_loc_idx]
@@ -35,7 +37,7 @@ function plot_location_comparison(
 
     # Plot LTMP and CoralBlox covers
     # cover_limits = (xlimits, (0, maximum(raw_data) * 1.1))
-    modelled_v_ltmp_row = 1
+    current_row = 1
     modelled_ltmp_axis_opts = Dict(
         :title => title_text,
         :titlesize => FONT_SIZES.title,
@@ -44,46 +46,49 @@ function plot_location_comparison(
     )
 
     plot_modelled_v_ltmp!(
-        f, modelled_v_ltmp_row, raw_data, ltmp_loc_idx;
+        f, current_row, raw_data, ltmp_loc_idx;
         observations=observations, axis_opts=modelled_ltmp_axis_opts
     )
-    legend_modelled_v_ltmp!(f, modelled_v_ltmp_row)
+    legend_modelled_v_ltmp!(f, current_row)
+    current_row += 1
 
     # Plot CoralBlox Observed DHW and Cyclone Categories
-    ax_opts_coralblox_disturbances = Dict(
-        BASE_AXIS_OPTS...,
-        :ylabel => "DHW",
-        :height => 100
-    )
-    ax_row_coralblox_disturbances = 2
-    loc_dhw_scens = dhw_scens[locs=At(reef_id)]
-    loc_cyc_scens = cyc_scens[locations=At(reef_id)]
-    plot_coralblox_disturbances!(
-        f, ax_row_coralblox_disturbances, loc_dhw_scens, loc_cyc_scens;
-        axis_opts=ax_opts_coralblox_disturbances,
-    )
-    legend_coralblox_disturbances!(f, ax_row_coralblox_disturbances)
-
-    if reef_id ∈ disturbances.locations
-        loc_ltmp_disturbances = disturbances[locations=At(reef_id)]
-        ax_row_ltmp_disturbances = 3
-        plot_ltmp_disturbances!(
-            f, ax_row_ltmp_disturbances, loc_ltmp_disturbances;
-            axis_opts=ax_opts_coralblox_disturbances
+    if !hide_disturbances
+        ax_opts_coralblox_disturbances = Dict(
+            BASE_AXIS_OPTS...,
+            :ylabel => "DHW",
+            :height => 100
         )
-        ax_row_taxa = 4
+        loc_dhw_scens = dhw_scens[locs=At(reef_id)]
+        loc_cyc_scens = cyc_scens[locations=At(reef_id)]
+        plot_coralblox_disturbances!(
+            f, current_row, loc_dhw_scens, loc_cyc_scens;
+            axis_opts=ax_opts_coralblox_disturbances,
+        )
+        legend_coralblox_disturbances!(f, current_row)
+        current_row += 1
 
-        legend_ltmp_disturbances!(f, ax_row_ltmp_disturbances, loc_ltmp_disturbances)
-    else
-        @warn("Reef $reef_id / $ltmp_loc_idx not found in LTMP disturbances DataFrame")
-        ax_row_taxa = 3
+        if reef_id ∈ disturbances.locations
+            loc_ltmp_disturbances = disturbances[locations=At(reef_id)]
+            plot_ltmp_disturbances!(
+                f, current_row, loc_ltmp_disturbances;
+                axis_opts=ax_opts_coralblox_disturbances
+            )
+            ax_row_taxa = 4
+
+            legend_ltmp_disturbances!(f, current_row, loc_ltmp_disturbances)
+            current_row += 1
+        else
+            @warn("Reef $reef_id / $ltmp_loc_idx not found in LTMP disturbances DataFrame")
+            ax_row_taxa = 3
+        end
     end
 
     cb_loc_id = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
     cover = rs_raw.raw[:, :, cb_loc_id]
-    plot_taxa_props!(f, ax_row_taxa, cover; ax_opts=BASE_AXIS_OPTS)
+    plot_taxa_props!(f, current_row, cover; ax_opts=BASE_AXIS_OPTS)
 
-    legend_taxa_props!(f, ax_row_taxa)
+    legend_taxa_props!(f, current_row)
 
     return f
 end
