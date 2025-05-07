@@ -18,7 +18,7 @@ BASE_AXIS_OPTS::Dict = Dict(
 )
 
 FIG_SIZE::Dict = Dict(
-    :map => (500, 650),
+    :map => (500, 600),
 )
 
 # Load helpers before everything else

@@ -262,11 +262,12 @@ function plot_all_regions(
 )::Figure
     s_rac = (dropdims(sum(model_results.raw, dims=2), dims=2) .* site_k_area(dom)') ./ loc_area(dom)'
 
-    ref_years = START_YEAR:END_YEAR
-
-    north_res = ADRIA.DataCube(s_rac[:, NORTH_MASK, :]; timesteps=ref_years, sites=1:count(NORTH_MASK), scenarios=1:1)
-    central_res = ADRIA.DataCube(s_rac[:, CENTRAL_MASK, :]; timesteps=ref_years, sites=1:count(CENTRAL_MASK), scenarios=1:1)
-    south_res = ADRIA.DataCube(s_rac[:, SOUTH_MASK, :]; timesteps=ref_years, sites=1:count(SOUTH_MASK), scenarios=1:1)
+    north_res = ADRIA.DataCube(s_rac[:, region_masks[1]];
+        timesteps=ref_years, locations=1:count(region_masks[1]))
+    central_res = ADRIA.DataCube(s_rac[:, region_masks[2]];
+        timesteps=ref_years, locations=1:count(region_masks[2]))
+    south_res = ADRIA.DataCube(s_rac[:, region_masks[3]];
+        timesteps=ref_years, locations=1:count(region_masks[3]))
 
     f = plot_all_regions(
         north_res, ltmp_north, central_res, ltmp_central, south_res, ltmp_south
@@ -277,13 +278,12 @@ end
 function plot_all_regions(
     north_results, north_obs, central_results, central_obs, south_results, south_obs
 )::Figure
-
     f = Figure(; size=(1600, 1600))
     north_ax = plot_region(
         f,
         1,
         1,
-        "North GBR",
+        "North GBR - $(size(north_results, 2)) validation locations",
         north_obs,
         north_results
     )
@@ -291,21 +291,34 @@ function plot_all_regions(
         f,
         1,
         2,
-        "Central GBR",
+        "Central GBR - $(size(central_results, 2)) validation locations",
         central_obs,
         central_results
     )
     south_ax = plot_region(
         f,
-        2,
         1,
-        "South GBR",
+        3,
+        "South GBR - $(size(south_results, 2)) validation locations",
         south_obs,
-        south_results;
-        showlegend=true,
-        legend_row=2,
-        legend_col=2
+        south_results
     )
+
+    obs_el = [
+        PolyElement(color=(:black, 0.4)),
+        LineElement(color=:black)
+    ]
+    sim_el = [
+        PolyElement(color=(:red, 0.4)),
+        LineElement(color=:red)
+    ]
+    Legend(
+        f[2, :],
+        [obs_el, sim_el],
+        ["LTMP", "CoralBlox"],
+        orientation=:horizontal
+    )
+
     linkyaxes!(north_ax, central_ax, south_ax)
 
     resize_to_layout!(f)
@@ -323,11 +336,7 @@ function plot_region(
     title::String,
     obs::DataFrame,
     sim::YAXArray;
-    showlegend::Bool=false,
-    legend_row::Int64=2,
-    legend_col::Int64=2
 )::Axis
-
     ax = Axis(
         f[row, col],
         title=title,
@@ -337,28 +346,16 @@ function plot_region(
         height=400
     )
 
-    mean_agg = dropdims(mean(sim, dims=:sites), dims=:sites)
-    confints = ADRIA.analysis.series_confint(mean_agg.data)
+    # mean_agg = dropdims(mean(sim, dims=:locations), dims=:locations)
+    confints = ADRIA.analysis.series_confint(read(sim))
 
     xs::Vector{Float64} = collect(sim.timesteps)
-    ADRIA_series = series!(xs, sim[:, :, 1].data[:, :]'; solid_color=(:red, 0.01), linewidth=1, labels=nothing)
-    ADRIA_line = lines!(xs, confints[:, 2], color=:red, linewidth=5)
+    #ADRIA_series = series!(xs, read(sim[:, :])'; solid_color=(:red, 0.2), linewidth=2)
+    ADRIA_line = lines!(xs, confints[:, 2], color=:red, linewidth=2)
+    ADRIA_band = band!(xs, confints[:, 1], confints[:, 3], color=(:red, 0.4))
 
-    xs = obs.Year
-    lower::Vector{Float64} = obs.lower
-    upper::Vector{Float64} = obs.upper
-    response::Vector{Float64} = obs.response
-
-    LTMP_band = band!(xs, lower, upper, color=(:black, 0.4))
-    LTMP_line = lines!(xs, response, color=:black)
-
-    if showlegend
-        Legend(
-            f[legend_row, legend_col],
-            [[LTMP_line, LTMP_band], [ADRIA_line, ADRIA_series]],
-            ["LTMP", "CoralBlox"]
-        )
-    end
+    LTMP_band = band!(obs.Year, obs.lower, obs.upper, color=(:black, 0.4))
+    LTMP_line = lines!(obs.Year, obs.response, color=:black)
 
     return ax
 end
@@ -371,7 +368,6 @@ function plot_residual(
     ADRIA_data::YAXArray,
     title::String
 )::Nothing
-
     Axis(
         f[ax_row, ax_col],
         title=title,
@@ -398,7 +394,6 @@ end
 function plot_residuals(
     filename::String; fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(:size => (1600, 1600))
 )::Figure
-
     f = Figure(; fig_opts...)
 
     plot_residual(
@@ -436,7 +431,6 @@ end
 function create_compare_plot(
     filename::String; fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(:size => (1600, 1600))
 )::Figure
-
     f = Figure(; fig_opts...)
 
     plot_region(
@@ -461,10 +455,7 @@ function create_compare_plot(
         1,
         "South GBR",
         ltmp_south,
-        south_res;
-        showlegend=true,
-        legend_row=2,
-        legend_col=2
+        south_res
     )
     resize_to_layout!(f)
 
@@ -504,7 +495,6 @@ function plot_coral_param(
     group,
     data
 )::Figure
-
     fig = Figure(; size=(1300, 900))
     ax = Axis(
         fig[1, 1],
