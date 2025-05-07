@@ -327,3 +327,47 @@ function legend_taxa_props!(f::Figure, row::Int64; col=2)
 
     return Legend(f[row, col], taxa_ele, taxa_labels, "Functional groups", valign=:top,)
 end
+
+"""
+    plot_observation_locs(
+        calibration_store::LocationDataStore, validation_store::LocationDataStore
+    )::Figure
+
+Map showing calibration and valiration locations with different colors.
+"""
+function plot_observation_locs(
+    calibration_store::LocationDataStore, validation_store::LocationDataStore
+)::Figure
+    domain_gpkg = calibration_store.domain_gpkg
+    calib_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈Ref(calibration_store.ltmp_unique_ids), :]
+    valid_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈Ref(validation_store.ltmp_unique_ids), :]
+
+    f = Figure(size=FIG_SIZE[:map])
+    ax = GeoAxis(
+        f[1, 1],
+        dest="+proj=latlong +datum=WGS84",
+        title="Observation Locations",
+        titlesize=FONT_SIZES[:title]
+    )
+    poly!(ax, domain_gpkg.geom, color=:black)
+
+    obs = (Calibration=:red, Validation=:blue)
+
+    scatter!(ax, calib_gpkg.X_COORD, calib_gpkg.Y_COORD; markersize=10, color=obs.Calibration, alpha=0.5)
+    scatter!(ax, valid_gpkg.X_COORD, valid_gpkg.Y_COORD; markersize=10, color=obs.Validation, alpha=0.5)
+
+
+    els = [MarkerElement(color=c, marker=:circle, markersize=10) for c in values(obs)]
+    labels = collect(string.(keys(obs)))
+    @info(els)
+    @info(labels)
+    Legend(
+        f[2, 1],
+        els,
+        labels,
+        valign=:top,
+        orientation=:horizontal
+    )
+
+    return f
+end
