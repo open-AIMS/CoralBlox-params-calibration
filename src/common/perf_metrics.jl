@@ -325,9 +325,7 @@ function average_cc(cc_data)
     f_data = atanh.(cc_data)
 
     # Calculate confidence intervals and mean
-    f_lower_bound = tanh(quantile(f_data, 0.025))
-    f_upper_bound = tanh(quantile(f_data, 0.975))
-    f_mean = tanh(mean(f_data))
+    f_confint = ADRIA.analysis.series_confint(atanh.(pcc_validation)[:, :]')
 
-    return f_lower_bound, f_mean, f_upper_bound
+    return tanh.(f_confint)
 end
