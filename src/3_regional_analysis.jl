@@ -54,6 +54,24 @@ validation_save_dir::String = joinpath(OUT_DIR, "validation_locations")
 mkpath(calibration_save_dir)
 mkpath(validation_save_dir)
 
+# Plot Metrics
+metrics_save_dir::String = joinpath(OUT_DIR, "metrics")
+mkpath(metrics_save_dir)
+
+rmse_diff_map = plot_rmse_diff_map(
+    rs_raw.raw;
+    observations=VALIDATION_STORE,
+    fig_opts=Dict(:title => "Benchmark RMSE - Model RMSE\nValidation Locations")
+)
+save(joinpath(metrics_save_dir, "rmse_diff_map.png"), rmse_diff_map)
+
+pearson_coeff_map = plot_pcc_map(
+    rs_raw.raw;
+    observations=VALIDATION_STORE,
+    fig_opts=Dict(:title => "Pearson Correlation Coefficient\nValidation Locations")
+)
+save(joinpath(metrics_save_dir, "pcc_map.png"), pearson_coeff_map)
+
 # cyc_scens = _mortality_to_cyc_category(copy(dom.cyclone_mortality_scens[scenarios=1, species=5]))
 cyc_scens = dom.cyclone_mortality_scens[scenarios=1]
 dhw_scens = dom.dhw_scens[scenarios=1]
