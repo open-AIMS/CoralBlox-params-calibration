@@ -2,7 +2,7 @@
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "0cd1b9377e3dc7e5c74b4299f0ff3e83b6e29dfc"
+project_hash = "bc61f26b53d55a67ea5c0a10e97278df623c918a"
 
 [[deps.ADRIA]]
 deps = ["ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataEnvelopmentAnalysis", "DataFrames", "DataStructures", "Dates", "DimensionalData", "DiskArrays", "Distances", "Distributed", "Distributions", "FLoops", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Graphs", "HypothesisTests", "ImageIO", "InteractiveUtils", "Interpolations", "JMcDM", "JSON", "JuliennedArrays", "LERC_jll", "LinearAlgebra", "Logging", "MAT", "MLJ", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "Random", "Reexport", "RelocatableFolders", "SIRUS", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StableRNGs", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "Surrogates", "TOML", "YAXArrays", "Zarr"]
@@ -43,9 +43,9 @@ version = "0.1.3+0"
 
 [[deps.AWS]]
 deps = ["Base64", "Compat", "Dates", "Downloads", "GitHub", "HTTP", "IniFile", "JSON", "MbedTLS", "Mocking", "OrderedCollections", "Random", "SHA", "Sockets", "URIs", "UUIDs", "XMLDict"]
-git-tree-sha1 = "319ade7f8fc88243369e119859a7d3a3e7e7f267"
+git-tree-sha1 = "cf78e5ba4f24ff7100fdfaf1ff05547f91abbef8"
 uuid = "fbe9abb3-538b-5e4e-ba9e-bc94f4f92ebc"
-version = "1.92.0"
+version = "1.92.1"
 
 [[deps.AWSS3]]
 deps = ["AWS", "ArrowTypes", "Base64", "Compat", "Dates", "EzXML", "FilePathsBase", "MbedTLS", "Mocking", "OrderedCollections", "Retry", "SymDict", "URIs", "UUIDs", "XMLDict"]
@@ -578,9 +578,9 @@ version = "0.6.4"
 
 [[deps.CoralBlox]]
 deps = ["DataStructures", "YAXArrays"]
-git-tree-sha1 = "a308a021285f11a098599933e4af242d1c36d91d"
+path = "../CoralBlox"
 uuid = "f00a6e10-004a-11ef-3676-67ec635bc1a2"
-version = "1.0.1"
+version = "1.0.2"
 weakdeps = ["Makie"]
 
     [deps.CoralBlox.extensions]
@@ -1078,6 +1078,7 @@ version = "0.2.0"
 [[deps.GeoDataFrames]]
 deps = ["ArchGDAL", "DataAPI", "DataFrames", "Extents", "GeoFormatTypes", "GeoInterface", "Pkg", "Reexport", "Tables"]
 git-tree-sha1 = "6f4d393daf7f0059f234a8855a55c008dab735c1"
+pinned = true
 uuid = "62cb38b5-d8d2-4862-a48e-6a340996859f"
 version = "0.3.13"
 
