@@ -30,12 +30,24 @@ rs_raw = ADRIA.run_model(dom, scen[1, :])
 f_all_regions = plot_all_regions(
     dom, rs_raw
 )
+save(joinpath(OUT_DIR, "locs_reg.png"), f_all_regions)
+
+# Plot all regions with validation locations only
+loc_ids = VALIDATION_STORE.domain_gpkg.UNIQUE_ID
+validation_mask = (loc_ids .∈ Ref(VALIDATION_STORE.ltmp_unique_ids))
+NORTH_VALIDATION_MASK = NORTH_MASK .&& validation_mask
+CENTRAL_VALIDATION_MASK = CENTRAL_MASK .&& validation_mask
+SOUTH_VALIDATION_MASK = SOUTH_MASK .&& validation_mask
+
+f_all_regions_validation = plot_all_regions(
+    dom, rs_raw;
+    region_masks=[NORTH_VALIDATION_MASK, CENTRAL_VALIDATION_MASK, SOUTH_VALIDATION_MASK]
+)
+save(joinpath(OUT_DIR, "locs_reg_validation.png"), f_all_regions_validation)
 
 # save_dir = OUT_DIR
 
 mkpath(OUT_DIR)
-
-save(joinpath(OUT_DIR, "locs_reg.png"), f_all_regions)
 
 f_taxa_cover = taxa_cover_proportions(rs_raw.raw)
 save(joinpath(OUT_DIR, "locs_taxa_cov.png"), f_taxa_cover)
