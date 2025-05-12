@@ -90,16 +90,14 @@ dhw_scens = dom.dhw_scens[scenarios=1]
 disturbances_path = "C:/Users/pribeiro/AIMS/Code/ltmp_calibration/datasets/ltmp_data/disturbances.nc"
 disturbances = open_dataset(disturbances_path).layer
 
-rmse_diff_map = plot_rmse_diff_map(rs_raw.raw; observations=VALIDATION_STORE)
-save(joinpath(OUT_DIR, "rmse_diff_map.png"), rmse_diff_map)
+# include("./plot/plot.jl")
+f_obs_loc_map = plot_observation_locs(CALIBRATION_STORE, VALIDATION_STORE)
+save(joinpath(OUT_DIR, "obs_loc_map.png"), f_obs_loc_map)
 
-pearson_coeff_map = plot_pearson_coeff_map(rs_raw.raw; observations=VALIDATION_STORE)
-save(joinpath(OUT_DIR, "pearson_coeff_map.png"), pearson_coeff_map)
-
-validation_ids = ["16015100104", "23048100104", "19209100104", "14137100104"]
-loc_comparison_fig = plot_location_comparison_highlights(rs_raw.raw, validation_ids,
-    cyc_scens, dhw_scens, disturbances; observations=VALIDATION_STORE)
-save(joinpath(OUT_DIR, "loc_comparison.png"), loc_comparison_fig)
+# validation_ids = ["16015100104", "23048100104", "19209100104", "14137100104"]
+# loc_comparison_fig = plot_location_comparison_highlights(rs_raw.raw, validation_ids,
+#     cyc_scens, dhw_scens, disturbances; observations=VALIDATION_STORE)
+# save(joinpath(OUT_DIR, "loc_comparison.png"), loc_comparison_fig)
 
 n_calibration_locs = length(CALIBRATION_STORE.ltmp_cover_to_domain)
 @showprogress desc = "Plotting calibration locations." for i in 1:n_calibration_locs
@@ -113,25 +111,25 @@ n_validation_locs = length(VALIDATION_STORE.ltmp_cover_to_domain)
 @showprogress desc = "Plotting validation locations." for i in 1:n_validation_locs
     reef_id = VALIDATION_STORE.ltmp_unique_ids[i]
     f = plot_location_comparison(rs_raw.raw, i, dhw_scens, cyc_scens, disturbances;
-        observations=VALIDATION_STORE)
+        observations=VALIDATION_STORE, hide_disturbances=true)
     save(joinpath(validation_save_dir, "loc_$(reef_id).png"), f)
 end
 
 rmse_diff_validation = sort(rmse_diff(rs_raw.raw, VALIDATION_STORE))
 f_rmse_diff_validation = plot_rmse_scatter(rmse_diff_validation, "Validation")
-save(joinpath(OUT_DIR, "rmse_diff_validation.png"), f_rmse_diff_validation)
+save(joinpath(metrics_save_dir, "rmse_diff_validation.png"), f_rmse_diff_validation)
 
 rmse_diff_calibration = sort(rmse_diff(rs_raw.raw, CALIBRATION_STORE))
 f_rmse_diff_calibration = plot_rmse_scatter(rmse_diff_calibration, "Calibration")
-save(joinpath(OUT_DIR, "rmse_diff_calibration.png"), f_rmse_diff_calibration)
+save(joinpath(metrics_save_dir, "rmse_diff_calibration.png"), f_rmse_diff_calibration)
 
 pcc_validation = pcc_locs(rs_raw.raw, VALIDATION_STORE)
 f_pcc_validation = plot_pcc_scatter(pcc_validation)
-save(joinpath(OUT_DIR, "pcc_validation.png"), f_pcc_validation)
+save(joinpath(metrics_save_dir, "pcc_validation.png"), f_pcc_validation)
 
 pcc_calibration = pcc_locs(rs_raw.raw, CALIBRATION_STORE)
 f_pcc_calibration = plot_pcc_scatter(pcc_calibration)
-save(joinpath(OUT_DIR, "pcc_calibration.png"), f_pcc_calibration)
+save(joinpath(metrics_save_dir, "pcc_calibration.png"), f_pcc_calibration)
 
 rmse_ = 0.0
 benchmark_ = 0.0
