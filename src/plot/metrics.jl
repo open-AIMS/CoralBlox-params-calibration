@@ -46,7 +46,6 @@ function plot_pcc_scatter(pcc)
         yticks=(_yticks)
     )
 
-
     scatter!(ax, 1:length(pcc), sort(pcc), color=:blue, label="PCC")
 
     # Add horizontal line for mean
@@ -121,11 +120,10 @@ function plot_pcc_map(
     fig_opts::Dict=Dict(),
     observations::LocationDataStore=COMBINED_STORE,
 )::Figure
-    raw_data = rs_raw.raw
     n_validation_obs = length(observations.ltmp_unique_ids)
     ltmp_loc_indexes = collect(1:n_validation_obs)
 
-    error_stats = collect_error_stats.([raw_data], ltmp_loc_indexes; observations=observations)
+    error_stats = collect_error_stats.(Ref(raw_data), ltmp_loc_indexes; observations=observations)
     rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
 
     fig_size = get(fig_opts, :size, FIG_SIZE[:map])
