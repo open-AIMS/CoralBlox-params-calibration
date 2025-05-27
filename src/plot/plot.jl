@@ -25,6 +25,9 @@ FIG_SIZE::Dict = Dict(
 include("./plot_helpers.jl")
 
 include("./location_comparison.jl")
+include("./regional_comparison.jl")
 include("./metrics.jl")
 include("./progress.jl")
 include("./plotting.jl")
+
+@info("Plots loaded")

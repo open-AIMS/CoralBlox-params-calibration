@@ -7,45 +7,9 @@ include("./plot/plot.jl")
 include("1_setup.jl")
 include("common/param_bounds.jl")
 
-init_cover = deserialize(INIT_COVER_PATH)
+include("3a_analysis_setup.jl")
 
-construct_cover!(
-    dom, init_cover, location_classification.consecutive_classification
-)
-
-# ----- LOAD CALIBRATED RESULTS -----
-
-coral_param_fn = joinpath(OUT_DIR, RESULT_FN)
-calibrated_params = deserialize(coral_param_fn)
-
-# Load values into scenario dataframe
-
-dom, scen = setup_run(
-    dom,
-    calibrated_params
-)
-
-rs_raw = ADRIA.run_model(dom, scen[1, :])
-
-f_all_regions = plot_all_regions(
-    dom, rs_raw
-)
-save(joinpath(OUT_DIR, "locs_reg.png"), f_all_regions)
-
-# Plot all regions with validation locations only
-loc_ids = VALIDATION_STORE.domain_gpkg.UNIQUE_ID
-validation_mask = (loc_ids .∈ Ref(VALIDATION_STORE.ltmp_unique_ids))
-NORTH_VALIDATION_MASK = NORTH_MASK .&& validation_mask
-CENTRAL_VALIDATION_MASK = CENTRAL_MASK .&& validation_mask
-SOUTH_VALIDATION_MASK = SOUTH_MASK .&& validation_mask
-
-f_all_regions_validation = plot_all_regions(
-    dom, rs_raw;
-    region_masks=[NORTH_VALIDATION_MASK, CENTRAL_VALIDATION_MASK, SOUTH_VALIDATION_MASK]
-)
-save(joinpath(OUT_DIR, "locs_reg_validation.png"), f_all_regions_validation)
-
-# save_dir = OUT_DIR
+include("3b_regional_analysis.jl")
 
 mkpath(OUT_DIR)
 
@@ -130,6 +94,48 @@ save(joinpath(metrics_save_dir, "pcc_validation.png"), f_pcc_validation)
 pcc_calibration = pcc_locs(rs_raw.raw, CALIBRATION_STORE)
 f_pcc_calibration = plot_pcc_scatter(pcc_calibration)
 save(joinpath(metrics_save_dir, "pcc_calibration.png"), f_pcc_calibration)
+
+# ! function out
+
+raw_data = rs_raw.raw
+n_validation_obs = length(VALIDATION_STORE.ltmp_unique_ids)
+ltmp_loc_indexes = collect(1:n_validation_obs)
+error_stats = collect_error_stats.(Ref(raw_data), ltmp_loc_indexes; observations=VALIDATION_STORE)
+rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
+
+x_labels = ["Model RMSE", "Benchmark RMSE", "PCC", "MAE", "Bias"]
+x = 1:length(x_labels)
+validation_ids = [findfirst(id .== VALIDATION_STORE.domain_gpkg.UNIQUE_ID) for id in VALIDATION_STORE.ltmp_unique_ids]
+y_coords = VALIDATION_STORE.domain_gpkg[validation_ids, "Y_COORD"]
+y_coords_sortperm = sortperm(y_coords, rev=false)
+y_coords_sortperm_rev = sortperm(y_coords, rev=true)
+fig = Figure()
+ax = Axis(
+    fig[1, 1],
+    title="Calibration Metrics vs Latitude",
+    xlabel="",
+    ylabel="Latitude",
+    xticks=(x, x_labels),
+    yticks=(1:length(y_coords), string.(y_coords[y_coords_sortperm])),
+    xticklabelrotation=(π / 6)
+)
+heat = hcat(rmse_, benchmark_, cc_, maee_, bias_)[y_coords_sortperm_rev, :]
+hm = heatmap!(ax, x, 1:length(y_coords), heat')
+Colorbar(fig[:, end+1], hm)
+fig
+
+# !
+
+# ! Identify 3 best and 3 worst locations
+n_validation_locs = length(VALIDATION_STORE.ltmp_unique_ids)
+# validaiton_ids = [findfirst(id .== VALIDATION_STORE.domain_gpkg.UNIQUE_ID) for id in VALIDATION_STORE.ltmp_unique_ids]
+validation_pccs = [collect_error_stats(rs_raw.raw, id; observations=VALIDATION_STORE)[3] for id in 1:n_validation_locs]
+validation_pccs_sortperm = sortperm(validation_pccs)
+validation_worst_3_pcc = validation_pccs[validation_pccs_sortperm][1:3]
+validation_worst_3_pcc_idx = VALIDATION_STORE.ltmp_unique_ids[validation_pccs_sortperm][1:3]
+validation_best_3_pcc = validation_pccs[validation_pccs_sortperm][end-2:end]
+validation_best_3_pcc_idx = VALIDATION_STORE.ltmp_unique_ids[validation_pccs_sortperm][end-2:end]
+# ! -------------------------------------
 
 rmse_ = 0.0
 benchmark_ = 0.0
