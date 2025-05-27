@@ -61,7 +61,11 @@ end
 
 function _region_shape_mask(dom, region_shapes, idx)::BitVector
     region_shape = region_shapes.geometry[idx]
-    return [AG.contains(region_shape, AG.centroid(poly)) for poly in dom.loc_data.geom]
+    return try
+        [AG.contains(region_shape, AG.centroid(poly)) for poly in dom.loc_data.geom]
+    catch
+        [AG.contains(region_shape, AG.centroid(poly)) for poly in dom.loc_data.geometry]
+    end
 end
 
 if !@isdefined(NORTH_MASK)
