@@ -177,3 +177,51 @@ function plot_pcc_map(
 
     return fig
 end
+
+function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED_STORE)::Figure
+    n_validation_obs = length(observations.ltmp_unique_ids)
+    ltmp_loc_indexes = collect(1:n_validation_obs)
+    error_stats = collect_error_stats.(
+        Ref(rs_raw), ltmp_loc_indexes; observations=observations
+    )
+    rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
+
+    validation_ids = [
+        findfirst(id .== observations.domain_gpkg.UNIQUE_ID)
+        for id in observations.ltmp_unique_ids
+    ]
+    y_coords = try
+        observations.domain_gpkg[validation_ids, "Y_COORD"]
+    catch
+        observations.domain_gpkg[validation_ids, "LAT"]
+    end
+    y_coords_sortperm = sortperm(y_coords, rev=false)
+    heat_data = hcat(rmse_ .- benchmark_, cc_, bias_)[y_coords_sortperm, :]
+    x_labels = ["Model RMSE - Benchmark RMSE", "PCC", "Bias"]
+    bias_up_limit = ceil(maximum(abs.(bias_)), digits=1)
+    rmse_diff_up_limit = ceil(maximum(abs.(benchmark_ .- rmse_)), digits=1)
+    colorranges = [(-rmse_diff_up_limit, rmse_diff_up_limit), (-1.0, 1.0), (-bias_up_limit, bias_up_limit)]
+    colormaps = [:Spectral, :Spectral, Makie.Reverse(:Spectral)]
+
+    n_metrics = length(x_labels)
+    fig = Figure(size=fig_size)
+
+    for (i, x_label) in enumerate(x_labels)
+        yticks = i == 1 ?
+                 string.(round.(y_coords[y_coords_sortperm], digits=2)) :
+                 fill("", length(y_coords))
+        ylabel = i == 1 ? "Latitude" : ""
+        ax = Axis(
+            fig[1, i],
+            xlabel=x_label,
+            ylabel=ylabel,
+            xticks=([i], [""]),
+            yticks=(1:length(y_coords), yticks),
+        )
+        hm = heatmap!(ax, fill(i, length(y_coords)), 1:length(y_coords), heat_data[:, i];
+            colormap=colormaps[i], colorrange=colorranges[i])
+        Colorbar(fig[end+1, 1:n_metrics], hm, vertical=false, label=x_label)
+    end
+
+    return fig
+end
