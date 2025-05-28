@@ -80,7 +80,7 @@ function plot_rmse_diff_map(
 
     error_stats = collect_error_stats.([raw_data], ltmp_loc_indexes; observations=observations)
     rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
-    rmse_diffs = benchmark_ .- rmse_
+    rmse_diffs = rmse_ .- benchmark_
 
     fig_size = get(fig_opts, :size, FIG_SIZE[:map])
     fig_title = get(fig_opts, :title, "Benchmark RMSE - Model RMSE")
@@ -96,35 +96,36 @@ function plot_rmse_diff_map(
         ylabel="Latitude"
     )
     domain_gpkg = observations.domain_gpkg
-    observation_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈[observations.ltmp_unique_ids], :]
+
+    observation_gpkg = domain_gpkg[[findfirst(domain_gpkg.UNIQUE_ID .== ltmp_id) for ltmp_id in observations.ltmp_unique_ids], :]
 
     try
         poly!.(ax, domain_gpkg.geom, color=:gray)
-    catch
-        poly!.(ax, domain_gpkg.geometry, color=:gray)
-    end
-    try
         poly!.(ax, observation_gpkg.geom, color=:red)
     catch
+        poly!.(ax, domain_gpkg.geometry, color=:gray)
         poly!.(ax, observation_gpkg.geometry, color=:red)
     end
+
+    max_val, min_val = extrema(rmse_diffs)
+    up_limit = maximum(abs.((max_val, min_val)))
+    lower_limit = -up_limit
+
     try
         scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD;
-            markersize=35, color=rmse_diffs, colormap=:bam, alpha=0.8,
+            markersize=35, colorrange=(lower_limit, up_limit), color=rmse_diffs, colormap=:bam, alpha=0.8,
             strokewidth=1, strokecolor=(:gray, 0.1)
         )
     catch
         scatter!(ax, observation_gpkg.LON, observation_gpkg.LAT;
-            markersize=35, color=rmse_diffs, colormap=:bam, alpha=0.8,
+            markersize=35, colorrange=(lower_limit, up_limit), color=rmse_diffs, colormap=:bam, alpha=0.8,
             strokewidth=1, strokecolor=(:gray, 0.1)
         )
     end
-    max_val, min_val = extrema(rmse_diffs)
-    up_limit = maximum(abs.((max_val, min_val)))
-    lower_limit = -up_limit
+
     Colorbar(
         fig[1, 2];
-        limits=(lower_limit, up_limit), colormap=:bam, label="Model RMSE - Benchmark RMSE"
+        colorrange=(lower_limit, up_limit), colormap=:bam, label="Model RMSE - Benchmark RMSE"
     )
 
     return fig
@@ -151,28 +152,29 @@ function plot_pcc_map(
         ylabel="Latitude",
         title=fig_title,
         titlesize=18,
-        # xlabelsize=15,
-        # ylabelsize=15,
     )
+    observations = VALIDATION_STORE
     domain_gpkg = observations.domain_gpkg
-    observation_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈[observations.ltmp_unique_ids], :]
+    domain_gpkg[[findfirst(domain_gpkg.UNIQUE_ID .== ltmp_id) for ltmp_id in observations.ltmp_unique_ids], :]
+    observation_gpkg = domain_gpkg[[findfirst(domain_gpkg.UNIQUE_ID .== ltmp_id) for ltmp_id in observations.ltmp_unique_ids], :]# domain_gpkg[domain_gpkg.UNIQUE_ID.∈[observations.ltmp_unique_ids], :]
     try
         poly!.(ax, domain_gpkg.geom, color=:gray)
     catch
         poly!.(ax, domain_gpkg.geometry, color=:gray)
     end
 
-    try
-        scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD, markersize=35,
-            color=cc_, colormap=:bam, alpha=0.8, strokewidth=1, strokecolor=(:gray, 0.1))
-    catch
-        scatter!(ax, observation_gpkg.LON, observation_gpkg.LAT, markersize=35,
-            color=cc_, colormap=:bam, alpha=0.8, strokewidth=1, strokecolor=(:gray, 0.1))
-    end
     max_val, min_val = extrema(cc_)
     up_limit = maximum(abs.((max_val, min_val)))
     lower_limit = -up_limit
-    Colorbar(fig[1, 2], limits=(lower_limit, up_limit), colormap=:bam,
+
+    try
+        scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD, markersize=35,
+            color=cc_, colorrange=(lower_limit, up_limit), colormap=:bam, alpha=0.6, strokewidth=1, strokecolor=(:gray, 0.1))
+    catch
+        scatter!(ax, observation_gpkg.LON, observation_gpkg.LAT, markersize=35,
+            color=cc_, colorrange=(lower_limit, up_limit), colormap=:bam, alpha=0.6, strokewidth=1, strokecolor=(:gray, 0.1))
+    end
+    Colorbar(fig[1, 2], colorrange=(lower_limit, up_limit), colormap=:bam,
         label="Pearson Correlation Coefficient")
 
     return fig
