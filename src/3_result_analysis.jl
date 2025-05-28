@@ -48,20 +48,33 @@ pearson_coeff_map = plot_pcc_map(
 )
 save(joinpath(metrics_save_dir, "pcc_map.png"), pearson_coeff_map)
 
-# cyc_scens = _mortality_to_cyc_category(copy(dom.cyclone_mortality_scens[scenarios=1, species=5]))
+rmse_diff_validation = sort(rmse_diff(rs_raw.raw, VALIDATION_STORE))
+f_rmse_diff_validation = plot_rmse_scatter(rmse_diff_validation, "Validation")
+save(joinpath(metrics_save_dir, "rmse_diff_validation.png"), f_rmse_diff_validation)
+
+rmse_diff_calibration = sort(rmse_diff(rs_raw.raw, CALIBRATION_STORE))
+f_rmse_diff_calibration = plot_rmse_scatter(rmse_diff_calibration, "Calibration")
+save(joinpath(metrics_save_dir, "rmse_diff_calibration.png"), f_rmse_diff_calibration)
+
+pcc_validation = pcc_locs(rs_raw.raw, VALIDATION_STORE)
+f_pcc_validation = plot_pcc_scatter(pcc_validation)
+save(joinpath(metrics_save_dir, "pcc_validation.png"), f_pcc_validation)
+
+pcc_calibration = pcc_locs(rs_raw.raw, CALIBRATION_STORE)
+f_pcc_calibration = plot_pcc_scatter(pcc_calibration)
+save(joinpath(metrics_save_dir, "pcc_calibration.png"), f_pcc_calibration)
+
+fig_m_heatmap = plot_metrics_heatmap(rs_raw.raw; fig_size=(700, 700), observations=VALIDATION_STORE)
+save(joinpath(metrics_save_dir, "metrics_heatmap.png"), fig_m_heatmap)
+
+
 cyc_scens = dom.cyclone_mortality_scens[scenarios=1]
 dhw_scens = dom.dhw_scens[scenarios=1]
 disturbances_path = "C:/Users/pribeiro/AIMS/Code/ltmp_calibration/datasets/ltmp_data/disturbances.nc"
 disturbances = open_dataset(disturbances_path).layer
 
-# include("./plot/plot.jl")
 f_obs_loc_map = plot_observation_locs(CALIBRATION_STORE, VALIDATION_STORE)
 save(joinpath(OUT_DIR, "obs_loc_map.png"), f_obs_loc_map)
-
-# validation_ids = ["16015100104", "23048100104", "19209100104", "14137100104"]
-# loc_comparison_fig = plot_location_comparison_highlights(rs_raw.raw, validation_ids,
-#     cyc_scens, dhw_scens, disturbances; observations=VALIDATION_STORE)
-# save(joinpath(OUT_DIR, "loc_comparison.png"), loc_comparison_fig)
 
 n_calibration_locs = length(CALIBRATION_STORE.ltmp_cover_to_domain)
 @showprogress desc = "Plotting calibration locations." for i in 1:n_calibration_locs
@@ -79,57 +92,9 @@ n_validation_locs = length(VALIDATION_STORE.ltmp_cover_to_domain)
     save(joinpath(validation_save_dir, "loc_$(reef_id).png"), f)
 end
 
-rmse_diff_validation = sort(rmse_diff(rs_raw.raw, VALIDATION_STORE))
-f_rmse_diff_validation = plot_rmse_scatter(rmse_diff_validation, "Validation")
-save(joinpath(metrics_save_dir, "rmse_diff_validation.png"), f_rmse_diff_validation)
 
-rmse_diff_calibration = sort(rmse_diff(rs_raw.raw, CALIBRATION_STORE))
-f_rmse_diff_calibration = plot_rmse_scatter(rmse_diff_calibration, "Calibration")
-save(joinpath(metrics_save_dir, "rmse_diff_calibration.png"), f_rmse_diff_calibration)
 
-pcc_validation = pcc_locs(rs_raw.raw, VALIDATION_STORE)
-f_pcc_validation = plot_pcc_scatter(pcc_validation)
-save(joinpath(metrics_save_dir, "pcc_validation.png"), f_pcc_validation)
-
-pcc_calibration = pcc_locs(rs_raw.raw, CALIBRATION_STORE)
-f_pcc_calibration = plot_pcc_scatter(pcc_calibration)
-save(joinpath(metrics_save_dir, "pcc_calibration.png"), f_pcc_calibration)
-
-# ! function out
-
-raw_data = rs_raw.raw
-n_validation_obs = length(VALIDATION_STORE.ltmp_unique_ids)
-ltmp_loc_indexes = collect(1:n_validation_obs)
-error_stats = collect_error_stats.(Ref(raw_data), ltmp_loc_indexes; observations=VALIDATION_STORE)
-rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
-
-x_labels = ["Model RMSE", "Benchmark RMSE", "PCC", "MAE", "Bias"]
-x = 1:length(x_labels)
-validation_ids = [findfirst(id .== VALIDATION_STORE.domain_gpkg.UNIQUE_ID) for id in VALIDATION_STORE.ltmp_unique_ids]
-y_coords = try
-    VALIDATION_STORE.domain_gpkg[validation_ids, "Y_COORD"]
-catch
-    VALIDATION_STORE.domain_gpkg[validation_ids, "LAT"]
-end
-y_coords_sortperm = sortperm(y_coords, rev=false)
-y_coords_sortperm_rev = sortperm(y_coords, rev=true)
-fig = Figure()
-ax = Axis(
-    fig[1, 1],
-    title="Calibration Metrics vs Latitude",
-    xlabel="",
-    ylabel="Latitude",
-    xticks=(x, x_labels),
-    yticks=(1:length(y_coords), string.(y_coords[y_coords_sortperm])),
-    xticklabelrotation=(π / 6)
-)
-heat = hcat(rmse_, benchmark_, cc_, maee_, bias_)[y_coords_sortperm_rev, :]
-hm = heatmap!(ax, x, 1:length(y_coords), heat')
-Colorbar(fig[:, end+1], hm)
-fig
-
-# !
-
+# * 3 best and 3 worst
 # ! Identify 3 best and 3 worst locations
 n_validation_locs = length(VALIDATION_STORE.ltmp_unique_ids)
 # validaiton_ids = [findfirst(id .== VALIDATION_STORE.domain_gpkg.UNIQUE_ID) for id in VALIDATION_STORE.ltmp_unique_ids]
