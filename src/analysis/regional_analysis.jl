@@ -17,7 +17,7 @@ function _region_stats(
 )::Union{
     Nothing,
     @NamedTuple{
-        model_stats::Array{Union{Missing,Float64}},
+        model_stats::Array{Float64},
         historic_stats::Array{Union{Missing,Float64}},
         n_locations::Int64
     }
@@ -37,15 +37,13 @@ function _region_stats(
 
     # Sum across all functional groups and size classes
     target_model_data = dropdims(sum(target_model, dims=2), dims=2)
-    @info target_model_data
 
     n_locations, n_timesteps = size(target_historic)
+    model_stats = Array{Float64}(fill(0.0, 3, n_timesteps))
     historic_stats = Array{Union{Missing,Float64}}(fill(missing, 3, n_timesteps))
-    model_stats = Array{Union{Missing,Float64}}(fill(missing, 3, n_timesteps))
 
     for y in 1:n_timesteps
         # Fill model median and confint
-        @info y, @view(target_model_data[y, :])
         model_stats[:, y] .= quantile(@view(target_model_data[y, :]), [0.025 0.5 0.975])'
 
         # Fill historic median and confint
