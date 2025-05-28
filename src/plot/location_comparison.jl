@@ -354,12 +354,21 @@ function plot_observation_locs(
         title="Observation Locations",
         titlesize=FONT_SIZES[:title]
     )
-    poly!(ax, domain_gpkg.geom, color=:black)
+    try
+        poly!(ax, domain_gpkg.geom, color=:black)
+    catch
+        poly!(ax, domain_gpkg.geometry, color=:black)
+    end
 
     obs = (Calibration=:red, Validation=:blue)
 
-    scatter!(ax, calib_gpkg.X_COORD, calib_gpkg.Y_COORD; markersize=10, color=obs.Calibration, alpha=0.5)
-    scatter!(ax, valid_gpkg.X_COORD, valid_gpkg.Y_COORD; markersize=10, color=obs.Validation, alpha=0.5)
+    try
+        scatter!(ax, calib_gpkg.X_COORD, calib_gpkg.Y_COORD; markersize=10, color=obs.Calibration, alpha=0.5)
+        scatter!(ax, valid_gpkg.X_COORD, valid_gpkg.Y_COORD; markersize=10, color=obs.Validation, alpha=0.5)
+    catch
+        scatter!(ax, calib_gpkg.LON, calib_gpkg.LAT; markersize=10, color=obs.Calibration, alpha=0.5)
+        scatter!(ax, valid_gpkg.LON, valid_gpkg.LAT; markersize=10, color=obs.Validation, alpha=0.5)
+    end
 
 
     els = [MarkerElement(color=c, marker=:circle, markersize=10) for c in values(obs)]

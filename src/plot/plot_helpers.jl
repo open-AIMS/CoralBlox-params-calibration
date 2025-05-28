@@ -10,7 +10,11 @@ function _location_err_title(
     observations::LocationDataStore=COMBINED_STORE,
 )::Makie.RichText
     domain_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
-    reef_name::String = observations.domain_gpkg.GBR_NAME[domain_idx]
+    reef_name::String = try
+        observations.domain_gpkg.GBR_NAME[domain_idx]
+    catch
+        observations.domain_gpkg.cluster_id[domain_idx]
+    end
     reef_id::String = get_ltmp_loc_unique_id(observations, ltmp_loc_idx)
 
     rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(

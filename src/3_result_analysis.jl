@@ -106,7 +106,11 @@ rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...
 x_labels = ["Model RMSE", "Benchmark RMSE", "PCC", "MAE", "Bias"]
 x = 1:length(x_labels)
 validation_ids = [findfirst(id .== VALIDATION_STORE.domain_gpkg.UNIQUE_ID) for id in VALIDATION_STORE.ltmp_unique_ids]
-y_coords = VALIDATION_STORE.domain_gpkg[validation_ids, "Y_COORD"]
+y_coords = try
+    VALIDATION_STORE.domain_gpkg[validation_ids, "Y_COORD"]
+catch
+    VALIDATION_STORE.domain_gpkg[validation_ids, "LAT"]
+end
 y_coords_sortperm = sortperm(y_coords, rev=false)
 y_coords_sortperm_rev = sortperm(y_coords, rev=true)
 fig = Figure()

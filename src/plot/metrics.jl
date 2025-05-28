@@ -98,12 +98,27 @@ function plot_rmse_diff_map(
     domain_gpkg = observations.domain_gpkg
     observation_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈[observations.ltmp_unique_ids], :]
 
-    poly!.(ax, domain_gpkg.geom, color=:gray)
-    poly!.(ax, observation_gpkg.geom, color=:red)
-    scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD;
-        markersize=35, color=rmse_diffs, colormap=:bam, alpha=0.8,
-        strokewidth=1, strokecolor=(:gray, 0.1)
-    )
+    try
+        poly!.(ax, domain_gpkg.geom, color=:gray)
+    catch
+        poly!.(ax, domain_gpkg.geometry, color=:gray)
+    end
+    try
+        poly!.(ax, observation_gpkg.geom, color=:red)
+    catch
+        poly!.(ax, observation_gpkg.geometry, color=:red)
+    end
+    try
+        scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD;
+            markersize=35, color=rmse_diffs, colormap=:bam, alpha=0.8,
+            strokewidth=1, strokecolor=(:gray, 0.1)
+        )
+    catch
+        scatter!(ax, observation_gpkg.LON, observation_gpkg.LAT;
+            markersize=35, color=rmse_diffs, colormap=:bam, alpha=0.8,
+            strokewidth=1, strokecolor=(:gray, 0.1)
+        )
+    end
     max_val, min_val = extrema(rmse_diffs)
     up_limit = maximum(abs.((max_val, min_val)))
     lower_limit = -up_limit
@@ -141,10 +156,19 @@ function plot_pcc_map(
     )
     domain_gpkg = observations.domain_gpkg
     observation_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈[observations.ltmp_unique_ids], :]
-    poly!.(ax, domain_gpkg.geom, color=:gray)
+    try
+        poly!.(ax, domain_gpkg.geom, color=:gray)
+    catch
+        poly!.(ax, domain_gpkg.geometry, color=:gray)
+    end
 
-    scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD, markersize=35,
-        color=cc_, colormap=:bam, alpha=0.8, strokewidth=1, strokecolor=(:gray, 0.1))
+    try
+        scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD, markersize=35,
+            color=cc_, colormap=:bam, alpha=0.8, strokewidth=1, strokecolor=(:gray, 0.1))
+    catch
+        scatter!(ax, observation_gpkg.LON, observation_gpkg.LAT, markersize=35,
+            color=cc_, colormap=:bam, alpha=0.8, strokewidth=1, strokecolor=(:gray, 0.1))
+    end
     max_val, min_val = extrema(cc_)
     up_limit = maximum(abs.((max_val, min_val)))
     lower_limit = -up_limit
