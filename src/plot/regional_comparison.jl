@@ -33,17 +33,22 @@ end
 function plot_regional_comparison(
     regional_stats::NamedTuple;
     fig_size=(800, 800), axis_limits=(nothing, (0.0, 1.0)), fig_title=""
-)
+)::Figure
     opts::Dict{Symbol,Any} = opts_regional_comparison(:blue, :red)
     f = Figure(size=fig_size)
     r_keys = keys(regional_stats)
     n_plots = length(r_keys)
 
+    n_locations::Int64 = 0
+    _rmse::Float64 = 0.0
+    _mae::Float64 = 0.0
     for (idx, key) in enumerate(r_keys)
         n_locations = regional_stats[key].n_locations
-        ax_valid = Axis(
+        _rmse = round(regional_stats[key].rmse, digits=2)
+        _mae = round(regional_stats[key].mae, digits=2)
+        ax = Axis(
             f[fig_coord(idx, n_plots)...],
-            title="$(string(key)) ($n_locations locations)",
+            title="$(string(key)) ($n_locations Reefs)\nRMSE: $_rmse | MAE: $_mae",
             xlabel="Year",
             ylabel="Relative cover",
             limits=axis_limits,
@@ -64,12 +69,11 @@ function plot_regional_comparison(
 
     return f
 end
-
 function plot_regional_comparison(
     regional_stats_validation::NamedTuple,
     regional_stats_calibration::NamedTuple;
     fig_size=(800, 800), axis_limits=(nothing, (0.0, 1.0)), fig_title=""
-)
+)::Figure
     opts_validation::Dict{Symbol,Any} = opts_regional_comparison(:blue, :cyan)
     opts_calibration::Dict{Symbol,Any} = opts_regional_comparison(:red, :magenta)
     f = Figure(size=fig_size)
@@ -120,7 +124,7 @@ function plot_regional_comparison(
             )
 
             n_locations = regional_stats_validation[key].n_locations
-            ax_title * "$n_locations validation locs"
+            ax_title * "$n_locations validation Reefs"
         end
 
         if key ∈ r_keys_calibration
@@ -132,7 +136,7 @@ function plot_regional_comparison(
             )
 
             n_locations = regional_stats_calibration[key].n_locations
-            ax_title * "; $n_locations calibration locs"
+            ax_title * "; $n_locations calibration Reefs"
         end
 
         ax.title[] = ax_title
@@ -166,7 +170,7 @@ function legend_regional_comparison!(fig::Figure, opts::Dict{Symbol,Any})::Nothi
         LineElement(color=opts[:historic_line_color]),
         PolyElement(color=opts[:historic_band_color])
     ]
-    leg_labels = ["Model data", "Historic Data"]
+    leg_labels = ["CoralBlox", "LTMP"]
 
     Legend(
         fig[end+1, :],
@@ -199,10 +203,10 @@ function legend_regional_comparison!(
     ]
 
     leg_labels = [
-        "Validation model data ",
-        "Validation historic data",
-        "Calibration model data",
-        "Calibration historic data"]
+        "CoralBlox validation Reefs",
+        "LTMP validation Reefs",
+        "CoralBlox calibration Reefs",
+        "LTMP calibration Reefs"]
 
     leg_elements = [
         model_leg_element_valid,
