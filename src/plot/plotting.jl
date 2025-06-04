@@ -92,24 +92,30 @@ end
 Plot the proportion of coral cover composed of each functional group as a line graph given
 the raw modelled output cover matrix as input.
 """
-function taxa_cover_proportions(raw_data)::Figure
+function taxa_cover_proportions(raw_data; fig_size=(800, 400))::Figure
     cover = reshape(raw_data, (15, 7, 5, 3806))
     cover = dropdims(sum(cover, dims=4), dims=4)
     cover ./= sum(cover, dims=(2, 3))
     cover = dropdims(sum(cover, dims=2), dims=2)
     cover = permutedims(cover, (2, 1))
-    xs = 2008:2022
+    xs = START_YEAR:END_YEAR
 
-    f = Figure(; size=(1200, 900))
+    f = Figure(; size=fig_size)
     ax = Axis(
         f[1, 1];
-        xlabel="year",
+        xlabel="Year",
         ylabel="Cover Proportion",
         title="Functional Group Cover Proportions",
         limits=(nothing, nothing, 0, 1)
     )
-    sr = series!(xs, cover, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
-    # Legend(f[1, 2], ax, framevisible=false)
+
+    sr = series!(
+        xs,
+        cover;
+        color=:seaborn_bright6,
+        linewidth=3,
+        labels=ADRIA.human_readable_name(ADRIA.functional_group_names(), title_case=true))
+    Legend(f[1, 2], ax, framevisible=false)
     return f
 end
 
@@ -119,7 +125,7 @@ end
 Plot the proportion of coral population composed of each functional group. Population
 proportions are calculated using the average coral diameter of each size class.
 """
-function taxa_population_proportions(raw_data)::Figure
+function taxa_population_proportions(raw_data; fig_size=(800, 400))::Figure
     sc_mean_area = reshape(
         permutedims(ADRIA.colony_areas()[2], (2, 1)),
         (1, 35, 1)
@@ -130,18 +136,24 @@ function taxa_population_proportions(raw_data)::Figure
     population ./= sum(population, dims=(2, 3))
     population = dropdims(sum(population, dims=2), dims=2)
     population = permutedims(population, (2, 1))
-    xs = 2008:2022
+    xs = START_YEAR:END_YEAR
 
-    f = Figure(; size=(1200, 900))
+    f = Figure(; size=fig_size)
     ax = Axis(
         f[1, 1];
-        xlabel="year",
+        xlabel="Year",
         ylabel="Population Proportion",
         title="Functional Group Population Proportions",
         limits=(nothing, nothing, 0, 1)
     )
-    sr = series!(xs, population, color=:Paired_5, labels=String.(ADRIA.functional_group_names()))
-    #Legend(f[1, 2], ax, framevisible=false)
+    sr = series!(
+        xs,
+        population,
+        color=:seaborn_bright6,
+        linewidth=3,
+        labels=ADRIA.human_readable_name(ADRIA.functional_group_names(), title_case=true)
+    )
+    Legend(f[1, 2], ax, framevisible=false)
     return f
 end
 
@@ -151,7 +163,7 @@ end
 Calculate the percentage of coral population occupied by each size class split by functional
 group.
 """
-function temporal_size_class_proportions(raw_data)::Figure
+function temporal_size_class_proportions(raw_data; fig_size=(1000, 1000))::Figure
     sc_mean_area = reshape(
         permutedims(ADRIA.colony_areas()[2], (2, 1)),
         (1, 35, 1)
