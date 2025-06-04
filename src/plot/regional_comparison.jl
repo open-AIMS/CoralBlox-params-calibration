@@ -41,7 +41,7 @@ function plot_regional_comparison(
 
     for (idx, key) in enumerate(r_keys)
         n_locations = regional_stats[key].n_locations
-        ax = Axis(
+        ax_valid = Axis(
             f[fig_coord(idx, n_plots)...],
             title="$(string(key)) ($n_locations locations)",
             xlabel="Year",
@@ -80,10 +80,30 @@ function plot_regional_comparison(
     n_plots = length(r_keys)
 
     for (idx, key) in enumerate(r_keys)
-        ax_title = "$(string(key))\n"
+        ax_title_validation = if key ∈ r_keys_validation
+            "$(regional_stats_validation[key].n_locations) valid."
+        else
+            ""
+        end
+
+        ax_title_calibration = if key ∈ r_keys_calibration
+            "$(regional_stats_calibration[key].n_locations) calib."
+        else
+            ""
+        end
+
+        ax_title_reefs = if ax_title_validation == ""
+            ax_title_calibration
+        elseif ax_title_calibration == ""
+            ax_title_validation
+        else
+            ax_title_validation * " and " * ax_title_calibration
+        end
+        ax_title = "$(string(key))\n$ax_title_reefs" * " reefs"
+
         ax = Axis(
             f[fig_coord(idx, n_plots)...],
-            # title="$(string(key)) ($n_locations locations)",
+            title=ax_title,
             xlabel="Year",
             ylabel="Relative cover",
             limits=axis_limits,
@@ -199,4 +219,120 @@ function legend_regional_comparison!(
     )
 
     return nothing
+end
+
+"""
+    plot_all_regions(dom, model_results; region_masks=[NORTH_MASK, CENTRAL_MASK, SOUTH_MASK], ref_years=START_YEAR:END_YEAR)::Figure
+    plot_all_regions(north_results, north_obs, central_results, central_obs, south_results, south_obs)::Figure
+
+Plot the modelled results against observations/modelled observation results.
+"""
+function plot_all_regions(
+    dom,
+    model_results;
+    region_masks=[NORTH_MASK, CENTRAL_MASK, SOUTH_MASK],
+    ref_years=START_YEAR:END_YEAR,
+    fig_title="",
+    fig_size=(800, 800)
+)::Figure
+    s_rac = (dropdims(sum(model_results.raw, dims=2), dims=2) .* site_k_area(dom)') ./ loc_area(dom)'
+
+    north_res = ADRIA.DataCube(s_rac[:, region_masks[1]];
+        timesteps=ref_years, locations=1:count(region_masks[1]))
+    central_res = ADRIA.DataCube(s_rac[:, region_masks[2]];
+        timesteps=ref_years, locations=1:count(region_masks[2]))
+    south_res = ADRIA.DataCube(s_rac[:, region_masks[3]];
+        timesteps=ref_years, locations=1:count(region_masks[3]))
+
+    f = plot_all_regions(
+        north_res, ltmp_north, central_res, ltmp_central, south_res, ltmp_south;
+        fig_title=fig_title, fig_size=fig_size
+    )
+
+    return f
+end
+function plot_all_regions(
+    north_results, north_obs, central_results, central_obs, south_results, south_obs;
+    fig_title="", fig_size=(800, 800)
+)::Figure
+    f = Figure(; size=fig_size)
+    north_ax = plot_region(
+        f,
+        1,
+        1,
+        "North GBR\n$(size(north_results, 2)) validation locations",
+        north_obs,
+        north_results
+    )
+    central_ax = plot_region(
+        f,
+        1,
+        2,
+        "Central GBR\n$(size(central_results, 2)) validation locations",
+        central_obs,
+        central_results
+    )
+    south_ax = plot_region(
+        f,
+        1,
+        3,
+        "South GBR\n$(size(south_results, 2)) validation locations",
+        south_obs,
+        south_results
+    )
+
+    obs_el = [
+        PolyElement(color=(:black, 0.4)),
+        LineElement(color=:black)
+    ]
+    sim_el = [
+        PolyElement(color=(:red, 0.4)),
+        LineElement(color=:red)
+    ]
+    Legend(
+        f[2, :],
+        [obs_el, sim_el],
+        ["LTMP", "CoralBlox"],
+        orientation=:horizontal
+    )
+
+    # linkyaxes!(north_ax, central_ax, south_ax)
+
+    Label(f[0, :], fig_title; fontsize=20)
+
+    # resize_to_layout!(f)
+    return f
+end
+
+"""
+    plot_region(f::Figure, row::Int64, col::Int64, title::String, obs::DataFrame, sim::YAXArray; showlegend::Bool = false, legend_row::Int64 = 2, legend_col::Int64 = 2)::Axis
+
+"""
+function plot_region(
+    f::Figure,
+    row::Int64,
+    col::Int64,
+    title::String,
+    obs::DataFrame,
+    sim::YAXArray;
+)::Axis
+    ax = Axis(
+        f[row, col],
+        title=title,
+        xlabel="year",
+        ylabel="Relative Absolute Cover",
+        limits=(nothing, (0.0, 1.0))
+    )
+
+    # mean_agg = dropdims(mean(sim, dims=:locations), dims=:locations)
+    confints = ADRIA.analysis.series_confint(read(sim))
+    xs::Vector{Float64} = collect(sim.timesteps)
+
+    band!(obs.Year, obs.lower, obs.upper, color=(:black, 0.4))
+    band!(xs, confints[:, 1], confints[:, 3], color=(:red, 0.4))
+
+    lines!(obs.Year, obs.response, color=:black)
+    lines!(xs, confints[:, 2], color=:red, linewidth=2)
+
+    return ax
 end

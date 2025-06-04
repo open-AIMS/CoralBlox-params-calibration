@@ -16,3 +16,5 @@ dom, scen = setup_run(
 )
 
 rs_raw = ADRIA.run_model(dom, scen[1, :])
+
+mkpath(OUT_DIR)

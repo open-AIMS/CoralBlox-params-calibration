@@ -163,52 +163,32 @@ function temporal_size_class_proportions(raw_data)::Figure
     population ./= sum(population, dims=2)
     population = permutedims(population, (3, 2, 1))
 
-    fg_names = ADRIA.functional_group_names()
+    fg_names = ADRIA.human_readable_name(ADRIA.functional_group_names(), title_case=true)
     xs = 2008:2022
     col = :oslo10
 
-    f = Figure(; size=(1600, 900))
-    ax = Axis(
-        f[1, 1];
-        xlabel="year",
-        ylabel="Population Proportion",
-        title=String(fg_names[1]),
-        limits=(nothing, nothing, 0, 1)
+    f = Figure(; size=fig_size)
+
+    n_functional_groups = size(population, 1)
+    local sr
+    for i in 1:n_functional_groups
+        ax = Axis(
+            f[fig_coord(i, n_functional_groups)...];
+            xlabel="Year",
+            ylabel="Population Proportion",
+            title=String(fg_names[i]),
+            limits=(nothing, nothing, 0, 1)
+        )
+        sr = series!(ax, xs, population[i, :, :], color=col)
+    end
+    line_elements = [LineElement(color=c) for c in Makie.ColorSchemes.oslo10[1:n_functional_groups]]
+    Legend(
+        f[end+1, :],
+        line_elements,
+        fg_names,
+        framevisible=false,
+        orientation=:horizontal
     )
-    sr = series!(xs, population[1, :, :], color=col, labels="Size Class: " .* string.(1:7))
-    Axis(
-        f[1, 2];
-        xlabel="year",
-        ylabel="Population Proportion",
-        title=String(fg_names[2]),
-        limits=(nothing, nothing, 0, 1)
-    )
-    series!(xs, population[2, :, :], color=col)
-    Axis(
-        f[2, 1];
-        xlabel="year",
-        ylabel="Population Proportion",
-        title=String(fg_names[3]),
-        limits=(nothing, nothing, 0, 1)
-    )
-    series!(xs, population[3, :, :], color=col)
-    Axis(
-        f[2, 2];
-        xlabel="year",
-        ylabel="Population Proportion",
-        title=String(fg_names[4]),
-        limits=(nothing, nothing, 0, 1)
-    )
-    series!(xs, population[4, :, :], color=col)
-    Axis(
-        f[1, 3];
-        xlabel="year",
-        ylabel="Population Proportion",
-        title=String(fg_names[5]),
-        limits=(nothing, nothing, 0, 1)
-    )
-    series!(xs, population[5, :, :], color=col)
-    Legend(f[2, 3], ax, framevisible=false)
     colsize!(f.layout, 3, Relative(1 / 3))
     resize_to_layout!(f)
     return f
@@ -246,118 +226,6 @@ function plot_ltmp(ltmp_n, ltmp_c, ltmp_s)::Nothing
     lines!(ltmp_s.Year, ltmp_s.response, color=:black)
     save("LTMP_data.png", f)
     return nothing
-end
-
-"""
-    plot_all_regions(dom, model_results; region_masks=[NORTH_MASK, CENTRAL_MASK, SOUTH_MASK], ref_years=START_YEAR:END_YEAR)::Figure
-    plot_all_regions(north_results, north_obs, central_results, central_obs, south_results, south_obs)::Figure
-
-Plot the modelled results against observations/modelled observation results.
-"""
-function plot_all_regions(
-    dom,
-    model_results;
-    region_masks=[NORTH_MASK, CENTRAL_MASK, SOUTH_MASK],
-    ref_years=START_YEAR:END_YEAR
-)::Figure
-    s_rac = (dropdims(sum(model_results.raw, dims=2), dims=2) .* site_k_area(dom)') ./ loc_area(dom)'
-
-    north_res = ADRIA.DataCube(s_rac[:, region_masks[1]];
-        timesteps=ref_years, locations=1:count(region_masks[1]))
-    central_res = ADRIA.DataCube(s_rac[:, region_masks[2]];
-        timesteps=ref_years, locations=1:count(region_masks[2]))
-    south_res = ADRIA.DataCube(s_rac[:, region_masks[3]];
-        timesteps=ref_years, locations=1:count(region_masks[3]))
-
-    f = plot_all_regions(
-        north_res, ltmp_north, central_res, ltmp_central, south_res, ltmp_south
-    )
-
-    return f
-end
-function plot_all_regions(
-    north_results, north_obs, central_results, central_obs, south_results, south_obs
-)::Figure
-    f = Figure(; size=(1600, 1600))
-    north_ax = plot_region(
-        f,
-        1,
-        1,
-        "North GBR - $(size(north_results, 2)) validation locations",
-        north_obs,
-        north_results
-    )
-    central_ax = plot_region(
-        f,
-        1,
-        2,
-        "Central GBR - $(size(central_results, 2)) validation locations",
-        central_obs,
-        central_results
-    )
-    south_ax = plot_region(
-        f,
-        1,
-        3,
-        "South GBR - $(size(south_results, 2)) validation locations",
-        south_obs,
-        south_results
-    )
-
-    obs_el = [
-        PolyElement(color=(:black, 0.4)),
-        LineElement(color=:black)
-    ]
-    sim_el = [
-        PolyElement(color=(:red, 0.4)),
-        LineElement(color=:red)
-    ]
-    Legend(
-        f[2, :],
-        [obs_el, sim_el],
-        ["LTMP", "CoralBlox"],
-        orientation=:horizontal
-    )
-
-    linkyaxes!(north_ax, central_ax, south_ax)
-
-    resize_to_layout!(f)
-    return f
-end
-
-"""
-    plot_region(f::Figure, row::Int64, col::Int64, title::String, obs::DataFrame, sim::YAXArray; showlegend::Bool = false, legend_row::Int64 = 2, legend_col::Int64 = 2)::Axis
-
-"""
-function plot_region(
-    f::Figure,
-    row::Int64,
-    col::Int64,
-    title::String,
-    obs::DataFrame,
-    sim::YAXArray;
-)::Axis
-    ax = Axis(
-        f[row, col],
-        title=title,
-        xlabel="year",
-        ylabel="Relative Absolute Cover",
-        width=400,
-        height=400
-    )
-
-    # mean_agg = dropdims(mean(sim, dims=:locations), dims=:locations)
-    confints = ADRIA.analysis.series_confint(read(sim))
-
-    xs::Vector{Float64} = collect(sim.timesteps)
-    #ADRIA_series = series!(xs, read(sim[:, :])'; solid_color=(:red, 0.2), linewidth=2)
-    ADRIA_line = lines!(xs, confints[:, 2], color=:red, linewidth=2)
-    ADRIA_band = band!(xs, confints[:, 1], confints[:, 3], color=(:red, 0.4))
-
-    LTMP_band = band!(obs.Year, obs.lower, obs.upper, color=(:black, 0.4))
-    LTMP_line = lines!(obs.Year, obs.response, color=:black)
-
-    return ax
 end
 
 function plot_residual(

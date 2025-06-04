@@ -11,7 +11,7 @@ include("3a_analysis_setup.jl")
 
 include("3b_regional_analysis.jl")
 
-mkpath(OUT_DIR)
+include("3c_metric_analysis.jl")
 
 f_taxa_cover = taxa_cover_proportions(rs_raw.raw)
 save(joinpath(OUT_DIR, "locs_taxa_cov.png"), f_taxa_cover)
@@ -19,53 +19,14 @@ save(joinpath(OUT_DIR, "locs_taxa_cov.png"), f_taxa_cover)
 f_taxa_pop = taxa_population_proportions(rs_raw.raw)
 save(joinpath(OUT_DIR, "locs_taxa_pop.png"), f_taxa_pop)
 
-f_size_class = temporal_size_class_proportions(rs_raw.raw)
+f_size_class = temporal_size_class_proportions(rs_raw.raw; fig_size=(900, 600))
 save(joinpath(OUT_DIR, "locs_size.png"), f_size_class)
-
-mkpath("$(OUT_DIR)/loc_plots")
 
 calibration_save_dir::String = joinpath(OUT_DIR, "calibration_locations")
 validation_save_dir::String = joinpath(OUT_DIR, "validation_locations")
 
 mkpath(calibration_save_dir)
 mkpath(validation_save_dir)
-
-# Plot Metrics
-metrics_save_dir::String = joinpath(OUT_DIR, "metrics")
-mkpath(metrics_save_dir)
-
-rmse_diff_map = plot_rmse_diff_map(
-    rs_raw.raw;
-    observations=VALIDATION_STORE,
-    fig_opts=Dict(:title => "Benchmark RMSE - Model RMSE\nValidation Locations")
-)
-save(joinpath(metrics_save_dir, "rmse_diff_map.png"), rmse_diff_map)
-
-pearson_coeff_map = plot_pcc_map(
-    rs_raw.raw;
-    observations=VALIDATION_STORE,
-    fig_opts=Dict(:title => "Pearson Correlation Coefficient\nValidation Locations")
-)
-save(joinpath(metrics_save_dir, "pcc_map.png"), pearson_coeff_map)
-
-rmse_diff_validation = sort(rmse_diff(rs_raw.raw, VALIDATION_STORE))
-f_rmse_diff_validation = plot_rmse_scatter(rmse_diff_validation, "Validation")
-save(joinpath(metrics_save_dir, "rmse_diff_validation.png"), f_rmse_diff_validation)
-
-rmse_diff_calibration = sort(rmse_diff(rs_raw.raw, CALIBRATION_STORE))
-f_rmse_diff_calibration = plot_rmse_scatter(rmse_diff_calibration, "Calibration")
-save(joinpath(metrics_save_dir, "rmse_diff_calibration.png"), f_rmse_diff_calibration)
-
-pcc_validation = pcc_locs(rs_raw.raw, VALIDATION_STORE)
-f_pcc_validation = plot_pcc_scatter(pcc_validation)
-save(joinpath(metrics_save_dir, "pcc_validation.png"), f_pcc_validation)
-
-pcc_calibration = pcc_locs(rs_raw.raw, CALIBRATION_STORE)
-f_pcc_calibration = plot_pcc_scatter(pcc_calibration)
-save(joinpath(metrics_save_dir, "pcc_calibration.png"), f_pcc_calibration)
-
-fig_m_heatmap = plot_metrics_heatmap(rs_raw.raw; fig_size=(700, 700), observations=VALIDATION_STORE)
-save(joinpath(metrics_save_dir, "metrics_heatmap.png"), fig_m_heatmap)
 
 
 cyc_scens = dom.cyclone_mortality_scens[scenarios=1]
@@ -88,7 +49,7 @@ n_validation_locs = length(VALIDATION_STORE.ltmp_cover_to_domain)
 @showprogress desc = "Plotting validation locations." for i in 1:n_validation_locs
     reef_id = VALIDATION_STORE.ltmp_unique_ids[i]
     f = plot_location_comparison(rs_raw.raw, i, dhw_scens, cyc_scens, disturbances;
-        observations=VALIDATION_STORE, hide_disturbances=true)
+        observations=VALIDATION_STORE)
     save(joinpath(validation_save_dir, "loc_$(reef_id).png"), f)
 end
 

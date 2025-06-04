@@ -32,11 +32,9 @@ function _region_stats(
     target_historic = observations.ltmp_coral_cover[observations.ltmp_unique_ids.∈Ref(target_can_reefs_ids), :]
 
     # Select the locations within target region and, from those, the locations within the
-    #observation store
-    target_model = @view(rs_raw.raw[:, :, region_mask][:, :, target_can_reefs_mask])
-
-    # Sum across all functional groups and size classes
-    target_model_data = dropdims(sum(target_model, dims=2), dims=2)
+    # observation store
+    # Also converts rs_raw data from relative to habitable area to relative to total area
+    target_model_data = @view(_loc_cover(rs_raw.raw)[:, region_mask][:, target_can_reefs_mask])
 
     n_locations, n_timesteps = size(target_historic)
     model_stats = Array{Float64}(fill(0.0, 3, n_timesteps))
