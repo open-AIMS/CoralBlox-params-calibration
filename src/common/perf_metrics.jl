@@ -1,3 +1,5 @@
+using StatsBase
+
 function temporal_correlation(err_series)::Float64
     return cor(1:length(err_series), err_series)
 end
@@ -122,6 +124,47 @@ function _loc_cover(
     dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
 end
 
+"""
+    collect_error_stats(raw_data, ltmp_loc_idx; observations::LocationDataStore=CALIBRATION_STORE, loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom))
+
+Error stats for a single location or for all locations.
+"""
+function collect_error_stats(
+    raw_data;
+    observations::LocationDataStore=CALIBRATION_STORE,
+    loc_k_areas=ADRIA.site_k_area(dom),
+    loc_areas=ADRIA.loc_area(dom)
+)::NamedTuple
+    loc_cover = _loc_cover(raw_data; loc_k_areas=loc_k_areas, loc_areas=loc_areas)
+    n_locations = size(observations.ltmp_coral_cover, 1)
+
+    # Vectors to hold error stats for each location
+    rmse_model, rmse_benchmark, maee, pcc, scc, bias =
+        collect.(eachcol(repeat(zeros(Float64, n_locations), 1, n_locations)))
+
+    for loc in 1:n_locations
+        error_stats = collect_error_stats(
+            raw_data,
+            ltmp_loc_idx;
+            observations=observations,
+            loc_k_areas=loc_k_areas,
+            loc_areas=loc_areas
+        )
+
+        # TODO Update once I change the other method to return a NamedTuple as well
+
+
+        rmse_model[loc] = error_stats[1]
+        rmse_benchmark[loc] = error_stats[2]
+        maee[loc] = error_stats[3]
+        pcc[loc] = error_stats[4]
+        scc[loc] = error_stats[6]                   # This is right...
+        bias[loc] = error_stats[5]
+    end
+
+    error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :scc, :bias)
+    return NamedTuple{error_names}((rmse_model, rmse_benchmark, maee, pcc, scc, bias))
+end
 function collect_error_stats(
     raw_data,
     ltmp_loc_idx;
@@ -148,12 +191,15 @@ function collect_error_stats(
     cc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     maee_::Float64 = MAEE(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     bias_::Float64 = bias(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    scc_::Float64 = corspearman(
+        sim_data[not_missing_obs], Vector{Float64}(obs_loc_data[not_missing_obs])
+    )
 
     μ_obs = mean(obs_loc_data[not_missing_obs])
     s = length(sim_data[not_missing_obs])
     benchmark_::Float64 = rmse(fill(μ_obs, s), obs_loc_data[not_missing_obs])
 
-    return rmse_, benchmark_, cc_, maee_, bias_
+    return rmse_, benchmark_, cc_, maee_, bias_, scc_
 end
 
 """
@@ -285,7 +331,7 @@ function rmse_diff(rs_raw::Array{Float64,3}, observations::LocationDataStore)::V
     model_rmse = zeros(Float64, n_validation_locs)
     benchmark_rmse = zeros(Float64, n_validation_locs)
     for i in 1:n_validation_locs
-        rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(
+        rmse_, benchmark_, cc_, maee_, bias_, scc_ = collect_error_stats(
             rs_raw, i; observations=observations
         )
         model_rmse[i] = rmse_

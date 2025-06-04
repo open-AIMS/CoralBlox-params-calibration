@@ -17,7 +17,7 @@ function _location_err_title(
     end
     reef_id::String = get_ltmp_loc_unique_id(observations, ltmp_loc_idx)
 
-    rmse_, benchmark_, cc_, maee_, bias_ = collect_error_stats(
+    rmse_, benchmark_, cc_, maee_, bias_, scc_ = collect_error_stats(
         raw_data, ltmp_loc_idx; observations=observations
     )
     rmse_, benchmark_, cc_, maee_, bias_ = trunc.(

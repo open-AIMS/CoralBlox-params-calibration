@@ -1,73 +1,97 @@
 using CairoMakie
 using GeoMakie
 
-function plot_rmse_scatter(rmse_diff, observation_type::String)
+function plot_rmse_scatter(
+    rmse_diff;
+    observation_type::String="",
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Figure
     _rmse_diff = sort(rmse_diff)
 
     # Calculate mean and confidence intervals
     mean_rmse_diff = mean(_rmse_diff)
     std_rmse_diff = std(_rmse_diff)
-    # ci_lower = mean_rmse_diff - 1.96 * std_rmse_diff / sqrt(length(_rmse_diff))
-    # ci_upper = mean_rmse_diff + 1.96 * std_rmse_diff / sqrt(length(_rmse_diff))
 
     n_greater_than_zero = sum(_rmse_diff .> 0)
     success_rate = round((n_greater_than_zero / length(_rmse_diff)) * 100, digits=2)
 
-    # Create scatter plot
-    fig = Figure()
-    ax = Axis(fig[1, 1], title="(Benchmark RMSE - Model RMSE) for $(titlecase(observation_type)) Locations\n
-    $(success_rate)% of positive diffs", xlabel="Index", ylabel="RMSE Difference")
-    scatter!(ax, 1:length(_rmse_diff), _rmse_diff, color=:blue, label="RMSE Diff")
+    obs_title = isempty(observation_type) ? "" : "\n$(titlecase(observation_type)) data"
+    axis_opts::Dict{Symbol,Any} = Dict(
+        :title => "Benchmark - Model (RMSE)" * obs_title,
+        :ylabel => "RMSE Difference"
+    )
 
-    # Add horizontal line for mean
-    hlines!(ax, [mean_rmse_diff], color=:red, linestyle=:dash, label="Mean")
+    opts::Dict{Symbol,Any} = Dict(:metric_label => "RMSE Diff",)
 
-    # Add confidence interval bands
-    #band!(ax, collect(1:length(_rmse_diff)),
-    #    fill(ci_lower, length(_rmse_diff)), fill(ci_upper, length(_rmse_diff)),
-    #    color=(1, 0, 0, 0.8), label="95% CI")
-
-    axislegend(ax)
-    fig
+    return plot_metric_scatter(
+        _rmse_diff, mean_rmse_diff;
+        fig_opts=fig_opts, axis_opts=axis_opts, opts=opts
+    )
 end
 
-function plot_pcc_scatter(pcc)
+function plot_pcc_scatter(
+    pcc;
+    observation_type::String="",
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Figure
     lower_bound, mean, upper_bound = average_cc(pcc)
 
-    # Create scatter plot
-    fig = Figure()
-
     _yticks = sort(unique(vcat((-1:0.5:1), round(mean, digits=2))))
+    obs_title = isempty(observation_type) ? "" : "\n$(titlecase(observation_type)) data"
+    axis_opts::Dict{Symbol,Any} = Dict(
+        :title => "Pearson Correlation Coefficient (PCC)" * obs_title,
+        :ylabel => "PCC",
+        :yticks => _yticks
+    )
+
+    opts::Dict{Symbol,Any} = Dict(:metric_label => "PCC",)
+
+    return plot_metric_scatter(
+        sort(pcc), mean;
+        fig_opts=fig_opts, axis_opts=axis_opts, opts=opts
+    )
+end
+
+function plot_metric_scatter(
+    metric_data, agg_data;
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
+)
+    size = get(fig_opts, :size, (600, 400))
+
+    title = get(axis_opts, :title, "")
+    xlabel = get(axis_opts, :xlabel, "Index")
+    ylabel = get(axis_opts, :ylabel, "Metric value")
+    yticks = get(axis_opts, :yticks, Makie.automatic)
+
+    fig = Figure(; size=size)
     ax = Axis(
         fig[1, 1],
-        title="Pearson Correlation Coefficient (PCC) Scatter Plot",
-        xlabel="Index",
-        ylabel="PCC",
-        yticks=(_yticks)
+        title=title,
+        xlabel=xlabel,
+        ylabel=ylabel,
+        yticks=yticks
     )
 
-    scatter!(ax, 1:length(pcc), sort(pcc), color=:blue, label="PCC")
+    metric_color = get(opts, :metric_color, :blue)
+    agg_color = get(opts, :agg_color, :red)
+    metric_label = get(opts, :metric_label, "Metric")
+    agg_label = get(opts, :agg_label, "Mean")
 
-    # Add horizontal line for mean
-    hlines!(ax, [mean], color=:red, linestyle=:dash, label="Mean")
-
-    # Add confidence interval bands
-    # band!(ax, collect(1:length(pcc)),
-    #     fill(lower_bound, length(pcc)), fill(upper_bound, length(pcc)),
-    #     color=(0, 0, 1, 0.2), label="Bounds")
+    scatter!(ax, 1:length(metric_data), metric_data, color=metric_color)
+    hlines!(ax, [agg_data], color=agg_color, linestyle=:dash)
 
     legend_els = [
-        MarkerElement(color=:blue, marker=:circle),
-        LineElement(color=:red, linestyle=:dash),
+        MarkerElement(color=metric_color, marker=:circle),
+        LineElement(color=agg_color, linestyle=:dash),
     ]
 
-    Legend(
-        fig[1, 2],
-        legend_els,
-        ["PCC", "Mean"]
-    )
+    Legend(fig[1, 2], legend_els, [metric_label, agg_label])
 
-    fig
+    return fig
 end
 
 function plot_rmse_diff_map(
@@ -79,8 +103,8 @@ function plot_rmse_diff_map(
     ltmp_loc_indexes = collect(1:n_validation_obs)
 
     error_stats = collect_error_stats.([raw_data], ltmp_loc_indexes; observations=observations)
-    rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
-    rmse_diffs = rmse_ .- benchmark_
+    rmse_, benchmark_, cc_, maee_, bias_, scc_ = eachrow(hcat(map(collect, error_stats)...))
+    rmse_diffs = benchmark_ .- rmse_
 
     fig_size = get(fig_opts, :size, FIG_SIZE[:map])
     fig_title = get(fig_opts, :title, "Benchmark RMSE - Model RMSE")
@@ -125,7 +149,7 @@ function plot_rmse_diff_map(
 
     Colorbar(
         fig[1, 2];
-        colorrange=(lower_limit, up_limit), colormap=:bam, label="Model RMSE - Benchmark RMSE"
+        colorrange=(lower_limit, up_limit), colormap=:bam, label="Benchmark RMSE - Model RMSE"
     )
 
     return fig
@@ -140,7 +164,7 @@ function plot_pcc_map(
     ltmp_loc_indexes = collect(1:n_validation_obs)
 
     error_stats = collect_error_stats.(Ref(raw_data), ltmp_loc_indexes; observations=observations)
-    rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
+    rmse_, benchmark_, cc_, maee_, bias_, scc_ = eachrow(hcat(map(collect, error_stats)...))
 
     fig_size = get(fig_opts, :size, FIG_SIZE[:map])
     fig_title = get(fig_opts, :title, "Pearson Correlation Coefficient")
@@ -186,7 +210,7 @@ function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED
     error_stats = collect_error_stats.(
         Ref(rs_raw), ltmp_loc_indexes; observations=observations
     )
-    rmse_, benchmark_, cc_, maee_, bias_ = eachrow(hcat(map(collect, error_stats)...))
+    rmse_, benchmark_, cc_, maee_, bias_, scc_ = eachrow(hcat(map(collect, error_stats)...))
 
     validation_ids = [
         findfirst(id .== observations.domain_gpkg.UNIQUE_ID)
@@ -198,12 +222,18 @@ function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED
         observations.domain_gpkg[validation_ids, "LAT"]
     end
     y_coords_sortperm = sortperm(y_coords, rev=false)
-    heat_data = hcat(rmse_ .- benchmark_, cc_, bias_)[y_coords_sortperm, :]
-    x_labels = ["Model RMSE - Benchmark RMSE", "PCC", "Bias"]
+    heat_data = hcat(benchmark_ .- rmse_, cc_, scc_, bias_)[y_coords_sortperm, :]
+    x_labels = ["Benchmark - Model (RMSE)", "PCC", "SCC", "Bias"]
+    colormaps = [:Spectral, :Spectral, :Spectral, :Spectral]
+
     bias_up_limit = ceil(maximum(abs.(bias_)), digits=1)
     rmse_diff_up_limit = ceil(maximum(abs.(benchmark_ .- rmse_)), digits=1)
-    colorranges = [(-rmse_diff_up_limit, rmse_diff_up_limit), (-1.0, 1.0), (-bias_up_limit, bias_up_limit)]
-    colormaps = [:Spectral, :Spectral, Makie.Reverse(:Spectral)]
+    colorranges = [
+        (-rmse_diff_up_limit, rmse_diff_up_limit),
+        (-1.0, 1.0),
+        (-1.0, 1.0),
+        (-bias_up_limit, bias_up_limit)
+    ]
 
     n_metrics = length(x_labels)
     fig = Figure(size=fig_size)
