@@ -77,7 +77,7 @@ locations. Contained in `ltmp_data` directory.
 - `composition_netcdf` : NetCDF containing coral composition for each ADRIA functional group at each ltmp
 photogrammetry location. Contained in the `ltmp_data` directory.
 - `ltmp_modelled_obs` : Path to modelled regional coral cover data based on LTMP
-  observations
+  observations. This was developed by Murray Logan and Mike Emslie.
 
 ### Initialisation
 - `init_cover_filepath` : Data containing calibrated initial cover. Must be loaded into domain as follows.
