@@ -7,6 +7,15 @@ using Random
 
 dom.loc_data[!, :GROUPED_BIOREGION] .= canonical_gpkg.SPATIAL_GROUPING
 
+# These are the reefs that are north from Feather Reef. and belong to group 27.
+# We should split this group in a better way in the future.
+group_28_idx = ["19019100104", "18096100104", "18088100104", "18086100104", "18075100104",
+    "18077100104", "18076100104", "18083100104", "18081100104", "18043100104", "18032100104",
+    "18031100104", "18030100104", "18042100104", "18039100104", "18034100104", "17064100104",
+    "17063101104", "17034100104"]
+
+dom.loc_data[dom.loc_data.RME_UNIQUE_ID.∈Ref(group_28_idx), :GROUPED_BIOREGION] .= 28
+
 # Coral Composition Data
 composition_data = open_dataset(COMPOSITION_PATH)
 
