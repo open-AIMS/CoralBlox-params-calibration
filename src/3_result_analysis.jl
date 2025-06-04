@@ -67,39 +67,36 @@ validation_best_3_pcc = validation_pccs[validation_pccs_sortperm][end-2:end]
 validation_best_3_pcc_idx = VALIDATION_STORE.ltmp_unique_ids[validation_pccs_sortperm][end-2:end]
 # ! -------------------------------------
 
-rmse_ = 0.0
-benchmark_ = 0.0
-cc_ = 0.0
-maee_ = 0.0
-bias_ = 0.0
+# rmse_ = 0.0
+# benchmark_ = 0.0
+# cc_ = 0.0
+# maee_ = 0.0
+# bias_ = 0.0
 
-@showprogress desc = "Calculating calibration error." for i in 1:length(CALIBRATION_STORE.ltmp_cover_to_domain)
-    local tmp = collect_error_stats(rs_raw.raw, i; observations=CALIBRATION_STORE)
-    global rmse_ += tmp[1] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
-    global benchmark_ += tmp[2] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
-    global cc_ += tmp[3] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
-    global maee_ += tmp[4] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
-    global bias_ += tmp[5] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
-end
+# @showprogress desc = "Calculating calibration error." for i in 1:length(CALIBRATION_STORE.ltmp_cover_to_domain)
+#     local tmp = collect_error_stats(rs_raw.raw, i; observations=CALIBRATION_STORE)
+#     global rmse_ += tmp[1] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
+#     global benchmark_ += tmp[2] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
+#     global cc_ += tmp[3] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
+#     global maee_ += tmp[4] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
+#     global bias_ += tmp[5] / length(CALIBRATION_STORE.ltmp_cover_to_domain)
+# end
 
-rmse_ = 0.0
-benchmark_ = 0.0
-cc_ = 0.0
-maee_ = 0.0
-bias_ = 0.0
-count_ = 0
+# rmse_ = 0.0
+# benchmark_ = 0.0
+# cc_ = 0.0
+# maee_ = 0.0
+# bias_ = 0.0
+# count_ = 0
 
-@showprogress desc = "Calculating validation error." for i in 1:length(VALIDATION_STORE.ltmp_cover_to_domain)
-    local tmp = collect_error_stats(rs_raw.raw, i; observations=VALIDATION_STORE)
-    if tmp[1] < tmp[2]
-        global count_ += 1
-    end
-    global rmse_ += tmp[1] / length(VALIDATION_STORE.ltmp_cover_to_domain)
-    global benchmark_ += tmp[2] / length(VALIDATION_STORE.ltmp_cover_to_domain)
-    global cc_ += tmp[3] / length(VALIDATION_STORE.ltmp_cover_to_domain)
-    global maee_ += tmp[4] / length(VALIDATION_STORE.ltmp_cover_to_domain)
-    global bias_ += tmp[5] / length(VALIDATION_STORE.ltmp_cover_to_domain)
-end
-
-mean(getindex.(collect_error_stats.([rs_raw.raw], collect(1:length(VALIDATION_STORE.ltmp_cover_to_domain)); observations=VALIDATION_STORE), 1))
-mean(getindex.(collect_error_stats.([rs_raw.raw], collect(1:length(VALIDATION_STORE.ltmp_cover_to_domain)); observations=VALIDATION_STORE), 2))
+# @showprogress desc = "Calculating validation error." for i in 1:length(VALIDATION_STORE.ltmp_cover_to_domain)
+#     local tmp = collect_error_stats(rs_raw.raw, i; observations=VALIDATION_STORE)
+#     if tmp[1] < tmp[2]
+#         global count_ += 1
+#     end
+#     global rmse_ += tmp[1] / length(VALIDATION_STORE.ltmp_cover_to_domain)
+#     global benchmark_ += tmp[2] / length(VALIDATION_STORE.ltmp_cover_to_domain)
+#     global cc_ += tmp[3] / length(VALIDATION_STORE.ltmp_cover_to_domain)
+#     global maee_ += tmp[4] / length(VALIDATION_STORE.ltmp_cover_to_domain)
+#     global bias_ += tmp[5] / length(VALIDATION_STORE.ltmp_cover_to_domain)
+# end
