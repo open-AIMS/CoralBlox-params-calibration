@@ -134,8 +134,11 @@ set_bounds!(sample_bounds, mbrate_idx, mb_rate_lb, mb_rate_ub)
 coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
 
+# If it becomes official, this group should be added to the canonical_reefs to avoid this ugliness
+manually_added_group = 28
+const BIOGROUPS_ORDERING = sort(union(unique(canonical_gpkg.SPATIAL_GROUPING), manually_added_group))
+
 # Number of unique biogroups used in calibration
-const BIOGROUPS_ORDERING = sort(unique(canonical_gpkg.SPATIAL_GROUPING))
 n_biogroups = length(BIOGROUPS_ORDERING)
 
 # Add parameters for location-specific scaling
