@@ -1,3 +1,5 @@
+include("plot/plot.jl")
+
 """
 Calibrate linear extension, background mortality and fecundity.
 Attempt to calibrate location-specific scaling as well.
