@@ -1,5 +1,26 @@
 # ADRIA-CoralBlox calibration
 
+This repo is used to calibrate some parameters of ADRIA/CoralBlox model to match historic
+LTMP (Long-Term Monitoring Program) data for the GBR (Great Barrier Reef) between years 2008
+and 2022. The parameters calibrated here were:
+
+- `mb_rate`: Base mortality rate for each functional group and size class
+- `linear_extension`: Base linear extension for each functional group and size class
+- `biogroup_linear_extension`: Scale factor to be applied to linear extensions of all
+functional groups and size classes of a spatial group. We are now using `spatial_group`
+instead of `biogroup` and need to update that in this project.
+- `biogroup_mb_rate`: Scale factor to be applied to base mortality rates of all
+functional groups and size classes of a spatial group. We are now using `spatial_group`
+instead of `biogroup` and need to update that in this project.
+- `growth_accel_steepness`, `growth_accel_height` and `growth_accel_midpoint`: Used as
+parameters of a growth acceleration function.
+
+The equation used for the growth acceleration is:
+
+```
+height / (1 + exp(-steepness * (available_space - midpoint))) + 1.0
+```
+
 ## Setup
 
 Instantiate environment to install required packages.
