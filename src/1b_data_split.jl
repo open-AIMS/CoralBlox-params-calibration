@@ -5,7 +5,7 @@ both calibration and validation data for every bioregion group.
 
 using Random
 
-dom.loc_data[!, :GROUPED_BIOREGION] .= canonical_gpkg.SPATIAL_GROUPING
+dom.loc_data[!, :CB_CALIB_GROUPS] .= canonical_gpkg.CB_CALIB_GROUPS
 
 # These are the reefs that are north from Feather Reef. and belong to group 27.
 # We should split this group in a better way in the future.
@@ -154,7 +154,7 @@ function create_location_datastore(
     )
 end
 
-unique_biogroup_ids = unique(canonical_gpkg.SPATIAL_GROUPING)
+unique_biogroup_ids = unique(canonical_gpkg.CB_CALIB_GROUPS)
 sufficient_data_mask = sufficient_data.(eachrow(ltmp_reef_data[:, first_yr_idx:end]))
 ltmp_reef_data = ltmp_reef_data[sufficient_data_mask, :]
 
@@ -163,7 +163,7 @@ ltmp_cover_to_domain = [
         x -> x == uniq_id, dom.loc_data.UNIQUE_ID
     ) for uniq_id in ltmp_reef_data.RME_UNIQUE_ID
 ]
-ltmp_reef_data[!, :BIOGROUP_IDS] .= canonical_gpkg.SPATIAL_GROUPING[ltmp_cover_to_domain]
+ltmp_reef_data[!, :BIOGROUP_IDS] .= canonical_gpkg.CB_CALIB_GROUPS[ltmp_cover_to_domain]
 
 biogroup_ltmp_idxs = [
     findall(
@@ -203,8 +203,8 @@ calibration_unique_ids::Vector{String} = dom.loc_data.UNIQUE_ID[cal_ltmp_to_doma
 validation_unique_ids::Vector{String} = dom.loc_data.UNIQUE_ID[val_ltmp_to_domain]
 used_unique_ids::Vector{String} = vcat(calibration_unique_ids, validation_unique_ids)
 
-calibration_biogroups::Vector{Int64} = dom.loc_data.GROUPED_BIOREGION[cal_ltmp_to_domain]
-validation_biogroups::Vector{Int64} = dom.loc_data.GROUPED_BIOREGION[val_ltmp_to_domain]
+calibration_biogroups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS[cal_ltmp_to_domain]
+validation_biogroups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS[val_ltmp_to_domain]
 used_biogroups::Vector{Int64} = vcat(calibration_biogroups, validation_biogroups)
 
 cal_or_val::Vector{String} = vcat(
