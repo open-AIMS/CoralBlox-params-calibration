@@ -1,3 +1,5 @@
+using ADRIA: GDF.GeoInterface as GI
+
 include("./common/common.jl")
 include("./common/cover_construction.jl")
 
@@ -61,11 +63,8 @@ end
 
 function _region_shape_mask(dom, region_shapes, idx)::BitVector
     region_shape = region_shapes.geometry[idx]
-    return try
-        [AG.contains(region_shape, AG.centroid(poly)) for poly in dom.loc_data.geom]
-    catch
-        [AG.contains(region_shape, AG.centroid(poly)) for poly in dom.loc_data.geometry]
-    end
+    geoms = GI.geometry.(eachrow(dom.loc_data))
+    return [AG.contains(region_shape, AG.centroid(geom)) for geom in geoms]
 end
 
 if !@isdefined(NORTH_MASK)
