@@ -246,8 +246,7 @@ coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
 
 # If it becomes official, this group should be added to the canonical_reefs to avoid this ugliness
-manually_added_group = 28
-const BIOGROUPS_ORDERING = sort(union(unique(canonical_gpkg.CB_CALIB_GROUPS), manually_added_group))
+const BIOGROUPS_ORDERING = sort(unique(canonical_gpkg.CB_CALIB_GROUPS))
 
 # Number of unique biogroups used in calibration
 n_biogroups = length(BIOGROUPS_ORDERING)
