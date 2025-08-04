@@ -45,7 +45,7 @@ sample_bounds = collect(zip(
 # Calculate sweeps as five equi-distant steps
 step_size = 4   # minimum of four (resolves to five), otherwise there are range issues
 steps = (last.(sample_bounds) .- first.(sample_bounds)) ./ step_size
-sweep = [ed != 0 ? collect(st:step:ed) : zeros(step_size+1) for (st, step, ed) in zip(first.(sample_bounds), steps, last.(sample_bounds))]
+sweep = [ed != 0 ? collect(st:step:ed) : zeros(step_size + 1) for (st, step, ed) in zip(first.(sample_bounds), steps, last.(sample_bounds))]
 
 # Collate all parameter values for sweep into a matrix
 # [sweep ⋅ factors]
