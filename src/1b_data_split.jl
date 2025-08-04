@@ -5,17 +5,6 @@ both calibration and validation data for every bioregion group.
 
 using Random
 
-dom.loc_data[!, :GROUPED_BIOREGION] .= canonical_gpkg.SPATIAL_GROUPING
-
-# These are the reefs that are north from Feather Reef. and belong to group 27.
-# We should split this group in a better way in the future.
-group_28_idx = ["19019100104", "18096100104", "18088100104", "18086100104", "18075100104",
-    "18077100104", "18076100104", "18083100104", "18081100104", "18043100104", "18032100104",
-    "18031100104", "18030100104", "18042100104", "18039100104", "18034100104", "17064100104",
-    "17063101104", "17034100104"]
-
-dom.loc_data[dom.loc_data.RME_UNIQUE_ID.∈Ref(group_28_idx), :GROUPED_BIOREGION] .= 28
-
 # Coral Composition Data
 composition_data = open_dataset(COMPOSITION_PATH)
 
@@ -154,7 +143,7 @@ function create_location_datastore(
     )
 end
 
-unique_biogroup_ids = unique(canonical_gpkg.SPATIAL_GROUPING)
+unique_biogroup_ids = unique(canonical_gpkg.CB_CALIB_GROUPS)
 sufficient_data_mask = sufficient_data.(eachrow(ltmp_reef_data[:, first_yr_idx:end]))
 ltmp_reef_data = ltmp_reef_data[sufficient_data_mask, :]
 
@@ -163,7 +152,7 @@ ltmp_cover_to_domain = [
         x -> x == uniq_id, dom.loc_data.UNIQUE_ID
     ) for uniq_id in ltmp_reef_data.RME_UNIQUE_ID
 ]
-ltmp_reef_data[!, :BIOGROUP_IDS] .= canonical_gpkg.SPATIAL_GROUPING[ltmp_cover_to_domain]
+ltmp_reef_data[!, :BIOGROUP_IDS] .= canonical_gpkg.CB_CALIB_GROUPS[ltmp_cover_to_domain]
 
 biogroup_ltmp_idxs = [
     findall(
@@ -203,8 +192,8 @@ calibration_unique_ids::Vector{String} = dom.loc_data.UNIQUE_ID[cal_ltmp_to_doma
 validation_unique_ids::Vector{String} = dom.loc_data.UNIQUE_ID[val_ltmp_to_domain]
 used_unique_ids::Vector{String} = vcat(calibration_unique_ids, validation_unique_ids)
 
-calibration_biogroups::Vector{Int64} = dom.loc_data.GROUPED_BIOREGION[cal_ltmp_to_domain]
-validation_biogroups::Vector{Int64} = dom.loc_data.GROUPED_BIOREGION[val_ltmp_to_domain]
+calibration_biogroups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS[cal_ltmp_to_domain]
+validation_biogroups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS[val_ltmp_to_domain]
 used_biogroups::Vector{Int64} = vcat(calibration_biogroups, validation_biogroups)
 
 cal_or_val::Vector{String} = vcat(
