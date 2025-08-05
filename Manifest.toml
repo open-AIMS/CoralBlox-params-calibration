@@ -6,7 +6,9 @@ project_hash = "bc61f26b53d55a67ea5c0a10e97278df623c918a"
 
 [[deps.ADRIA]]
 deps = ["ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataEnvelopmentAnalysis", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FLoops", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "HypothesisTests", "ImageIO", "InteractiveUtils", "Interpolations", "JMcDM", "JSON", "JuliennedArrays", "LERC_jll", "LinearAlgebra", "Logging", "MAT", "MLJ", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "SIRUS", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StableRNGs", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
-path = "../ADRIA.jl"
+git-tree-sha1 = "1d13ddc3919bc27c356791bf2e77fc0962fb021c"
+repo-rev = "global-calib"
+repo-url = "https://github.com/open-AIMS/ADRIA.jl"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 version = "0.11.0"
 weakdeps = ["BlackBoxOptim", "GeoMakie", "GraphMakie", "Makie"]
@@ -582,9 +584,9 @@ version = "0.6.4"
 
 [[deps.CoralBlox]]
 deps = ["DataStructures", "YAXArrays"]
-git-tree-sha1 = "56e7b5690bd96059f50180885f898f3f8e45f690"
+git-tree-sha1 = "ea2f377fdb2df4dbd354f568e9140853d03bcca2"
 uuid = "f00a6e10-004a-11ef-3676-67ec635bc1a2"
-version = "1.1.0"
+version = "1.1.1"
 weakdeps = ["Makie"]
 
     [deps.CoralBlox.extensions]
@@ -2551,9 +2553,9 @@ version = "3.48.0+0"
 
 [[deps.ScientificTypes]]
 deps = ["CategoricalArrays", "ColorTypes", "Dates", "Distributions", "PrettyTables", "Reexport", "ScientificTypesBase", "StatisticalTraits", "Tables"]
-git-tree-sha1 = "4d083ffec53dbd5097a6723b0699b175be2b61fb"
+git-tree-sha1 = "3ad7f09ae97806e86b3ef28cd50c52ca18bd2d80"
 uuid = "321657f4-b219-11e9-178b-2701a2544e81"
-version = "3.1.0"
+version = "3.1.1"
 
 [[deps.ScientificTypesBase]]
 git-tree-sha1 = "a8e18eb383b5ecf1b5e6fc237eb39255044fd92b"
@@ -2753,9 +2755,9 @@ version = "0.2.1"
 
 [[deps.StatisticalMeasuresBase]]
 deps = ["CategoricalArrays", "InteractiveUtils", "MLUtils", "MacroTools", "OrderedCollections", "PrecompileTools", "ScientificTypesBase", "Statistics"]
-git-tree-sha1 = "e4f508cf3b3253f3eb357274fe36fb3332ca9896"
+git-tree-sha1 = "201079ca2c48e5edfaabfc34dec1a5ad2e59476e"
 uuid = "c062fc1d-0d66-479b-b6ac-8b44719de4cc"
-version = "0.1.2"
+version = "0.1.3"
 
 [[deps.StatisticalTraits]]
 deps = ["ScientificTypesBase"]
