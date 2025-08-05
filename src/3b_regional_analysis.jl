@@ -58,8 +58,8 @@ save(joinpath(regional_analysis_save_dir, "regional__management_areas.png"), fig
 # save(joinpath(regional_analysis_save_dir, "regional__management_areas.png"), fig_mang_area)
 
 # * Spatial Grouping
-spatial_groups = unique(canonical_reefs.SPATIAL_GROUPING)
-spatial_group_masks = [canonical_reefs.SPATIAL_GROUPING .== group for group in spatial_groups]
+spatial_groups = unique(canonical_reefs.CB_CALIB_GROUPS)
+spatial_group_masks = [canonical_reefs.CB_CALIB_GROUPS .== group for group in spatial_groups]
 
 spatial_group_stats_valid = region_stats(Symbol.("Group " .* string.(spatial_groups)), spatial_group_masks; observations=VALIDATION_STORE)
 spatial_group_stats_calib = region_stats(Symbol.("Group " .* string.(spatial_groups)), spatial_group_masks; observations=CALIBRATION_STORE)
@@ -106,7 +106,7 @@ save(joinpath(regional_analysis_save_dir, "regional__sectors.png"), fig_sectors)
 # save(joinpath(regional_analysis_save_dir, "regional__sectors.png"), fig_sectors)
 
 # # TODO Bioregions
-# Should be almost identical to SPATIAL_GROUPING
+# Should be almost identical to CB_CALIB_GROUPS
 
 # * All regions (maybe legacy)
 # The LTMP data used here is the modelled data from Murray Logan and Mike Emslie
