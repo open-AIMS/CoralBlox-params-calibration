@@ -41,24 +41,25 @@ Create a `calib_config.toml` file with the following entries:
 
 ```toml
 [Domains]
-reefmod_domain = "<path to ReefMod dataset>"
 rme_domain = "<path to RME dataset>"
 historic_cyclone_mortality = "<path to historic cyclone mortality dataset>"
+historic_dhw = "../datasets/dhw_scens.nc"
 
 [Geospatial]
 canonical_path = "<path to canonical gpkg>"
-ltmp_shp = "../spatial_data/gbr_3Zone 2.shp"
-classification_path = "../spatial_data/location_classification_MPA.csv"
+ltmp_shp = "../datasets/spatial_data/gbr_3Zone 2.shp"
+classification_path = "../datasets/spatial_data/location_classification_MPA.csv"
 
 [Observations]
-manta_tow_path = "..\\ltmp_data\\manta_tow_mean_std.nc"
-ltmp_reef_data = "..\\ltmp_data\\manta_tow_data_reef_lvl.gpkg"
-composition_netcdf = "..\\ltmp_data\\coral_composition.nc"
-ltmp_modelled_obs = "..\\ltmp_data\\modelled_brms.beta.ry.disp.csv"
+manta_tow_path = "../datasets/ltmp_data/manta_tow_mean_std.nc"
+ltmp_reef_data = "../datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"
+composition_netcdf = "../datasets/ltmp_data/coral_composition.nc"
+ltmp_modelled_obs = "../datasets/ltmp_data/modelled_brms.beta.ry.disp.csv"
 
 [Initialisation]
-init_cover_filepath = "spatial_data\\init_cover.dat"
-init_guess_filepath = "<path to initial guess.dat>" # optional
+init_cover_filepath = "../datasets/spatial_data/init_cover.dat"
+init_guess_filepath = ""  # optional
+ecorrap_param_filepath = "C:/Users/pribeiro/AIMS/Datasets/interped_vals.nc"
 
 [Outputs]
 out_dir = "..\\Outputs\\test_dir"
@@ -75,11 +76,12 @@ Results for 20 ReefModEngine repetitions. All repetitions use the same historic 
 
 ## Config File Path Descriptions
 
-### Domain
+### Domains
 
 Paths to different ADRIA domains or historic input files
-- `reefmod_domain` : Domain found on teams called `limited_reefmod_domain` in ADRIA domain folder.
 - `rme_domain` : Path to ReefModEngine
+- `historic_cyclone_mortality` : Path to historic environmental disturbances NetCDF file. These include cyclone/storm and/or COTS related mortality rates.
+- `historic_dhw` : Path to historic dhw scenarios NetCDF file.
 
 ### Geospatial
 
@@ -87,7 +89,6 @@ Paths to geopackages, shapefiles and geospatial location data.
 - `canonical_path` : Path to canonical geopackage
 - `ltmp_shp` : Path to LTMP regional shape files
 - `classification_path` : CSV file contains location classes in the same order as the ADRIA domain.
-- `bioregion_group_gpkg` : <!-- TODO -->
 
 ### Observations
 
@@ -103,6 +104,7 @@ photogrammetry location. Contained in the `ltmp_data` directory.
 ### Initialisation
 - `init_cover_filepath` : Data containing calibrated initial cover. Must be loaded into domain as follows.
 - `init_guess_filepath` : Optional file name for initial guess.
+- `ecorrap_param_filepath` : <!--TO DO-->
 
 Initial cover must be loaded as follows.
 ```julia

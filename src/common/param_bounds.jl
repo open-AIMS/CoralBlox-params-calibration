@@ -367,8 +367,8 @@ function get_scale_factors(
     )
 end
 
-function copy(dom::ReefModDomain)::ReefModDomain
-    return ReefModDomain(
+function copy(dom::RMEDomain)::RMEDomain
+    return RMEDomain(
         dom.name,
         dom.RCP,
         dom.env_layer_md,
