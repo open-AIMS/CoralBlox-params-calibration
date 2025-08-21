@@ -230,6 +230,9 @@ lin_ext_idx, mbrate_idx, dhw_tol_mean_idx =
 lin_ext_idx = sc_fg_param_idxs("linear_extension", coral_params)
 mbrate_idx = sc_fg_param_idxs("mb_rate", coral_params)
 
+mbrate_scale_idx = findall(occursin.(Ref("mb_rate_scale"), string.(coral_params.fieldname)))
+lin_ext_scale_idx = findall(occursin.(Ref("linear_extension_scale"), string.(coral_params.fieldname)))
+
 sample_bounds = collect(zip(
     coral_params.lower_bound,
     coral_params.upper_bound
@@ -242,10 +245,17 @@ sample_bounds[dhw_tol_mean_idx] .= collect(zip(coral_params[dhw_tol_mean_idx, :l
 set_bounds!(sample_bounds, lin_ext_idx, lin_ext_lb, lin_ext_ub)
 set_bounds!(sample_bounds, mbrate_idx, mb_rate_lb, mb_rate_ub)
 
+n_mbrate_scale_idx = length(mbrate_scale_idx)
+mbrate_scale_lb, mbrate_scale_up = fill(-1.0, n_mbrate_scale_idx), fill(1.0, n_mbrate_scale_idx)
+set_bounds!(sample_bounds, mbrate_scale_idx, mbrate_scale_lb, mbrate_scale_up)
+
+n_lin_ext_scale_idx = length(lin_ext_scale_idx)
+lin_ext_scale_lb, lin_ext_scale_up = fill(0.7, n_lin_ext_scale_idx), fill(1.5, n_lin_ext_scale_idx)
+set_bounds!(sample_bounds, lin_ext_scale_idx, lin_ext_scale_lb, lin_ext_scale_up)
+
 coral_start_idx = 1
 coral_end_idx = length(sample_bounds)
 
-# If it becomes official, this group should be added to the canonical_reefs to avoid this ugliness
 const BIOGROUPS_ORDERING = sort(unique(canonical_gpkg.CB_CALIB_GROUPS))
 
 # Number of unique biogroups used in calibration
@@ -256,17 +266,6 @@ n_groups = 5
 n_size_classes = 7
 n_factors = 2  # growth, mortality
 
-# append bounds to sample bounds
-loc_coef_start_idx = coral_end_idx + 1
-
-biogroup_scale_factors::Array = Array{Tuple{Float64,Float64}}(
-    undef, n_groups, n_factors, n_biogroups
-)
-biogroup_scale_factors[:, 1, :] .= Ref((0.7, 1.5))
-biogroup_scale_factors[:, 2, :] .= Ref((-1.0, 1.0))
-append!(sample_bounds, scale_factor_array_to_vec(biogroup_scale_factors))
-loc_coef_end_idx = length(sample_bounds)
-
 # Location-based growth scaling
 
 # Parameter indexs
@@ -274,7 +273,7 @@ STEEPNESS_PARAM_IDX = 1
 HEIGHT_PARAM_IDX = 2
 MIDPOINT_PARAM_IDX = 3
 
-growth_acc_start_idx = loc_coef_end_idx + 1
+growth_acc_start_idx = coral_end_idx + 1
 
 biogroup_accel_bounds::Matrix = Matrix{Tuple{Float64,Float64}}(undef, n_biogroups, 3)
 
@@ -293,15 +292,11 @@ sc_dist_end_idx = length(sample_bounds)
 
 global PARAM_IDXS = [
     coral_start_idx, coral_end_idx,
-    loc_coef_start_idx, loc_coef_end_idx,
     growth_acc_start_idx, growth_acc_end_idx,
     sc_dist_start_idx, sc_dist_end_idx
 ]
 
 global CORAL_PARAM_NAMES = coral_params.fieldname
-global SCALE_FACTOR_NAMES = scale_factor_array_to_vec(
-    generate_scale_factor_names(collect(1:length(BIOGROUPS_ORDERING)))
-)
 global GROWTH_ACCEL_NAMES = accel_params_array_to_vec(
     generate_growth_accel_names(collect(1:length(BIOGROUPS_ORDERING)))
 )
@@ -359,9 +354,11 @@ function insert_init_loc_cover!(
 end
 
 function get_scale_factors(
+    dom::Domain,
     scenario_df::DataFrame;
-    scale_factor_names::Vector{String}=SCALE_FACTOR_NAMES
 )::Array{Float64,3}
+    cb_calib_groups = sort(unique(dom.loc_data.CB_CALIB_GROUPS))
+    scale_factor_names = scale_factor_array_to_vec(generate_scale_factor_names(cb_calib_groups))
     return scale_factor_vec_to_array(
         collect(scenario_df[1, scale_factor_names]), 5, length(BIOGROUPS_ORDERING), 2
     )
@@ -398,7 +395,6 @@ function setup_run(
     dom::Domain,
     sampled_params::Vector{Float64};
     param_names::Vector{Symbol}=CORAL_PARAM_NAMES,
-    scale_factor_names::Vector{String}=SCALE_FACTOR_NAMES,
     growth_accel_names::Vector{String}=GROWTH_ACCEL_NAMES,
     param_idxs=PARAM_IDXS,
 )::Tuple{Domain,DataFrame}
@@ -409,13 +405,12 @@ function setup_run(
     scen = ADRIA.param_table(new_dom)
     coral_param_values = sampled_params[param_idxs[1]:param_idxs[2]]
     scen[!, param_names] .= coral_param_values'
-    scen[!, scale_factor_names]
-    scen[!, scale_factor_names] .= sampled_params[param_idxs[3]:param_idxs[4]]'
-    scen[!, growth_accel_names] .= sampled_params[param_idxs[5]:param_idxs[6]]'
+
+    scen[!, growth_accel_names] .= sampled_params[param_idxs[3]:param_idxs[4]]'
 
     insert_init_loc_cover!(
         new_dom,
-        sampled_params[param_idxs[7]:param_idxs[8]]
+        sampled_params[param_idxs[5]:param_idxs[6]]
     )
 
     return new_dom, scen
