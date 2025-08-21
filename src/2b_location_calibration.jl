@@ -81,7 +81,7 @@ function obj_func(
         param_idxs=param_idxs,
     )
 
-    scale_factors = get_scale_factors(scen)
+    scale_factors = get_scale_factors(dom, scen)
 
     corals = ADRIA.to_coral_spec(scen[1, :])
 
