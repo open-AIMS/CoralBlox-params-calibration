@@ -1,3 +1,5 @@
+using ADRIA: GDF.GeoInterface as GI
+
 include("./common/common.jl")
 include("./common/cover_construction.jl")
 
@@ -15,27 +17,27 @@ if (!@isdefined(dom) || reload_domain)
         @warn "Setting start year to $(START_YEAR). 2008 is the earliest possible start for ReefModDomain."
     end
 
-    @info "Loading ReefModDomain"
-    dom = ADRIA.load_domain(ReefModDomain, REEFMOD_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
+    @info "Loading RMEDomain"
+    dom = ADRIA.load_domain(RMEDomain, RME_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
 
-    @info "Attaching historic DHW"
-    dhw_data_df = CSV.read(HISTORIC_DHW_PATH, DataFrame)
+    @info "Attaching historic DHW and Cyclone/COTS data"
+    new_dhw_scens = open_dataset(HISTORIC_DHW_PATH).dhw_scens
 
-    # Available DHW data starts 1985 - 2022
-    target_years = string.(START_YEAR:END_YEAR)
-    locs = collect(caxes(dom.dhw_scens)[2])
+    dom.loc_data.RME_GBRMPA_ID
+    dom.dhw_scens .= read(new_dhw_scens[timesteps=At(START_YEAR:END_YEAR), scenarios=1])
+    dhw_replaced = read(dom.dhw_scens[:, :, 1]) == Float32.(read(new_dhw_scens[timesteps=At(START_YEAR:END_YEAR), scenarios=1]))
+    @info("DHWs replaced: $(dhw_replaced)")
 
-    n_timesteps = length(target_years)
-    n_locs = length(locs)
-
-    dhw_data = reshape(Matrix(dhw_data_df[:, target_years])', n_timesteps, n_locs, 1)
-    dom.dhw_scens = ADRIA.DataCube(dhw_data; timesteps=target_years, locs=locs, scenarios=1:1)
+    new_cyclone_mortality_scens = open_dataset(HISTORIC_CYCLONE_MORTALITY_PATH).cyclone_mortality_scens
+    dom.cyclone_mortality_scens .= read(new_cyclone_mortality_scens[:, :, :, [1]])
+    cyclones_replaced = dom.cyclone_mortality_scens == read(new_cyclone_mortality_scens)
+    @info("Cyclones replaced: $(cyclones_replaced)")
 
     reload_domain = false
 end
 
 function ltmp_period(ltmp_region_name::String, ltmp_data::DataFrame, START_YEAR::Int64, END_YEAR::Int64)::BitVector
-    region_tf = ltmp_data[ltmp_data.Region .== ltmp_region_name, :Year]
+    region_tf = ltmp_data[ltmp_data.Region.==ltmp_region_name, :Year]
     return (region_tf .>= START_YEAR) .& (region_tf .<= END_YEAR)
 end
 
@@ -61,76 +63,23 @@ if !@isdefined(region_shps)
     region_shps = GDF.read(LTMP_SHP_PATH)
 end
 
+function _region_shape_mask(dom, region_shapes, idx)::BitVector
+    region_shape = region_shapes.geometry[idx]
+    geoms = GI.geometry.(eachrow(dom.loc_data))
+    return [AG.contains(region_shape, AG.centroid(geom)) for geom in geoms]
+end
+
 if !@isdefined(NORTH_MASK)
-    const NORTH_MASK = BitVector([AG.contains(region_shps.geometry[1], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
-    const CENTRAL_MASK = BitVector([AG.contains(region_shps.geometry[2], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
-    const SOUTH_MASK = BitVector([AG.contains(region_shps.geometry[3], AG.centroid(polygn)) for polygn in dom.loc_data.geom])  # .&& ltmp_loc_mask
+    const NORTH_MASK = _region_shape_mask(dom, region_shps, 1)  # .&& ltmp_loc_mask
+    const CENTRAL_MASK = _region_shape_mask(dom, region_shps, 2)  # .&& ltmp_loc_mask
+    const SOUTH_MASK = _region_shape_mask(dom, region_shps, 3)  # .&& ltmp_loc_mask
     const NOT_CONTAINED = (!).(NORTH_MASK .|| CENTRAL_MASK .|| SOUTH_MASK)
 end
 
-if !@isdefined(north_res) && @isdefined(s_rac)
-    north_res = s_rac[locs=NORTH_MASK]
-    central_res = s_rac[locs=CENTRAL_MASK]
-    south_res = s_rac[locs=SOUTH_MASK]
-end
-
 location_classification = CSV.read(LOC_CLASS_PATH, DataFrame)
-n_classifications = maximum(location_classification.consecutive_classification)
 
-# Load manta observations for reef location classes
-manta_tow_classes = open_dataset(LOC_CLASS_TARGET_PATH)
-
-# Force memory load
-manta_tow_mean = readcubedata(manta_tow_classes.mean)
-manta_tow_std = readcubedata(manta_tow_classes.std)
-
-# Load manta tow ltmp reef level data
-ltmp_reef_data = GDF.read(LTMP_REEF_DATA_PATH)
-
-# Order year columns in ascending order
-ltmp_reef_years = parse.(Int64, names(ltmp_reef_data)[5:end])
-ltmp_reef_perm = sortperm(ltmp_reef_years) .+ 4
-
-ltmp_reef_data_names = names(ltmp_reef_data)
-ltmp_reef_data_names[5:end] .= ltmp_reef_data_names[ltmp_reef_perm]
-
-# Rorder columns
-ltmp_reef_data = select!(ltmp_reef_data, ltmp_reef_data_names...)
-
-# Rescale to be proportions
-ltmp_reef_data[:, 5:end] ./= 100
-first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
-raw_ltmp_reef_data = Matrix(ltmp_reef_data[:, first_yr_idx:end])
-
-# For each ltmp location calculate the row index for the domain
-ALL_LTMP_IDXS = [
-    ismissing(id) ? -1 : findfirst(
-        x -> x == id,
-        dom.loc_data.UNIQUE_ID
-    ) for id in ltmp_reef_data.RME_UNIQUE_ID
-]
-ALL_LTMP_REEF = copy(raw_ltmp_reef_data)
-
-# Calibration Locations
-limited_locations = ["16015100104", "16025100104", "14114100104", "18075100104"]
-location_names = ["Mackay Reef", "Opal Reef", "Macgillivray Reef", "John Brewer Reef"]
-limited_loc_idxs = [findfirst(x -> !ismissing(x) && x == id, ltmp_reef_data.RME_UNIQUE_ID) for id in limited_locations]
-raw_ltmp_reef_data = raw_ltmp_reef_data[limited_loc_idxs, :]
-
-composition_data = open_dataset(COMPOSITION_PATH)
-
-# For each target location get its row index in the domain
-TARGET_DOM_IDXS = [findfirst(x -> x == id, dom.loc_data.UNIQUE_ID) for id in limited_locations]
-
-# Extract the ltmp data for each target location
-temporal_range = START_YEAR:END_YEAR
-# [year ⋅ taxa ⋅ locs]
-rm_ltmp_taxa = Array{Union{Missing,Float64}}(missing, length(temporal_range), 5, 4)
-for (j, loc_name) in enumerate(location_names)
-    rm_ltmp_taxa[:, :, j] .= composition_data.mean[location=At(loc_name)].data[(2008-1992+1):(2008-1992)+length(temporal_range), :]
-end
-
-dom.loc_data[!, :depth_med] .= canonical_gpkg.depth_med
+# ? Delete
+# ? n_classifications = maximum(location_classification.consecutive_classification)
 
 # set ADRIA Env variable to prevent an error during run_model
 ENV["ADRIA_DEBUG"] = false

@@ -1,5 +1,26 @@
 # ADRIA-CoralBlox calibration
 
+This repo is used to calibrate some parameters of ADRIA/CoralBlox model to match historic
+LTMP (Long-Term Monitoring Program) data for the GBR (Great Barrier Reef) between years 2008
+and 2022. The parameters calibrated here were:
+
+- `mb_rate`: Base mortality rate for each functional group and size class
+- `linear_extension`: Base linear extension for each functional group and size class
+- `biogroup_linear_extension`: Scale factor to be applied to linear extensions of all
+functional groups and size classes of a spatial group. We are now using `spatial_group`
+instead of `biogroup` and need to update that in this project.
+- `biogroup_mb_rate`: Scale factor to be applied to base mortality rates of all
+functional groups and size classes of a spatial group. We are now using `spatial_group`
+instead of `biogroup` and need to update that in this project.
+- `growth_accel_steepness`, `growth_accel_height` and `growth_accel_midpoint`: Used as
+parameters of a growth acceleration function.
+
+The equation used for the growth acceleration is:
+
+```
+height / (1 + exp(-steepness * (available_space - midpoint))) + 1.0
+```
+
 ## Setup
 
 Instantiate environment to install required packages.
@@ -20,23 +41,25 @@ Create a `calib_config.toml` file with the following entries:
 
 ```toml
 [Domains]
-reefmod_domain = "<path to ReefMod dataset>"
 rme_domain = "<path to RME dataset>"
+historic_cyclone_mortality = "<path to historic cyclone mortality dataset>"
+historic_dhw = "../datasets/dhw_scens.nc"
 
 [Geospatial]
 canonical_path = "<path to canonical gpkg>"
-ltmp_shp = "../spatial_data/gbr_3Zone 2.shp"
-classification_path = "../spatial_data/location_classification_MPA.csv"
+ltmp_shp = "../datasets/spatial_data/gbr_3Zone 2.shp"
+classification_path = "../datasets/spatial_data/location_classification_MPA.csv"
 
 [Observations]
-manta_tow_path = "..\\ltmp_data\\manta_tow_mean_std.nc"
-ltmp_reef_data = "..\\ltmp_data\\manta_tow_data_reef_lvl.gpkg"
-composition_netcdf = "..\\ltmp_data\\coral_composition.nc"
-ltmp_modelled_obs = "..\\ltmp_data\\modelled_brms.beta.ry.disp.csv"
+manta_tow_path = "../datasets/ltmp_data/manta_tow_mean_std.nc"
+ltmp_reef_data = "../datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"
+composition_netcdf = "../datasets/ltmp_data/coral_composition.nc"
+ltmp_modelled_obs = "../datasets/ltmp_data/modelled_brms.beta.ry.disp.csv"
 
 [Initialisation]
-init_cover_filepath = "spatial_data\\init_cover.dat"
-init_guess_filepath = "<path to initial guess.dat>" # optional
+init_cover_filepath = "../datasets/spatial_data/init_cover.dat"
+init_guess_filepath = ""  # optional
+ecorrap_param_filepath = "C:/Users/pribeiro/AIMS/Datasets/interped_vals.nc"
 
 [Outputs]
 out_dir = "..\\Outputs\\test_dir"
@@ -53,11 +76,12 @@ Results for 20 ReefModEngine repetitions. All repetitions use the same historic 
 
 ## Config File Path Descriptions
 
-### Domain
+### Domains
 
 Paths to different ADRIA domains or historic input files
-- `reefmod_domain` : Domain found on teams called `limited_reefmod_domain` in ADRIA domain folder.
 - `rme_domain` : Path to ReefModEngine
+- `historic_cyclone_mortality` : Path to historic environmental disturbances NetCDF file. These include cyclone/storm and/or COTS related mortality rates.
+- `historic_dhw` : Path to historic dhw scenarios NetCDF file.
 
 ### Geospatial
 
@@ -75,11 +99,12 @@ locations. Contained in `ltmp_data` directory.
 - `composition_netcdf` : NetCDF containing coral composition for each ADRIA functional group at each ltmp
 photogrammetry location. Contained in the `ltmp_data` directory.
 - `ltmp_modelled_obs` : Path to modelled regional coral cover data based on LTMP
-  observations
+  observations. This was developed by Murray Logan and Mike Emslie.
 
 ### Initialisation
 - `init_cover_filepath` : Data containing calibrated initial cover. Must be loaded into domain as follows.
 - `init_guess_filepath` : Optional file name for initial guess.
+- `ecorrap_param_filepath` : <!--TO DO-->
 
 Initial cover must be loaded as follows.
 ```julia
@@ -115,6 +140,7 @@ be **overwritten**.
 
 ```julia-repl
 julia> include("1_setup.jl")
+julia> include("1b_data_split.jl")
 julia> include("3_regional_analysis.jl")
 julia> include("4_location_analysis.jl")
 ```

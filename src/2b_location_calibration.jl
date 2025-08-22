@@ -1,3 +1,5 @@
+include("plot/plot.jl")
+
 """
 Calibrate linear extension, background mortality and fecundity.
 Attempt to calibrate location-specific scaling as well.
@@ -6,15 +8,33 @@ Attempt to calibrate location-specific scaling as well.
 using ADRIA: bleaching_mortality!
 using BlackBoxOptim: init_rng!
 
-include("./1_setup.jl")
 include("./common/param_bounds.jl")
+
+"""
+    validate_gbr_wide_scalar_mean(linear_ext_scalar::Matrix{Float64}, survival_scalar::Matrix{Float64})::Float64
+
+The average parameter scalar should between [0.95, 1.05] for linear extension and
+[-0.05, 0.05] for background mortality.
+"""
+function validate_gbr_wide_scalar_mean(
+    linear_ext_scalar::Matrix{Float64},
+    survival_scalar::Matrix{Float64}
+)::Float64
+    mean_lin_ext_scalar::Vector{Float64} = dropdims(mean(linear_ext_scalar, dims=2), dims=2)
+    mean_survival_scalar::Vector{Float64} = dropdims(mean(survival_scalar, dims=2), dims=2)
+
+    lin_ext_within_bounds::BitVector = (!).(0.95 .<= mean_lin_ext_scalar .<= 1.05)
+    survival_within_bounds::BitVector = (!).(-0.05 .<= mean_survival_scalar .<= 0.05)
+    return sum(abs.(mean_lin_ext_scalar .- 1.0)[lin_ext_within_bounds]) +
+           sum(abs.(mean_survival_scalar)[survival_within_bounds])
+end
 
 
 """
     validate_linear_extension_coefficients(linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Vector{Float64})::Bool
 
-Check that the sampled linear extension values and location coefficients guarentee values that
-do not exceed the size class bin widths.
+Check that the sampled linear extension values and location coefficients guarantee values
+that do not exceed the size class bin widths.
 """
 function validate_linear_extension_coefficients(
     linear_ext_vals::Matrix{Float64}, linear_ext_coefs::Matrix{Float64}
@@ -25,29 +45,7 @@ function validate_linear_extension_coefficients(
 
     for j in 1:n_locs
         tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins
-        tmp[tmp .< 0] .= 0.0
-        dist_from_valid += sum(tmp)
-    end
-
-    return dist_from_valid
-end
-
-"""
-    validate_mortality_coefficients(mortality_vals::Matrix{Float64}, mortality_coefs::Vector{Float64})::Bool
-
-Ensure that the sampled mortality values and location coefficients guarentee values between
-0 and 1.
-"""
-function validate_mortality_coefficients(
-    mortality_vals::Matrix{Float64}, mortality_coefs::Matrix{Float64}
-)::Float64
-    n_locs::Int64 = size(mortality_coefs, 2)
-    survival_vals::Matrix{Float64} = 1 .- mortality_vals
-
-    dist_from_valid::Float64 = 0.0
-    for j in 1:n_locs
-        tmp = survival_vals .* mortality_coefs[:, j] .- 1
-        tmp[tmp .< 0] .= 0.0
+        tmp[tmp.<0] .= 0.0
         dist_from_valid += sum(tmp)
     end
 
@@ -74,15 +72,16 @@ function obj_func(
     location_classification=location_classification.consecutive_classification,
     coral_param_names=CORAL_PARAM_NAMES,
     param_idxs=PARAM_IDXS,
-    loc_idxs=TARGET_DOM_IDXS
+    observations::LocationDataStore=CALIBRATION_STORE
 )
-    dom, scen, growth_acc_params, scale_factors = setup_run(
+    dom, scen = setup_run(
         dom_raw,
         init_values;
         param_names=coral_param_names,
         param_idxs=param_idxs,
-        loc_idxs=loc_idxs
     )
+
+    scale_factors = get_scale_factors(dom, scen)
 
     corals = ADRIA.to_coral_spec(scen[1, :])
 
@@ -92,19 +91,23 @@ function obj_func(
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
     survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
 
+    # If either the linear_extension or mortality are not valid return a proportionally
+    # big error value
+    gbr_wide_scalar_validity = validate_gbr_wide_scalar_mean(
+        scale_factors[:, 1, :], scale_factors[:, 2, :]
+    )
     lin_ext_validity = validate_linear_extension_coefficients(
-        linear_ext, scale_factors[:, :, 1]
+        linear_ext, scale_factors[:, 1, :]
     )
-    mortality_validity = validate_mortality_coefficients(
-        survival_r, scale_factors[:, :, 2]
-    )
-    if mortality_validity + lin_ext_validity != 0.0
-        return 1e6 + (2e6 * (mortality_validity + lin_ext_validity))
+    if lin_ext_validity + gbr_wide_scalar_validity != 0.0
+        return 1e6 + (
+            2e6 * (lin_ext_validity + gbr_wide_scalar_validity)
+        )
     end
 
     res = nothing
     try
-        res = ADRIA.run_model(dom, scen[1, :], scale_factors, growth_acc_params, loc_idxs)
+        res = ADRIA.run_model(dom, scen[1, :])
     catch err
         if !(err isa AssertionError)
             rethrow(err)
@@ -150,13 +153,15 @@ function obj_func(
     first_non_zero = findfirst(x -> x != 0, reef_error_series)
     last_non_zero = findlast(x -> x != 0, reef_error_series)
 
+    n_ltmp_locs::Int64 = length(observations.ltmp_cover_to_domain)
+
     # Mean Absolute Error for peaks and troughs
-    peaks = argmax_missing.(eachrow(raw_ltmp_reef_data))
-    troughs = argmin_missing.(eachrow(raw_ltmp_reef_data))
-    obs_peaks = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], peaks)]
-    obs_troughs = raw_ltmp_reef_data[CartesianIndex.([1, 2, 3, 4], troughs)]
-    modelled_peaks = loc_cover[CartesianIndex.(peaks, loc_idxs)]
-    modelled_troughs = loc_cover[CartesianIndex.(troughs, loc_idxs)]
+    peaks = argmax_missing.(eachrow(observations.ltmp_coral_cover))
+    troughs = argmin_missing.(eachrow(observations.ltmp_coral_cover))
+    obs_peaks = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, peaks)]
+    obs_troughs = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, troughs)]
+    modelled_peaks = loc_cover[CartesianIndex.(peaks, observations.ltmp_cover_to_domain)]
+    modelled_troughs = loc_cover[CartesianIndex.(troughs, observations.ltmp_cover_to_domain)]
 
     peaks_score = mean(abs.(modelled_peaks .- obs_peaks)) * 2.0
     troughs_score = mean(abs.(modelled_troughs .- obs_troughs)) * 2.0
@@ -207,7 +212,7 @@ function save_results_callback(
     step_interv=1000,
     result_fn="intermediate_coral_calib.dat"
 )::Nothing
-    start_time = replace(string(unix2datetime(oc.start_time)), "T"=>"_", ":"=>"")
+    start_time = replace(string(unix2datetime(oc.start_time)), "T" => "_", ":" => "")
     elapsed = oc.last_report_time - oc.start_time
     elapsed = round(elapsed; digits=2)
 
@@ -234,19 +239,30 @@ function save_results_callback(
 
     # Otherwise, save intermediate progress!
     global LAST_SAVE = datetime2unix(now(UTC))
-    plot_fn = joinpath(OUT_DIR, "calib_progress_$(start_time)_$(elapsed).png")
+    region_plot_fn = joinpath(OUT_DIR, "region_plots", "calib_progress_region_$(start_time)_$(elapsed).png")
+    taxa_cover_plot_fn = joinpath(OUT_DIR, "taxa_cover", "calib_progress_taxa_cover_$(start_time)_$(elapsed).png")
+    taxa_pop_plot_fn = joinpath(OUT_DIR, "taxa_pop", "calib_progress_pop_cover_$(start_time)_$(elapsed).png")
     calib_fn = joinpath(OUT_DIR, result_fn)
     best_state = best_candidate(oc)
     serialize(calib_fn, best_state)
 
     interim_res = progress_run(best_state)
-    plot_calibration(interim_res; save_fn=plot_fn)
+    f = plot_all_regions(dom, interim_res)
+    save(region_plot_fn, f)
+    f = taxa_cover_proportions(interim_res.raw)
+    save(taxa_cover_plot_fn, f)
+    f = taxa_population_proportions(interim_res.raw)
+    save(taxa_pop_plot_fn, f)
     @info "Saved intermediate progress"
 
     return nothing
 end
 
 available_threads = Threads.nthreads()
+
+mkpath(joinpath(OUT_DIR, "region_plots"))
+mkpath(joinpath(OUT_DIR, "taxa_cover"))
+mkpath(joinpath(OUT_DIR, "taxa_pop"))
 
 threads_display = available_threads == 1 ? available_threads : available_threads - 1
 @info "Using $(threads_display) threads."

@@ -7,12 +7,6 @@ repository).
 
 ## Domains
 
-- `reefmod_domain`
-
-The reefmod domain data is based off counterfactual ran by reef mod and is contained in the
-ADRIA teams `ADRIA Domain data` directory called `reefmod_domain.zip`.
-`limited_reefmod_domain_2024-10-25.zip` can also be used but only contains RCP 4.5.
-
 - `rme_domain`
 
 The reefmod engine v1.0.28 is used for historic DHWs. Available on the RRAP M&DS Data Store.

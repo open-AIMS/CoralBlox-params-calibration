@@ -1,6 +1,6 @@
-using CairoMakie, GeoMakie, GraphMakie
+using CairoMakie, ADRIA.GeoMakie, GraphMakie
 
-include("common/plotting/plotting.jl")
+include("./plot/plot.jl")
 include("1_setup.jl")
 
 corals = ADRIA.to_coral_spec(scen[1, :])
@@ -10,12 +10,12 @@ coral_cover = rs_raw.raw .* reshape(site_k_area(dom), (1, 1, 3806))
 # Identify temporal region of interest
 temporal_range = 2008:2014
 
-for i in 1:length(limited_locations)
+for i in 1:length(LIMITED_LOCATIONS)
     # Location coral parameters
     limited_loc_pos = i # index of target location in
-    location_unique_id = limited_locations[limited_loc_pos]
-    domain_loc_pos = findfirst(x->x==location_unique_id, dom.loc_data.UNIQUE_ID)
-    ltmp_loc_pos = findfirst(x->!ismissing(x) && x==location_unique_id, ltmp_reef_data.RME_UNIQUE_ID)
+    location_unique_id = LIMITED_LOCATIONS[limited_loc_pos]
+    domain_loc_pos = findfirst(x -> x == location_unique_id, dom.loc_data.UNIQUE_ID)
+    ltmp_loc_pos = findfirst(x -> !ismissing(x) && x == location_unique_id, ltmp_reef_data.RME_UNIQUE_ID)
 
     linear_ext = permutedims(reshape(corals.linear_extension, (7, 5)), (2, 1))
     linear_ext[:, 7] .= 0.0
