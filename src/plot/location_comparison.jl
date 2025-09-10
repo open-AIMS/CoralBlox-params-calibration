@@ -28,9 +28,6 @@ function plot_location_comparison(
     observations::LocationDataStore=COMBINED_STORE,
     hide_disturbances=false
 )::Figure where {T<:Real}
-    # Extra information specific to the given location
-    reef_id = observations.ltmp_unique_ids[ltmp_loc_idx]
-
     f = Figure(; size=(1000, 1000))
 
     title_text = _location_err_title(raw_data, ltmp_loc_idx; observations=observations)
@@ -52,6 +49,13 @@ function plot_location_comparison(
     legend_modelled_v_ltmp!(f, current_row)
     current_row += 1
 
+    # Need to use RME_GBRMPA_ID to select locations from dhw_scens and cyc_scens
+    spatial_data = observations.domain_gpkg[:, [:RME_UNIQUE_ID, :RME_GBRMPA_ID]]
+    reef_gbrmpa_id = spatial_data[spatial_data.RME_UNIQUE_ID.==reef_id, :RME_GBRMPA_ID][1]
+
+    # These are RME_UNIQUE_ID. Need to select locations from LocationDataStore
+    reef_id = observations.ltmp_unique_ids[ltmp_loc_idx]
+
     # Plot CoralBlox Observed DHW and Cyclone Categories
     if !hide_disturbances
         ax_opts_coralblox_disturbances = Dict(
@@ -59,8 +63,9 @@ function plot_location_comparison(
             :ylabel => "DHW",
             :height => 100
         )
-        loc_dhw_scens = dhw_scens[locs=At(reef_id)]
-        loc_cyc_scens = cyc_scens[locations=At(reef_id)]
+        loc_dhw_scens = dhw_scens[locs=At(reef_gbrmpa_id)]
+        loc_cyc_scens = cyc_scens[locs=At(reef_gbrmpa_id)]
+
         plot_coralblox_disturbances!(
             f, current_row, loc_dhw_scens, loc_cyc_scens;
             axis_opts=ax_opts_coralblox_disturbances,
