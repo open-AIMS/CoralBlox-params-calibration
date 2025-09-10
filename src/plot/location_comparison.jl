@@ -268,10 +268,10 @@ end
 function plot_coralblox_disturbances!(
     fig::Union{Figure,GridLayout},
     ax_row::Int64,
-    loc_dhw_scens::AbstractVector{Float32},
-    loc_cyclone_scens::AbstractMatrix{Float64};
+    loc_dhw_scens::AbstractVector{R1},
+    loc_cyclone_scens::AbstractMatrix{R2};
     axis_opts::Dict=Dict()
-)::Nothing
+)::Nothing where {R1,R2<:Real}
     ax_dhw = Axis(fig[ax_row, 1]; axis_opts...)
     plot_dhw_scens!(ax_dhw, loc_dhw_scens)
 
@@ -291,9 +291,9 @@ function legend_coralblox_disturbances!(f::Figure, row::Int64; col::Int64=2)
     )
 end
 
-function plot_dhw_scens!(ax::Axis, dhw_scens::AbstractVector{Float32})
+function plot_dhw_scens!(ax::Axis, dhw_scens::AbstractVector{R}) where {R<:Real}
     dhw_data::Vector{Float64} = Float64.(collect(dhw_scens))
-    timesteps::Vector{Int64} = collect(dhw_scens.timesteps.val.data.data)
+    timesteps::Vector{Int64} = collect(dhw_scens.timesteps.val.data)
     return lines!(ax, timesteps, dhw_data, color=:orange, linestyle=:dot, linewidth=4)
 end
 
