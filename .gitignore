@@ -19,3 +19,4 @@ calib_config.toml
 Outputs/*
 
 src/statprof/
+src/gif
