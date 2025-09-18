@@ -25,11 +25,14 @@ save(joinpath(OUT_DIR, "locs_taxa_pop.png"), f_taxa_pop)
 f_size_class = temporal_size_class_proportions(rs_raw.raw; fig_size=(900, 600))
 save(joinpath(OUT_DIR, "locs_size.png"), f_size_class)
 
-# Identify 3 higher and 3 lower pcc locations
+# Identify 3 higher and 3 lower scc locations
 n_validation_locs = length(VALIDATION_STORE.ltmp_unique_ids)
-validation_pccs = [collect_error_stats(rs_raw.raw, id; observations=VALIDATION_STORE)[3] for id in 1:n_validation_locs]
-validation_pccs_sortperm = sortperm(validation_pccs)
-validation_worst_3_pcc = validation_pccs[validation_pccs_sortperm][1:3]
-validation_worst_3_pcc_idx = VALIDATION_STORE.ltmp_unique_ids[validation_pccs_sortperm][1:3]
-validation_best_3_pcc = validation_pccs[validation_pccs_sortperm][end-2:end]
-validation_best_3_pcc_idx = VALIDATION_STORE.ltmp_unique_ids[validation_pccs_sortperm][end-2:end]
+validation_sccs = [collect_error_stats(rs_raw.raw, id; observations=VALIDATION_STORE)[6] for id in 1:n_validation_locs]
+validation_sccs_sortperm = sortperm(validation_sccs)
+validation_worst_3_scc = validation_sccs[validation_sccs_sortperm][1:3]
+validation_worst_3_scc_idx = VALIDATION_STORE.ltmp_unique_ids[validation_sccs_sortperm][1:3]
+validation_best_3_scc = validation_sccs[validation_sccs_sortperm][end-2:end]
+validation_best_3_scc_idx = VALIDATION_STORE.ltmp_unique_ids[validation_sccs_sortperm][end-2:end]
+
+@info "Three highest SCC validation reefs are: $validation_best_3_scc_idx"
+@info "Three lowest SCC validation reefs are: $validation_worst_3_scc_idx"
