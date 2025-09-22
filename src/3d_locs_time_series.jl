@@ -9,10 +9,6 @@ dhw_scens = dom.dhw_scens[scenarios=1]
 disturbances_path = "../datasets/ltmp_data/disturbances.nc"
 disturbances = open_dataset(disturbances_path).layer
 
-disturbances = open_dataset(disturbances_path).layer
-
-open_dataset("C:/Users/pribeiro/AIMS/Code/CycloneSurvivalRegression/historic_dhw/dhw_scens.nc")
-
 n_calibration_locs = length(CALIBRATION_STORE.ltmp_cover_to_domain)
 @showprogress desc = "Plotting calibration locations." for i in 1:n_calibration_locs
     reef_id = CALIBRATION_STORE.ltmp_unique_ids[i]
