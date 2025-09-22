@@ -29,8 +29,8 @@ functional_groups = [
     "Large_Massives"
 ]
 
-cover_before_cols = "cover_before_" .* functional_groups
-cover_after_cols = "cover_after_" .* functional_groups
+cover_before_col_names = "cover_before_" .* functional_groups
+cover_after_col_names = "cover_after_" .* functional_groups
 
 """
 Names and ids for all reefs on Reef Monitoring API
@@ -100,14 +100,14 @@ function split_taxa_cover!(disturbance_cover, reef_name, year_before, year_after
     disturbance_low = tmp_df[tmp_df.year.==split_year_low, :]
     disturbance_up = tmp_df[tmp_df.year.==split_year_up, :]
 
-    cover_before_low = Matrix(disturbance_low[:, Symbol.(cover_before_cols)])
-    cover_after_up = Matrix(disturbance_up[:, Symbol.(cover_after_cols)])
+    cover_before_low = Matrix(disturbance_low[:, Symbol.(cover_before_col_names)])
+    cover_after_up = Matrix(disturbance_up[:, Symbol.(cover_after_col_names)])
     cover_interemediate = (cover_before_low .+ cover_after_up) ./ 2
 
     mask_low = target_mask .&& disturbance_cover.year .== disturbance_low.year
     mask_up = target_mask .&& disturbance_cover.year .== disturbance_up.year
-    disturbance_cover[mask_low, cover_after_cols] .= cover_interemediate
-    disturbance_cover[mask_up, cover_before_cols] .= cover_interemediate
+    disturbance_cover[mask_low, cover_after_col_names] .= cover_interemediate
+    disturbance_cover[mask_up, cover_before_col_names] .= cover_interemediate
 
     return nothing
 end
