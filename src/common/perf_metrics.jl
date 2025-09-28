@@ -340,9 +340,13 @@ function rmse_diff(rs_raw::Array{Float64,3}, observations::LocationDataStore)::V
     return benchmark_rmse .- model_rmse
 end
 
-function pcc_locs(raw_data::Array{Float64,3}, observations::LocationDataStore)
+function location_correlation_coefficients(
+    raw_data::Array{Float64,3},
+    observations::LocationDataStore;
+    correlation_metric::Symbol=:spearman
+)
     n_locs = length(observations.ltmp_cover_to_domain)
-    pccs = zeros(Float64, n_locs)
+    loc_cc = zeros(Float64, n_locs)
 
     # obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     obs_loc_data = observations.ltmp_coral_cover
@@ -352,11 +356,22 @@ function pcc_locs(raw_data::Array{Float64,3}, observations::LocationDataStore)
     domain_idxs = ltmp_cover_idx_to_domain.(Ref(observations), 1:n_locs)
     sim_data = loc_cover[:, domain_idxs]
 
-    for i in 1:n_locs
-        pccs[i] = cor(sim_data[not_missing_obs[i, :], i], obs_loc_data[i, not_missing_obs[i, :]])
+    correlation_function = if correlation_metric == :spearman
+        corspearman
+    elseif correlation_metric == :pearson
+        cor
+    else
+        error("Invalid value for `correlation_metric`")
     end
 
-    return pccs
+    for i in 1:n_locs
+        loc_cc[i] = correlation_function(
+            sim_data[not_missing_obs[i, :], i],
+            Vector{Float64}(obs_loc_data[i, not_missing_obs[i, :]])
+        )
+    end
+
+    return loc_cc
 end
 
 """
@@ -371,7 +386,7 @@ function average_cc(cc_data)
     f_data = atanh.(cc_data)
 
     # Calculate confidence intervals and mean
-    f_confint = ADRIA.analysis.series_confint(atanh.(pcc_validation)[:, :]')
+    f_confint = ADRIA.analysis.series_confint(atanh.(cc_data)[:, :]')
 
     return tanh.(f_confint)
 end

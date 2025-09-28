@@ -30,32 +30,35 @@ function plot_rmse_scatter(
     )
 end
 
-function plot_pcc_scatter(
-    pcc;
+function plot_metric_scatter(
+    outcomes::Vector{Float64};
     observation_type::String="",
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Figure
-    lower_bound, mean, upper_bound = average_cc(pcc)
+    lower_bound, mean, upper_bound = average_cc(outcomes)
 
     _yticks = sort(unique(vcat((-1:0.5:1), round(mean, digits=2))))
-    obs_title = isempty(observation_type) ? "" : "\n$(titlecase(observation_type)) data"
-    axis_opts::Dict{Symbol,Any} = Dict(
-        :title => "Pearson Correlation Coefficient (PCC)" * obs_title,
-        :ylabel => "PCC",
-        :yticks => _yticks
+
+    axis_opts = merge(
+        Dict(
+            :ylabel => "Outcome",
+            :yticks => _yticks
+        ),
+        axis_opts,
     )
 
-    opts::Dict{Symbol,Any} = Dict(:metric_label => "PCC",)
+    # opts::Dict{Symbol,Any} = merge(Dict(:metric_label => "PCC",))
 
     return plot_metric_scatter(
-        sort(pcc), mean;
+        sort(outcomes), mean;
         fig_opts=fig_opts, axis_opts=axis_opts, opts=opts
     )
 end
 
 function plot_metric_scatter(
-    metric_data, agg_data;
+    metric_data::Vector{Float64}, agg_data::Float64;
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
@@ -155,19 +158,28 @@ function plot_rmse_diff_map(
     return fig
 end
 
-function plot_pcc_map(
+function plot_metric_map(
     raw_data::Array{Float64,3};
-    fig_opts::Dict=Dict(),
+    metric_type::Symbol=:scc,
     observations::LocationDataStore=COMBINED_STORE,
+    fig_opts::Dict=Dict(),
 )::Figure
     n_validation_obs = length(observations.ltmp_unique_ids)
     ltmp_loc_indexes = collect(1:n_validation_obs)
 
     error_stats = collect_error_stats.(Ref(raw_data), ltmp_loc_indexes; observations=observations)
     rmse_, benchmark_, cc_, maee_, bias_, scc_ = eachrow(hcat(map(collect, error_stats)...))
+    _metric = if metric_type == :pcc
+        cc_
+    elseif metric_type == :scc
+        scc_
+    else
+        error("Invalid `metric_type`. ")
+    end
+
 
     fig_size = get(fig_opts, :size, FIG_SIZE[:map])
-    fig_title = get(fig_opts, :title, "Pearson Correlation Coefficient")
+    fig_title = get(fig_opts, :title, "")
     fig = Figure(size=fig_size)
     ax = GeoAxis(
         fig[1, 1],
@@ -187,19 +199,19 @@ function plot_pcc_map(
         poly!.(ax, domain_gpkg.geometry, color=:gray)
     end
 
-    max_val, min_val = extrema(cc_)
+    max_val, min_val = extrema(_metric)
     up_limit = maximum(abs.((max_val, min_val)))
     lower_limit = -up_limit
 
     try
         scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD, markersize=35,
-            color=cc_, colorrange=(lower_limit, up_limit), colormap=:bam, alpha=0.6, strokewidth=1, strokecolor=(:gray, 0.1))
+            color=_metric, colorrange=(lower_limit, up_limit), colormap=:bam, alpha=0.6, strokewidth=1, strokecolor=(:gray, 0.1))
     catch
         scatter!(ax, observation_gpkg.LON, observation_gpkg.LAT, markersize=35,
-            color=cc_, colorrange=(lower_limit, up_limit), colormap=:bam, alpha=0.6, strokewidth=1, strokecolor=(:gray, 0.1))
+            color=_metric, colorrange=(lower_limit, up_limit), colormap=:bam, alpha=0.6, strokewidth=1, strokecolor=(:gray, 0.1))
     end
     Colorbar(fig[1, 2], colorrange=(lower_limit, up_limit), colormap=:bam,
-        label="Pearson Correlation Coefficient")
+        label="")
 
     return fig
 end
