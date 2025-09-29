@@ -40,52 +40,6 @@ function plot_class_properties(
     return f
 end
 
-function plot_ltmp_disturbances!(
-    fig::Union{Figure,GridLayout}, ax_row::Int64, loc_disturbances; axis_opts::Dict=Dict()
-)::Nothing
-    limits = get(axis_opts, :limits, nothing)
-    xlimits = !isnothing(limits) ? limits[1] : nothing
-    axis_opts[:limits] = (xlimits, (0, 1))
-    #@info(axis_opts[:limits])
-    axis_opts = Dict(
-        axis_opts...,
-        :yticks => [0, 1],
-        :yticklabelsize => 0,
-        :ylabel => "Disturbances",
-    )
-
-    ax_ltmp = Axis(fig[ax_row, 1]; axis_opts...)
-
-
-    disturbance_vlines, disturbance_types = plot_ltmp_disturbances!(ax_ltmp, loc_disturbances)
-
-    return nothing
-end
-function plot_ltmp_disturbances!(ax::Axis, loc_disturbances)
-    disturbances_types = collect(loc_disturbances.disturbances)
-    n_disturbances_types = length(disturbances_types)
-    disturbances_years = collect(loc_disturbances.timesteps)
-    plotted_vlines = []
-    plotted_types = []
-    for (disturbance_type_idx, disturbance_type) in enumerate(disturbances_types)
-        disturbance_years_mask = loc_disturbances[disturbances=At(disturbance_type)] .== 1
-        if any(disturbance_years_mask)
-            vline = vlines!(
-                ax,
-                disturbances_years[disturbance_years_mask],
-                color=disturbance_type_idx,
-                linewidth=3,
-                colormap=COLORMAPS.ltmp_disturbances,
-                colorrange=(1, n_disturbances_types)
-            )
-            push!(plotted_vlines, vline)
-            push!(plotted_types, disturbance_type)
-        end
-    end
-
-    return plotted_vlines, plotted_types
-end
-
 """
     taxa_cover_proportions(raw_data)::Figure
 
@@ -397,69 +351,6 @@ function plot_coral_param(
     Legend(fig[1, 2], elements, labels, title)
 
     return fig
-end
-
-"""
-    plot_taxa_props(loc::String, cover)::Figure
-
-Plot the modelled coral composition for a given location.
-
-# Example
-```julia
-# ADRIA single run results
-rs = ADRIA.run_model(...)
-# Index of location of interest
-location_idx = ...
-
-f = plot_taxa_props(<Location Name or ID>, rs.raw[:, :, location_idx])
-```
-"""
-function plot_taxa_props(
-    loc::String,
-    cover;
-    opts::Dict=Dict()
-)::Figure
-    f = Figure(; size=(1300, 900))
-    ax_opts = Dict(
-        :xlabel => "year",
-        :ylabel => "Cover Proportion",
-        :title => "$(loc): Functional Group Cover Proportions",
-        :limits => (nothing, nothing, 0, 1)
-    )
-    plot_taxa_props!(f, 1, cover; ax_opts=ax_opts, opts=opts)
-    return f
-end
-function plot_taxa_props!(
-    fig::Union{Figure,GridLayout},
-    ax_row::Int64,
-    cover;
-    ax_opts::Dict=Dict(),
-    opts::Dict=Dict()
-)::Nothing
-    ax_opts = Dict(ax_opts..., :xlabel => "Year", :ylabel => "Proportional Cover",)
-    ax_taxa = Axis(fig[ax_row, 1]; ax_opts...)
-    taxa_plot = plot_taxa_props!(ax_taxa, cover; opts=opts)
-    # Legend(fig[ax_row, 2], taxa_plot)
-    nothing
-end
-function plot_taxa_props!(
-    ax::Axis,
-    cover;
-    opts::Dict=Dict()
-)::Axis
-    color = COLORMAPS.taxa
-    cover = reshape(cover, (15, 7, 5))
-    cover = dropdims(sum(cover, dims=2), dims=2) ./ dropdims(sum(cover, dims=(2, 3)), dims=2)
-    cover = permutedims(cover, (2, 1))
-    xs = 2008:2022
-    series!(
-        xs,
-        cover,
-        color=color,
-        labels=String.(ADRIA.functional_group_names()),
-        linewidth=3,
-    )
-    return ax
 end
 
 """
