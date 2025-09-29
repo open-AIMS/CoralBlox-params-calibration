@@ -3,6 +3,17 @@ COLORMAPS = (
     taxa=:seaborn_colorblind6
 )
 
+COLORS = (
+    model_vs_obs_color_model="#1E88E5",
+    model_vs_obs_color_obs="#D81B60",
+    model_dist_color_dhw="#389821",
+    model_dist_color_dist="#31004D",
+    model_line_color="#1E88E5",
+    model_band_color=("#1E88E5", 0.4),
+    historic_line_color="#D81B60",
+    historic_band_color=("#D81B60", 0.3),
+)
+
 FONT_SIZES = (
     xlabel=20,
     ylabel=20,
