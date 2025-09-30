@@ -2,111 +2,182 @@
     plot_location_comparison(dom, raw_data::Array{Float64,3}, reef_id::String, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore=COMBINED_STORE)::Figure
     plot_location_comparison(dom, raw_data::Array{Float64,3}, ltmp_loc_index::Int64, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore=COMBINED_STORE)::Figure
 
-Plot LTMP Manta Tow Coral Cover against the modelled cover output given the LTMP location index.
+Plot LTMP Manta Tow Coral Cover against the modelled cover output given the LTMP location
+index.
+The returned figure has four subplots by default: model versus observed series
+(`model_vs_obs`), model disturbances (`model_dist`), ltmp disturbances (`ltmp_dist`) and
+benthic composition (`benthic`). These four keywords are used in some `opts` to show/hide
+these plots and to set axis and figure opts. See `filter_opts` dosctring for more info.
+
+# Arguments
+- `opts` :
+    - `:short_title` : If true, display only RMSE and SCC. Otherwise shows RMSE, μ bnch,
+    PCC, SCC, MAEE and BIAS
+    - `:show_ltmp_dist` : defaults to true.
+    - `:show_model_dist` : defaults to true.
+    - `:show_benthic_composition` : defaults to true.
 """
 function plot_location_comparison(
     raw_data::Array{Float64,3},
     reef_id::String,
-    dhw_scens::AbstractMatrix{T},
-    cyc_scens::AbstractArray{Float64,3},
+    dhw_scens::YAXArray{T},
+    cyc_scens::YAXArray{Float64,3},
     disturbances;
+    opts::Dict{Symbol,Any}=Dict{Symbol,Ay}(),
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
-    hide_disturbances=false
 )::Figure where {T<:Real}
     ltmp_loc_index = findfirst(VALIDATION_STORE.ltmp_unique_ids .== reef_id)
     return plot_location_comparison(
-        raw_data, ltmp_loc_index, cyc_scens, dhw_scens, disturbances;
-        observations=observations
+        raw_data,
+        ltmp_loc_index,
+        dhw_scens,
+        cyc_scens,
+        disturbances;
+        opts=opts,
+        fig_opts=fig_opts,
+        observations=observations,
     )
+end
+function plot_location_comparison!(
+    grid::Union{GridPosition,GridLayout},
+    raw_data::Array{Float64,3},
+    reef_id::String,
+    dhw_scens::YAXArray{T},
+    cyc_scens::YAXArray{Float64,3},
+    disturbances;
+    opts::Dict{Symbol,Any}=Dict{Symbol,Ay}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    observations::LocationDataStore=COMBINED_STORE,
+)::Nothing where {T<:Real}
+    ltmp_loc_index = findfirst(VALIDATION_STORE.ltmp_unique_ids .== reef_id)
+    plot_location_comparison!(
+        grid,
+        raw_data,
+        ltmp_loc_index,
+        dhw_scens,
+        cyc_scens,
+        disturbances;
+        opts=opts,
+        axis_opts=axis_opts,
+        fig_opts=fig_opts,
+        observations=observations,
+    )
+    return nothing
 end
 function plot_location_comparison(
     raw_data::Array{Float64,3},
     ltmp_loc_idx::Int64,
-    dhw_scens::AbstractMatrix{T},
-    cyc_scens::AbstractArray{Float64,3},
+    dhw_scens::YAXArray{T},
+    cyc_scens::YAXArray{Float64,3},
     disturbances;
+    opts::Dict{Symbol,Any}=Dict{Symbol,Ay}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
-    hide_model_disturbances=false,
-    hide_ltmp_disturbances=false,
-    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )::Figure where {T<:Real}
-    f = Figure(; size=(1000, 1000))
-
-    title_text = _location_err_title(
-        raw_data, ltmp_loc_idx;
-        fig_opts,
-        observations=observations
+    size = pop!(fig_opts, :size, (800, 1000))
+    fig = Figure(; size=size, fig_opts...)
+    g = fig[1, 1] = GridLayout()
+    plot_location_comparison!(
+        g,
+        raw_data,
+        ltmp_loc_idx,
+        dhw_scens,
+        cyc_scens,
+        disturbances;
+        opts=opts,
+        axis_opts=axis_opts,
+        fig_opts=fig_opts,
+        observations=observations,
     )
+    return fig
+end
+function plot_location_comparison!(
+    grid::Union{GridPosition,GridLayout},
+    raw_data::Array{Float64,3},
+    ltmp_loc_idx::Int64,
+    dhw_scens::YAXArray{T},
+    cyc_scens::YAXArray{Float64,3},
+    disturbances;
+    opts::Dict{Symbol,Any}=Dict{Symbol,Ay}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    observations::LocationDataStore=COMBINED_STORE,
+)::Nothing where {T<:Real}
+    base_title = _location_err_title(raw_data, ltmp_loc_idx; opts, observations=observations)
+    title_text = get(fig_opts, :title, base_title)
+    show_legends = get(opts, :show_legends, true)
+    current_row = 1
+
+    subplot_keys = ["model_vs_obs", "model_dist", "ltmp_dist", "benthic"]
 
     # Plot LTMP and CoralBlox covers
-    # cover_limits = (xlimits, (0, maximum(raw_data) * 1.1))
-    current_row = 1
-    modelled_ltmp_axis_opts = Dict(
-        # :title => title_text,
-        :titlesize => FONT_SIZES.title,
-        :ylabel => "Relative coral cover",
-        BASE_AXIS_OPTS...
-    )
-
+    _except_patterns = setdiff(subplot_keys, ["model_vs_obs"])
     plot_modelled_v_ltmp!(
-        f, current_row, raw_data, ltmp_loc_idx;
-        observations=observations, axis_opts=modelled_ltmp_axis_opts
+        grid, current_row, raw_data, ltmp_loc_idx;
+        observations=observations,
+        axis_opts=filter_opts(axis_opts, "model_vs_obs"; except_patterns=_except_patterns)
     )
-    legend_modelled_v_ltmp!(f, current_row)
+    show_legends && legend_modelled_v_ltmp!(grid[current_row, 2])
     current_row += 1
 
     # These are RME_UNIQUE_ID. Need to select locations from LocationDataStore
     reef_id = observations.ltmp_unique_ids[ltmp_loc_idx]
 
-    # Need to use RME_GBRMPA_ID to select locations from dhw_scens and cyc_scens
-    spatial_data = observations.domain_gpkg[:, [:RME_UNIQUE_ID, :RME_GBRMPA_ID]]
-    reef_gbrmpa_id = spatial_data[spatial_data.RME_UNIQUE_ID.==reef_id, :RME_GBRMPA_ID][1]
+    if get(opts, :show_model_dist, true)
+        # Need to use RME_GBRMPA_ID to select locations from dhw_scens and cyc_scens
+        spatial_data = observations.domain_gpkg[:, [:RME_UNIQUE_ID, :RME_GBRMPA_ID]]
+        reef_gbrmpa_id = spatial_data[spatial_data.RME_UNIQUE_ID.==reef_id, :RME_GBRMPA_ID][1]
+        @info reef_gbrmpa_id
 
-    if !hide_model_disturbances
-        ax_opts_coralblox_disturbances = Dict(
-            BASE_AXIS_OPTS...,
-            :ylabel => "DHW",
-            :height => 100
-        )
         loc_dhw_scens = dhw_scens[locs=At(reef_gbrmpa_id)]
         loc_cyc_scens = cyc_scens[locs=At(reef_gbrmpa_id)]
 
+        _except_patterns = setdiff(subplot_keys, ["model_dist"])
         plot_coralblox_disturbances!(
-            f, current_row, loc_dhw_scens, loc_cyc_scens;
-            axis_opts=ax_opts_coralblox_disturbances,
+            grid[current_row, 1], loc_dhw_scens, loc_cyc_scens;
+            axis_opts=filter_opts(axis_opts, "model_dist"; except_patterns=_except_patterns)
         )
-        legend_coralblox_disturbances!(f, current_row)
+        show_legends && legend_coralblox_disturbances!(grid[current_row, 2])
+
         current_row += 1
     end
 
     # Plot CoralBlox Observed DHW and Cyclone Categories
-    if !hide_ltmp_disturbances
+    if get(opts, :show_ltmp_dist, true)
         if reef_id ∈ disturbances.locations
             loc_ltmp_disturbances = disturbances[locations=At(reef_id)]
+            _except_patterns = setdiff(subplot_keys, ["ltmp_dist"])
             plot_ltmp_disturbances!(
-                f, current_row, loc_ltmp_disturbances;
-                axis_opts=ax_opts_coralblox_disturbances
+                grid, current_row, loc_ltmp_disturbances;
+                axis_opts=filter_opts(axis_opts, "ltmp_dist"; except_patterns=_except_patterns)
             )
-            ax_row_taxa = 4
 
-            legend_ltmp_disturbances!(f, current_row, loc_ltmp_disturbances)
+            show_legends && legend_ltmp_disturbances!(grid, current_row, loc_ltmp_disturbances)
             current_row += 1
         else
             @warn("Reef $reef_id / $ltmp_loc_idx not found in LTMP disturbances DataFrame")
-            ax_row_taxa = 3
         end
     end
 
-    cb_loc_id = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
-    cover = rs_raw.raw[:, :, cb_loc_id]
-    plot_taxa_props!(f, current_row, cover; ax_opts=BASE_AXIS_OPTS)
-
-    legend_taxa_props!(f, current_row)
+    if get(opts, :show_benthic_composition, true)
+        cb_loc_id = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
+        cover = rs_raw.raw[:, :, cb_loc_id]
+        _except_patterns = setdiff(subplot_keys, ["benthic"])
+        plot_taxa_props!(
+            grid, current_row, cover;
+            axis_opts=filter_opts(axis_opts, "benthic"; except_patterns=_except_patterns)
+        )
+        show_legends && legend_taxa_props!(grid, current_row)
+    end
 
     titlesize = get(fig_opts, :titlesize, 20)
-    Label(f[0, :], title_text, fontsize=titlesize)
+    halign = pop!(fig_opts, :halign, :center)
+    Label(grid[0, :], title_text, fontsize=titlesize, tellwidth=false, halign=halign)
 
-    return f
+    return nothing
 end
 
 # TODO Rename this. Maybe plot_location_comparison_highlights or something
@@ -222,14 +293,14 @@ function plot_location_comparison_highlights(
         ltmp_loc_idx = findfirst(VALIDATION_STORE.ltmp_unique_ids .== reef_id)
         cb_loc_id = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
         cover = rs_raw.raw[:, :, cb_loc_id]
-        plot_taxa_props!(ax, ax_row_taxa, cover; ax_opts=BASE_AXIS_OPTS)
+        plot_taxa_props!(ax, ax_row_taxa, cover; axis_opts=BASE_AXIS_OPTS)
     end
 
     return f
 end
 
 function plot_modelled_v_ltmp!(
-    fig::Union{Figure,GridLayout},
+    fig::Union{Figure,GridLayout,GridPosition},
     ax_row::Int64,
     raw_data,
     ltmp_loc_idx;
@@ -237,6 +308,14 @@ function plot_modelled_v_ltmp!(
     dom=dom,
     axis_opts::Dict=Dict()
 )
+    _axis_opts = merge(
+        Dict(
+            :titlesize => FONT_SIZES.title,
+            :ylabel => "Relative coral cover",
+            BASE_AXIS_OPTS...
+        ),
+        axis_opts
+    )
     ax = Axis(fig[ax_row, 1]; axis_opts...)
     return plot_modelled_v_ltmp!(ax, raw_data, ltmp_loc_idx; observations=observations)
 end
@@ -259,60 +338,121 @@ function plot_modelled_v_ltmp!(
     not_missing_obs = (!).(ismissing.(obs_loc_data))
     obs_tf = (START_YEAR:END_YEAR)[not_missing_obs]
 
-    obs = scatter!(ax, obs_tf, obs_loc_data[not_missing_obs], color=(:red, 0.5), markersize=20)
-    sim = lines!(ax, 2008:2022, loc_cover, color=:red)
+    obs = scatter!(
+        ax, obs_tf, obs_loc_data[not_missing_obs];
+        color=(COLORS[:model_vs_obs_color_obs], 0.8), markersize=20
+    )
+    sim = lines!(ax, 2008:2022, loc_cover, color=(COLORS[:model_vs_obs_color_model], 0.9), linewidth=3.5)
     return obs, sim
 end
 
-function legend_modelled_v_ltmp!(f::Figure, row::Int64; col::Int64=2)
-    ltmp_el = MarkerElement(color=:red, marker=:circle, markersize=10)
-    model_el = LineElement(color=:red, linewidth=2)
+function legend_modelled_v_ltmp!(
+    f::Union{Figure,GridLayout,GridPosition};
+    legend_opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
+)
+    obs_el = MarkerElement(color=COLORS[:model_vs_obs_color_obs], marker=:circle, markersize=15)
+    model_el = LineElement(color=COLORS[:model_vs_obs_color_model], linewidth=3)
     Legend(
-        f[row, col],
-        [ltmp_el, model_el],
-        ["LTMP", "CoralBlox"],
+        f,
+        [obs_el, model_el],
+        ["Observed", "Model"],
         "Coral Cover",
-        valign=:top,
+        valign=:top;
+        legend_opts...
     )
 end
 
 function plot_coralblox_disturbances!(
-    fig::Union{Figure,GridLayout},
-    ax_row::Int64,
+    fig::Union{Figure,GridLayout,GridPosition,GridSubposition},
     loc_dhw_scens::AbstractVector{R1},
     loc_cyclone_scens::AbstractMatrix{R2};
     axis_opts::Dict=Dict()
 )::Nothing where {R1,R2<:Real}
-    ax_dhw = Axis(fig[ax_row, 1]; axis_opts...)
-    plot_dhw_scens!(ax_dhw, loc_dhw_scens)
+    axis_opts = merge(
+        Dict(
+            BASE_AXIS_OPTS...,
+            :ylabel => "DHW",
+            :height => 100
+        ),
+        axis_opts
+    )
+    ax = Axis(fig; axis_opts...)
 
-    ax_cyclone = Axis(fig[ax_row, 1]; axis_opts...)
-    hidespines!(ax_cyclone)
-    hidedecorations!(ax_cyclone)
-    plot_cyclone_scens!(ax_cyclone, loc_cyclone_scens)
+    plot_dhw_scens!(ax, loc_dhw_scens)
+    plot_cyclone_scens!(ax, loc_cyclone_scens)
 
     return nothing
 end
 
-function legend_coralblox_disturbances!(f::Figure, row::Int64; col::Int64=2)
-    dhw_el = LineElement(linewidth=4, color=:orange, linestyle=:dot)
-    dist_el = LineElement(linewidth=4, color=:black, linestyle=:dash)
+function legend_coralblox_disturbances!(
+    f::Union{Figure,GridLayout,GridPosition,GridSubposition};
+    legend_opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
+)
+    dhw_el = LineElement(linewidth=4, color=COLORS[:model_dist_color_dhw], linestyle=:dot)
+    dist_el = LineElement(linewidth=4, color=COLORS[:model_dist_color_dist], linestyle=:dash)
     return Legend(
-        f[row, col], [dhw_el, dist_el], ["DHW", "Cyclone/COTS"], "Disturbances", valign=:top
+        f, [dhw_el, dist_el], ["DHW", "Cyclone/COTS"], "Disturbances", valign=:top;
+        legend_opts...
     )
 end
 
 function plot_dhw_scens!(ax::Axis, dhw_scens::AbstractVector{R}) where {R<:Real}
     dhw_data::Vector{Float64} = Float64.(collect(dhw_scens))
     timesteps::Vector{Int64} = collect(dhw_scens.timesteps.val.data)
-    return lines!(ax, timesteps, dhw_data, color=:orange, linestyle=:dot, linewidth=4)
+    return lines!(ax, timesteps, dhw_data, color=COLORS[:model_dist_color_dhw], linestyle=:dot, linewidth=4)
 end
 
 function plot_cyclone_scens!(ax::Axis, cyc_scens::AbstractMatrix{Float64})::Nothing
     sum_cyc_scens = dropdims(sum(cyc_scens; dims=2), dims=2)
     target_years = sum_cyc_scens[sum_cyc_scens.>0].timesteps.val.data
-    vlines!.(ax, target_years; ymin=0, color=:black, linestyle=:dash, linewidth=3)
+    vlines!(ax, target_years; ymin=0, color=COLORS[:model_dist_color_dist], linestyle=:dash, linewidth=3)
     return nothing
+end
+
+function plot_ltmp_disturbances!(
+    fig::Union{Figure,GridLayout}, ax_row::Int64, loc_disturbances; axis_opts::Dict=BASE_AXIS_OPTS
+)::Nothing
+    limits = get(axis_opts, :limits, nothing)
+    xlimits = !isnothing(limits) ? limits[1] : nothing
+    axis_opts[:limits] = (xlimits, (0, 1))
+
+    axis_opts = Dict(
+        axis_opts...,
+        :yticks => [0, 1],
+        :yticklabelsize => 0,
+        :ylabel => "Disturbances",
+    )
+
+    ax_ltmp = Axis(fig[ax_row, 1]; axis_opts...)
+
+
+    disturbance_vlines, disturbance_types = plot_ltmp_disturbances!(ax_ltmp, loc_disturbances)
+
+    return nothing
+end
+function plot_ltmp_disturbances!(ax::Axis, loc_disturbances)
+    disturbances_types = collect(loc_disturbances.disturbances)
+    n_disturbances_types = length(disturbances_types)
+    disturbances_years = collect(loc_disturbances.timesteps)
+    plotted_vlines = []
+    plotted_types = []
+    for (disturbance_type_idx, disturbance_type) in enumerate(disturbances_types)
+        disturbance_years_mask = loc_disturbances[disturbances=At(disturbance_type)] .== 1
+        if any(disturbance_years_mask)
+            vline = vlines!(
+                ax,
+                disturbances_years[disturbance_years_mask],
+                color=disturbance_type_idx,
+                linewidth=3,
+                colormap=COLORMAPS.ltmp_disturbances,
+                colorrange=(1, n_disturbances_types)
+            )
+            push!(plotted_vlines, vline)
+            push!(plotted_types, disturbance_type)
+        end
+    end
+
+    return plotted_vlines, plotted_types
 end
 
 function legend_ltmp_disturbances!(
@@ -337,6 +477,72 @@ function legend_ltmp_disturbances!(
     n_colors = length(colors)
     ltmp_dist_ele = [LineElement(color=colors[i], linewidth=2) for i in 1:n_colors]
     return Legend(f[row, col], ltmp_dist_ele, labels, "LTMP Disturbances", valign=:top)
+end
+
+"""
+    plot_taxa_props(loc::String, cover)::Figure
+
+Plot the modelled coral composition for a given location.
+
+# Example
+```julia
+# ADRIA single run results
+rs = ADRIA.run_model(...)
+# Index of location of interest
+location_idx = ...
+
+f = plot_taxa_props(<Location Name or ID>, rs.raw[:, :, location_idx])
+```
+"""
+function plot_taxa_props(
+    loc::String,
+    cover;
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Figure
+    f = Figure(; size=(1300, 900))
+    _axis_opts = merge(
+        Dict(
+            :xlabel => "year",
+            :ylabel => "Cover Proportion",
+            :title => "$(loc): Functional Group Cover Proportions",
+            :limits => (nothing, nothing, 0, 1)
+        ),
+        axis_opts
+    )
+    plot_taxa_props!(f, 1, cover; axis_opts=axis_opts, opts=opts)
+    return f
+end
+function plot_taxa_props!(
+    fig::Union{Figure,GridLayout},
+    ax_row::Int64,
+    cover;
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Nothing
+    axis_opts = merge(Dict(:xlabel => "Year", :ylabel => "Proportional Cover",), axis_opts)
+    taxa_axis = Axis(fig[ax_row, 1]; axis_opts...)
+    taxa_plot = plot_taxa_props!(taxa_axis, cover; opts=opts)
+    return nothing
+end
+function plot_taxa_props!(
+    ax::Axis,
+    cover;
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Axis
+    color = COLORMAPS.taxa
+    cover = reshape(cover, (15, 7, 5))
+    cover = dropdims(sum(cover, dims=2), dims=2) ./ dropdims(sum(cover, dims=(2, 3)), dims=2)
+    cover = permutedims(cover, (2, 1))
+    xs = 2008:2022
+    series!(
+        xs,
+        cover,
+        color=color,
+        labels=String.(ADRIA.functional_group_names()),
+        linewidth=3,
+    )
+    return ax
 end
 
 function legend_taxa_props!(f::Figure, row::Int64; col=2)
