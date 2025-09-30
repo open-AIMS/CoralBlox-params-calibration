@@ -3,6 +3,7 @@ using ReefMonitoring
 import GeoDataFrames as GDF
 using CSV, DataFrames
 using YAXArrays, NetCDF
+using TOML
 
 isdefined(Main, :CONFIG) || (global CONFIG = TOML.parsefile("calib_config.toml"))
 
@@ -42,6 +43,8 @@ cover_before_col_names = "cover_before_" .* functional_groups
 cover_after_col_names = "cover_after_" .* functional_groups
 
 """
+    rm_reef_spec(canonical_gpkg)::Tuple{Vector{String},Vector{String}}
+
 Names and ids for all reefs on Reef Monitoring API
 """
 function rm_reef_spec(canonical_gpkg)::Tuple{Vector{String},Vector{String}}
