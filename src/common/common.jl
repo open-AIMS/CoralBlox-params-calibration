@@ -35,7 +35,7 @@ global OUTPUT_CONFIG = CONFIG["Outputs"]
 # ADRIA Domain paths
 global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
 global HISTORIC_DHW_PATH = DOMAIN_CONFIG["historic_dhw"]
-global HISTORIC_CYCLONE_MORTALITY_PATH = DOMAIN_CONFIG["historic_cyclone_mortality"]
+global HISTORIC_CYCLONE_MORTALITY_PATH = "disturbance_data_gen/data/disturbance_mortality_scens.nc"
 
 # Geospatial filepaths
 global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"]
