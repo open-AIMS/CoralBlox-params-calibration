@@ -1,10 +1,19 @@
+using ADRIA
 using ReefMonitoring
 import GeoDataFrames as GDF
 using CSV, DataFrames
+using YAXArrays, NetCDF
 
-if !isdefined(Main, :OUT_DIR)
-    include("../common/common.jl")
-end
+isdefined(Main, :CONFIG) || (global CONFIG = TOML.parsefile("calib_config.toml"))
+
+isdefined(Main, :OUTPUT_CONFIG) || (global OUTPUT_CONFIG = CONFIG["Outputs"])
+isdefined(Main, :OUT_DIR) || (global OUT_DIR = OUTPUT_CONFIG["out_dir"])
+
+isdefined(Main, :DOMAIN_CONFIG) || global DOMAIN_CONFIG = CONFIG["Domains"]
+isdefined(Main, :RME_DOMAIN_PATH) || global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
+
+isdefined(Main, :GEOSPATIAL_CONFIG) || (global GEOSPATIAL_CONFIG = CONFIG["Geospatial"])
+isdefined(Main, :CANONICAL_PATH) || (global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"])
 
 """
 Ids of the locations we use in the calibration

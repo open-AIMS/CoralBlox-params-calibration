@@ -1,8 +1,3 @@
-using ReefMonitoring
-using DataFrames, CSV
-
-include("base.jl")
-
 # Names and ids for all reefs on Reef Monitoring API. `rm` here stands for ReefMonitoring
 rm_reef_names, rm_reef_ids = rm_reef_spec(canonical_gpkg)
 
