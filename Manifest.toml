@@ -6,11 +6,9 @@ project_hash = "bc61f26b53d55a67ea5c0a10e97278df623c918a"
 
 [[deps.ADRIA]]
 deps = ["ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataEnvelopmentAnalysis", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FLoops", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "HypothesisTests", "ImageIO", "InteractiveUtils", "Interpolations", "JMcDM", "JSON", "JuliennedArrays", "LERC_jll", "LinearAlgebra", "Logging", "MAT", "MLJ", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "SIRUS", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StableRNGs", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
-git-tree-sha1 = "90de687c3b765dd42768347ca6d1f334fe501d10"
-repo-rev = "global-calib"
-repo-url = "https://github.com/open-AIMS/ADRIA.jl"
+git-tree-sha1 = "183c231043eeed2f7f2c2d6fa01fdb43535d230a"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
-version = "0.11.0"
+version = "0.12.0"
 weakdeps = ["BlackBoxOptim", "GeoMakie", "GraphMakie", "Makie"]
 
     [deps.ADRIA.extensions]
