@@ -77,8 +77,8 @@ function plot_location_comparison(
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
 )::Figure where {T<:Real}
-    size = pop!(fig_opts, :size, (800, 1000))
-    fig = Figure(; size=size, fig_opts...)
+    # size = pop!(fig_opts, :size, (800, 1000))
+    fig = Figure(; fig_opts...)
     g = fig[1, 1] = GridLayout()
     plot_location_comparison!(
         g,
@@ -107,7 +107,7 @@ function plot_location_comparison!(
     observations::LocationDataStore=COMBINED_STORE,
 )::Nothing where {T<:Real}
     base_title = _location_err_title(raw_data, ltmp_loc_idx; opts, observations=observations)
-    title_text = get(fig_opts, :title, base_title)
+    title_text = pop!(fig_opts, :title, base_title)
     show_legends = get(opts, :show_legends, true)
     current_row = 1
 
@@ -130,7 +130,6 @@ function plot_location_comparison!(
         # Need to use RME_GBRMPA_ID to select locations from dhw_scens and cyc_scens
         spatial_data = observations.domain_gpkg[:, [:RME_UNIQUE_ID, :RME_GBRMPA_ID]]
         reef_gbrmpa_id = spatial_data[spatial_data.RME_UNIQUE_ID.==reef_id, :RME_GBRMPA_ID][1]
-        @info reef_gbrmpa_id
 
         loc_dhw_scens = dhw_scens[locs=At(reef_gbrmpa_id)]
         loc_cyc_scens = cyc_scens[locs=At(reef_gbrmpa_id)]
@@ -151,7 +150,7 @@ function plot_location_comparison!(
             loc_ltmp_disturbances = disturbances[locations=At(reef_id)]
             _except_patterns = setdiff(subplot_keys, ["ltmp_dist"])
             plot_ltmp_disturbances!(
-                grid, current_row, loc_ltmp_disturbances;
+                grid[current_row, 1], loc_ltmp_disturbances;
                 axis_opts=filter_opts(axis_opts, "ltmp_dist"; except_patterns=_except_patterns)
             )
 
@@ -167,15 +166,19 @@ function plot_location_comparison!(
         cover = rs_raw.raw[:, :, cb_loc_id]
         _except_patterns = setdiff(subplot_keys, ["benthic"])
         plot_taxa_props!(
-            grid, current_row, cover;
+            grid[current_row, 1], cover;
             axis_opts=filter_opts(axis_opts, "benthic"; except_patterns=_except_patterns)
         )
-        show_legends && legend_taxa_props!(grid, current_row)
+        show_legends && legend_taxa_props!(grid[current_row, 2])
     end
 
-    titlesize = get(fig_opts, :titlesize, 20)
-    halign = pop!(fig_opts, :halign, :center)
-    Label(grid[0, :], title_text, fontsize=titlesize, tellwidth=false, halign=halign)
+    titlesize = pop!(fig_opts, :titlesize, 20)
+    titlehalign = pop!(fig_opts, :titlehalign, :center)
+    titlevalign = pop!(fig_opts, :titlevalign, :center)
+    titlefont = pop!(fig_opts, :titlefont, :regular)
+    Label(grid[0, :], title_text, fontsize=titlesize, tellwidth=false, halign=titlehalign,
+        valign=titlevalign, font=titlefont
+    )
 
     return nothing
 end
@@ -347,7 +350,7 @@ function plot_modelled_v_ltmp!(
 end
 
 function legend_modelled_v_ltmp!(
-    f::Union{Figure,GridLayout,GridPosition};
+    f::Union{Figure,GridLayout,GridPosition,GridSubposition};
     legend_opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )
     obs_el = MarkerElement(color=COLORS[:model_vs_obs_color_obs], marker=:circle, markersize=15)
@@ -371,9 +374,7 @@ function plot_coralblox_disturbances!(
     axis_opts = merge(
         Dict(
             BASE_AXIS_OPTS...,
-            :ylabel => "DHW",
-            :height => 100
-        ),
+            :ylabel => "DHW",),
         axis_opts
     )
     ax = Axis(fig; axis_opts...)
@@ -404,13 +405,14 @@ end
 
 function plot_cyclone_scens!(ax::Axis, cyc_scens::AbstractMatrix{Float64})::Nothing
     sum_cyc_scens = dropdims(sum(cyc_scens; dims=2), dims=2)
+    any(sum_cyc_scens .> 0) || return nothing
     target_years = sum_cyc_scens[sum_cyc_scens.>0].timesteps.val.data
     vlines!(ax, target_years; ymin=0, color=COLORS[:model_dist_color_dist], linestyle=:dash, linewidth=3)
     return nothing
 end
 
 function plot_ltmp_disturbances!(
-    fig::Union{Figure,GridLayout}, ax_row::Int64, loc_disturbances; axis_opts::Dict=BASE_AXIS_OPTS
+    fig::Union{Figure,GridLayout,GridPosition,GridSubposition}, loc_disturbances; axis_opts::Dict=BASE_AXIS_OPTS
 )::Nothing
     limits = get(axis_opts, :limits, nothing)
     xlimits = !isnothing(limits) ? limits[1] : nothing
@@ -423,7 +425,7 @@ function plot_ltmp_disturbances!(
         :ylabel => "Disturbances",
     )
 
-    ax_ltmp = Axis(fig[ax_row, 1]; axis_opts...)
+    ax_ltmp = Axis(fig; axis_opts...)
 
 
     disturbance_vlines, disturbance_types = plot_ltmp_disturbances!(ax_ltmp, loc_disturbances)
@@ -510,18 +512,18 @@ function plot_taxa_props(
         ),
         axis_opts
     )
-    plot_taxa_props!(f, 1, cover; axis_opts=axis_opts, opts=opts)
+
+    plot_taxa_props!(f[1, 1], cover; axis_opts=axis_opts, opts=opts)
     return f
 end
 function plot_taxa_props!(
-    fig::Union{Figure,GridLayout},
-    ax_row::Int64,
+    fig::Union{Figure,GridLayout,GridPosition,GridSubposition},
     cover;
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Nothing
     axis_opts = merge(Dict(:xlabel => "Year", :ylabel => "Proportional Cover",), axis_opts)
-    taxa_axis = Axis(fig[ax_row, 1]; axis_opts...)
+    taxa_axis = Axis(fig; axis_opts...)
     taxa_plot = plot_taxa_props!(taxa_axis, cover; opts=opts)
     return nothing
 end
@@ -545,14 +547,23 @@ function plot_taxa_props!(
     return ax
 end
 
-function legend_taxa_props!(f::Figure, row::Int64; col=2)
-    taxa_colors = Makie.ColorSchemes.seaborn_colorblind6[1:5]
-    n_taxa = length(taxa_colors)
+function taxa_props_legend_elements()
     taxa = String.(ADRIA.functional_group_names())
+    taxa_colors = COLORS[Symbol.(taxa)]
+    n_taxa = length(taxa)
     taxa_labels = titlecase.(join.(split.(taxa, "_"), " "))
-    taxa_ele = [LineElement(color=taxa_colors[i], linewidth=2) for i in 1:n_taxa]
+    line_el_attrs = (linewidth=2, linepoints=[Point2f(0, 0.5), Point2f(1.0, 0.5)], colgap=0)
+    return [
+        LineElement(color=taxa_colors[i], ; line_el_attrs...) for i in 1:n_taxa
+    ]
+end
 
-    return Legend(f[row, col], taxa_ele, taxa_labels, "Functional groups", valign=:top,)
+function legend_taxa_props!(
+    f::Union{Figure,GridPosition,GridLayout};
+    legend_opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
+)::Nothing
+    Legend(f, taxa_props_legend_elements(), taxa_labels, "Functional groups"; legend_opts...)
+    return nothing
 end
 
 """
@@ -595,8 +606,7 @@ function plot_observation_locs(
 
     els = [MarkerElement(color=c, marker=:circle, markersize=10) for c in values(obs)]
     labels = collect(string.(keys(obs)))
-    @info(els)
-    @info(labels)
+
     Legend(
         f[2, 1],
         els,

@@ -12,6 +12,11 @@ COLORS = (
     model_band_color=("#1E88E5", 0.4),
     historic_line_color="#D81B60",
     historic_band_color=("#D81B60", 0.3),
+    NamedTuple(zip(
+        Symbol.(ADRIA.functional_group_names()),
+        Makie.ColorSchemes.seaborn_colorblind6[1:5],
+    )
+    )...
 )
 
 FONT_SIZES = (
