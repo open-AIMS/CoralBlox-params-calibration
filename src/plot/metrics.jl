@@ -18,7 +18,7 @@ function plot_rmse_scatter(
 
     obs_title = isempty(observation_type) ? "" : "\n$(titlecase(observation_type)) data"
     axis_opts::Dict{Symbol,Any} = Dict(
-        :title => "Benchmark - Model (RMSE)" * obs_title,
+        :title => "Benchmark - Model (RMSE)" * obs_title * "\n# > 0: $n_greater_than_zero | Avg: $mean_rmse_diff | Std: $std_rmse_diff",
         :ylabel => "RMSE Difference"
     )
 
@@ -32,33 +32,23 @@ end
 
 function plot_metric_scatter(
     outcomes::Vector{Float64};
-    observation_type::String="",
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Figure
-    lower_bound, mean, upper_bound = average_cc(outcomes)
-
-    _yticks = sort(unique(vcat((-1:0.5:1), round(mean, digits=2))))
-
-    axis_opts = merge(
-        Dict(
-            :ylabel => "Outcome",
-            :yticks => _yticks
-        ),
-        axis_opts,
-    )
-
-    # opts::Dict{Symbol,Any} = merge(Dict(:metric_label => "PCC",))
+    mean_outcome = mean(outcomes)
+    _yticks = sort(unique(vcat((-1:0.5:1), round(mean_outcome, digits=2))))
+    axis_opts = merge(Dict(:ylabel => "Outcome", :yticks => _yticks), axis_opts)
 
     return plot_metric_scatter(
-        sort(outcomes), mean;
+        sort(outcomes), mean_outcome;
         fig_opts=fig_opts, axis_opts=axis_opts, opts=opts
     )
 end
 
 function plot_metric_scatter(
-    metric_data::Vector{Float64}, agg_data::Float64;
+    metric_data::Vector{Float64},
+    agg_data::Float64;
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
@@ -219,10 +209,8 @@ end
 function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED_STORE)::Figure
     n_validation_obs = length(observations.ltmp_unique_ids)
     ltmp_loc_indexes = collect(1:n_validation_obs)
-    error_stats = collect_error_stats.(
-        Ref(rs_raw), ltmp_loc_indexes; observations=observations
-    )
-    rmse_, benchmark_, cc_, maee_, bias_, scc_ = eachrow(hcat(map(collect, error_stats)...))
+    error_stats = collect_error_stats(rs_raw; observations=observations)
+    rmse_, benchmark_, maee_, pcc_, srcc_, bias_ = eachrow(hcat(map(collect, error_stats)...))
 
     validation_ids = [
         findfirst(id .== observations.domain_gpkg.UNIQUE_ID)
@@ -234,8 +222,8 @@ function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED
         observations.domain_gpkg[validation_ids, "LAT"]
     end
     y_coords_sortperm = sortperm(y_coords, rev=false)
-    heat_data = hcat(benchmark_ .- rmse_, cc_, scc_, bias_)[y_coords_sortperm, :]
-    x_labels = ["Benchmark - Model (RMSE)", "PCC", "SCC", "Bias"]
+    heat_data = hcat(benchmark_ .- rmse_, pcc_, srcc_, bias_)[y_coords_sortperm, :]
+    x_labels = ["Benchmark - Model (RMSE)", "PCC", "SRCC", "Bias"]
     colormaps = [:Spectral, :Spectral, :Spectral, :Spectral]
 
     bias_up_limit = ceil(maximum(abs.(bias_)), digits=1)
@@ -266,6 +254,8 @@ function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED
             colormap=colormaps[i], colorrange=colorranges[i])
         Colorbar(fig[end+1, 1:n_metrics], hm, vertical=false, label=x_label)
     end
+
+    # TODO Add labels for south, center and north regions
 
     return fig
 end

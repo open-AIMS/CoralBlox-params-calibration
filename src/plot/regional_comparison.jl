@@ -1,3 +1,11 @@
+BASE_OPTS_REGIONAL_COMPARISON::Dict{Symbol,Any} = Dict(
+    :model_line_color => COLORS[:model_line_color],
+    :model_band_color => COLORS[:model_band_color],
+    :historic_line_color => COLORS[:historic_line_color],
+    :historic_band_color => COLORS[:historic_band_color],
+    :markersize => 8
+)
+
 """
 # Example
 ```
@@ -44,7 +52,7 @@ function plot_regional_comparison(
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Figure
-    opts::Dict{Symbol,Any} = opts_regional_comparison(:blue, :red)
+    opts::Dict{Symbol,Any} = merge(BASE_OPTS_REGIONAL_COMPARISON, opts)
     f = Figure(; fig_opts...)
     plot_regional_comparison!(f, regional_stats; axis_opts=axis_opts, opts=opts)
     legend_regional_comparison!(f[end+1, :]; opts=opts)
@@ -88,97 +96,6 @@ function plot_regional_comparison!(
     Label(grid[0, :], get(opts, :title, ""); fontsize=18)
 
     return nothing
-end
-function plot_regional_comparison(
-    regional_stats_validation::NamedTuple,
-    regional_stats_calibration::NamedTuple;
-    fig_size=(800, 800), axis_limits=(nothing, (0.0, 1.0)), fig_title=""
-)::Figure
-    opts_validation::Dict{Symbol,Any} = opts_regional_comparison(:blue, :cyan)
-    opts_calibration::Dict{Symbol,Any} = opts_regional_comparison(:red, :magenta)
-    f = Figure(size=fig_size)
-
-    r_keys_validation = keys(regional_stats_validation)
-    r_keys_calibration = keys(regional_stats_calibration)
-    r_keys = union(r_keys_validation, r_keys_calibration)
-    n_plots = length(r_keys)
-
-    for (idx, key) in enumerate(r_keys)
-        ax_title_validation = if key ∈ r_keys_validation
-            "$(regional_stats_validation[key].n_locations) valid."
-        else
-            ""
-        end
-
-        ax_title_calibration = if key ∈ r_keys_calibration
-            "$(regional_stats_calibration[key].n_locations) calib."
-        else
-            ""
-        end
-
-        ax_title_reefs = if ax_title_validation == ""
-            ax_title_calibration
-        elseif ax_title_calibration == ""
-            ax_title_validation
-        else
-            ax_title_validation * " and " * ax_title_calibration
-        end
-        ax_title = "$(string(key))\n$ax_title_reefs" * " reefs"
-
-        ax = Axis(
-            f[fig_coord(idx, n_plots)...],
-            title=ax_title,
-            xlabel="Year",
-            ylabel="Relative cover",
-            limits=axis_limits,
-            xticks=START_YEAR:2:END_YEAR,
-            xticklabelrotation=π / 4
-        )
-
-        if key ∈ r_keys_validation
-            plot_regional_comparison!(
-                ax,
-                regional_stats_validation[key].model_stats,
-                replace(regional_stats_validation[key].historic_stats, missing => NaN),
-                opts_validation,
-            )
-
-            n_locations = regional_stats_validation[key].n_locations
-            ax_title * "$n_locations validation Reefs"
-        end
-
-        if key ∈ r_keys_calibration
-            plot_regional_comparison!(
-                ax,
-                regional_stats_calibration[key].model_stats,
-                replace(regional_stats_calibration[key].historic_stats, missing => NaN),
-                opts_calibration,
-            )
-
-            n_locations = regional_stats_calibration[key].n_locations
-            ax_title * "; $n_locations calibration Reefs"
-        end
-
-        ax.title[] = ax_title
-    end
-
-    legend_regional_comparison!(f[end+1, :], opts_validation, opts_calibration)
-
-    Label(f[0, :], fig_title; fontsize=20)
-
-    return f
-end
-
-function opts_regional_comparison(
-    line_base_color::Symbol, historic_base_color::Symbol; alpha=0.1, markersize=7
-)::Dict{Symbol,Any}
-    return Dict(
-        :model_line_color => line_base_color,
-        :model_band_color => (line_base_color, alpha),
-        :historic_line_color => historic_base_color,
-        :historic_band_color => (historic_base_color, alpha),
-        :markersize => markersize
-    )
 end
 
 function legend_regional_comparison!(
@@ -239,9 +156,9 @@ function legend_regional_comparison!(
     ]
 
     Legend(
-        fig[end+1, :],
+        fig,
         leg_elements,
-        leg_labels,
+        leg_labels;
         orientation=:horizontal
     )
 

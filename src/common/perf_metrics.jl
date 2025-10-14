@@ -139,13 +139,13 @@ function collect_error_stats(
     n_locations = size(observations.ltmp_coral_cover, 1)
 
     # Vectors to hold error stats for each location
-    rmse_model, rmse_benchmark, maee, pcc, scc, bias =
+    rmse_model, rmse_benchmark, maee, pcc, srcc, bias =
         collect.(eachcol(repeat(zeros(Float64, n_locations), 1, n_locations)))
 
     for loc in 1:n_locations
         error_stats = collect_error_stats(
             raw_data,
-            ltmp_loc_idx;
+            loc;
             observations=observations,
             loc_k_areas=loc_k_areas,
             loc_areas=loc_areas
@@ -158,12 +158,12 @@ function collect_error_stats(
         rmse_benchmark[loc] = error_stats[2]
         maee[loc] = error_stats[3]
         pcc[loc] = error_stats[4]
-        scc[loc] = error_stats[6]                   # This is right...
+        srcc[loc] = error_stats[6]                   # This is right...
         bias[loc] = error_stats[5]
     end
 
-    error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :scc, :bias)
-    return NamedTuple{error_names}((rmse_model, rmse_benchmark, maee, pcc, scc, bias))
+    error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :srcc, :bias)
+    return NamedTuple{error_names}((rmse_model, rmse_benchmark, maee, pcc, srcc, bias))
 end
 function collect_error_stats(
     raw_data,
