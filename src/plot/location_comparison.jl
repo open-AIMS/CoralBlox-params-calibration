@@ -77,7 +77,6 @@ function plot_location_comparison(
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
 )::Figure where {T<:Real}
-    # size = pop!(fig_opts, :size, (800, 1000))
     fig = Figure(; fig_opts...)
     g = fig[1, 1] = GridLayout()
     plot_location_comparison!(
