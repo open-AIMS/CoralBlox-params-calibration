@@ -15,7 +15,7 @@ region_stats_calibration = region_stats(regions, region_masks; observations=CALI
 # Plot just valid.
 fig_regions_valid = plot_regional_comparison(
     region_stats_validation;
-    opts=Dict{Symbol,Any}(:title => "Regions comparison - Validation Loc",),
+    opts=Dict{Symbol,Any}(:title => "Regions comparison - Validation",),
     fig_opts=Dict{Symbol,Any}(:size => (1000, 400))
 )
 save(joinpath(regional_analysis_save_dir, "regional__regions__validation.png"), fig_regions_valid)
@@ -23,7 +23,7 @@ save(joinpath(regional_analysis_save_dir, "regional__regions__validation.png"), 
 # Plot just calib
 fig_regions_calib = plot_regional_comparison(
     region_stats_calibration;
-    opts=Dict{Symbol,Any}(:title => "Regions comparison - Calibration Loc",),
+    opts=Dict{Symbol,Any}(:title => "Regions comparison - Calibration",),
     fig_opts=Dict{Symbol,Any}(:size => (1000, 400))
 )
 save(joinpath(regional_analysis_save_dir, "regional__regions__calibration.png"), fig_regions_calib)
