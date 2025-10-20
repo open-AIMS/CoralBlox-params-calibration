@@ -117,7 +117,8 @@ function plot_location_comparison!(
     plot_modelled_v_ltmp!(
         grid, current_row, raw_data, ltmp_loc_idx;
         observations=observations,
-        axis_opts=filter_opts(axis_opts, "model_vs_obs"; except_patterns=_except_patterns)
+        axis_opts=filter_opts(axis_opts, "model_vs_obs"; except_patterns=_except_patterns),
+        opts=filter_opts(opts, "model_vs_obs"; except_patterns=_except_patterns)
     )
     show_legends && legend_modelled_v_ltmp!(grid[current_row, 2])
     current_row += 1
@@ -136,7 +137,8 @@ function plot_location_comparison!(
         _except_patterns = setdiff(subplot_keys, ["model_dist"])
         plot_coralblox_disturbances!(
             grid[current_row, 1], loc_dhw_scens, loc_cyc_scens;
-            axis_opts=filter_opts(axis_opts, "model_dist"; except_patterns=_except_patterns)
+            axis_opts=filter_opts(axis_opts, "model_dist"; except_patterns=_except_patterns),
+            opts=filter_opts(opts, "model_dist"; except_patterns=_except_patterns)
         )
         show_legends && legend_coralblox_disturbances!(grid[current_row, 2])
 
@@ -166,7 +168,8 @@ function plot_location_comparison!(
         _except_patterns = setdiff(subplot_keys, ["benthic"])
         plot_taxa_props!(
             grid[current_row, 1], cover;
-            axis_opts=filter_opts(axis_opts, "benthic"; except_patterns=_except_patterns)
+            axis_opts=filter_opts(axis_opts, "benthic"; except_patterns=_except_patterns),
+            opts=filter_opts(opts, "benthic"; except_patterns=_except_patterns)
         )
         show_legends && legend_taxa_props!(grid[current_row, 2])
     end
@@ -189,7 +192,8 @@ function plot_modelled_v_ltmp!(
     ltmp_loc_idx;
     observations::LocationDataStore=COMBINED_STORE,
     dom=dom,
-    axis_opts::Dict=Dict()
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )
     _axis_opts = merge(
         Dict(
@@ -200,14 +204,15 @@ function plot_modelled_v_ltmp!(
         axis_opts
     )
     ax = Axis(fig[ax_row, 1]; axis_opts...)
-    return plot_modelled_v_ltmp!(ax, raw_data, ltmp_loc_idx; observations=observations)
+    return plot_modelled_v_ltmp!(ax, raw_data, ltmp_loc_idx; observations=observations, opts=opts)
 end
 function plot_modelled_v_ltmp!(
     ax::Axis,
     raw_data,
     ltmp_loc_idx;
     observations::LocationDataStore=COMBINED_STORE,
-    dom=dom
+    dom=dom,
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )
     domain_loc_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
     loc_k_area = ADRIA.site_k_area(dom)[domain_loc_idx]
@@ -221,11 +226,17 @@ function plot_modelled_v_ltmp!(
     not_missing_obs = (!).(ismissing.(obs_loc_data))
     obs_tf = (START_YEAR:END_YEAR)[not_missing_obs]
 
+    markersize = pop!(opts, :markersize, 15)
     obs = scatter!(
         ax, obs_tf, obs_loc_data[not_missing_obs];
-        color=(COLORS[:model_vs_obs_color_obs], 0.8), markersize=20
+        color=(COLORS[:model_vs_obs_color_obs], 0.8), markersize=markersize
     )
-    sim = lines!(ax, 2008:2022, loc_cover, color=(COLORS[:model_vs_obs_color_model], 0.9), linewidth=3.5)
+
+    linewidth = pop!(opts, :linewidth, 3)
+    sim = lines!(
+        ax, 2008:2022, loc_cover;
+        color=(COLORS[:model_vs_obs_color_model], 0.9), linewidth=linewidth
+    )
     return obs, sim
 end
 
@@ -249,7 +260,8 @@ function plot_coralblox_disturbances!(
     fig::Union{Figure,GridLayout,GridPosition,GridSubposition},
     loc_dhw_scens::AbstractVector{R1},
     loc_cyclone_scens::AbstractMatrix{R2};
-    axis_opts::Dict=Dict()
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )::Nothing where {R1,R2<:Real}
     axis_opts = merge(
         Dict(
@@ -259,9 +271,38 @@ function plot_coralblox_disturbances!(
     )
     ax = Axis(fig; axis_opts...)
 
-    plot_dhw_scens!(ax, loc_dhw_scens)
-    plot_cyclone_scens!(ax, loc_cyclone_scens)
+    plot_dhw_scens!(ax, loc_dhw_scens; opts=opts)
+    plot_cyclone_scens!(ax, loc_cyclone_scens; opts=opts)
 
+    return nothing
+end
+
+function plot_dhw_scens!(
+    ax::Axis, dhw_scens::AbstractVector{R};
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
+)::Nothing where {R<:Real}
+    dhw_data::Vector{Float64} = Float64.(collect(dhw_scens))
+    timesteps::Vector{Int64} = collect(dhw_scens.timesteps.val.data)
+    linewidth = get(opts, :linewidth, 4)
+    lines!(
+        ax, timesteps, dhw_data;
+        color=COLORS[:model_dist_color_dhw], linestyle=:dot, linewidth=linewidth
+    )
+    return nothing
+end
+
+function plot_cyclone_scens!(
+    ax::Axis, cyc_scens::AbstractMatrix{Float64};
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
+)::Nothing
+    sum_cyc_scens = dropdims(sum(cyc_scens; dims=2), dims=2)
+    any(sum_cyc_scens .> 0) || return nothing
+    target_years = sum_cyc_scens[sum_cyc_scens.>0].timesteps.val.data
+    linewidth = get(opts, :linewidth, 4)
+    vlines!(
+        ax, target_years;
+        ymin=0, color=COLORS[:model_dist_color_dist], linestyle=:dash, linewidth=linewidth
+    )
     return nothing
 end
 
@@ -275,20 +316,6 @@ function legend_coralblox_disturbances!(
         f, [dhw_el, dist_el], ["DHW", "Cyclone/COTS"], "Disturbances", valign=:top;
         legend_opts...
     )
-end
-
-function plot_dhw_scens!(ax::Axis, dhw_scens::AbstractVector{R}) where {R<:Real}
-    dhw_data::Vector{Float64} = Float64.(collect(dhw_scens))
-    timesteps::Vector{Int64} = collect(dhw_scens.timesteps.val.data)
-    return lines!(ax, timesteps, dhw_data, color=COLORS[:model_dist_color_dhw], linestyle=:dot, linewidth=4)
-end
-
-function plot_cyclone_scens!(ax::Axis, cyc_scens::AbstractMatrix{Float64})::Nothing
-    sum_cyc_scens = dropdims(sum(cyc_scens; dims=2), dims=2)
-    any(sum_cyc_scens .> 0) || return nothing
-    target_years = sum_cyc_scens[sum_cyc_scens.>0].timesteps.val.data
-    vlines!(ax, target_years; ymin=0, color=COLORS[:model_dist_color_dist], linestyle=:dash, linewidth=3)
-    return nothing
 end
 
 function plot_ltmp_disturbances!(
@@ -379,8 +406,8 @@ f = plot_taxa_props(<Location Name or ID>, rs.raw[:, :, location_idx])
 function plot_taxa_props(
     loc::String,
     cover;
-    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Figure
     f = Figure(; size=(1300, 900))
     _axis_opts = merge(
@@ -417,12 +444,13 @@ function plot_taxa_props!(
     cover = dropdims(sum(cover, dims=2), dims=2) ./ dropdims(sum(cover, dims=(2, 3)), dims=2)
     cover = permutedims(cover, (2, 1))
     xs = 2008:2022
+    linewidth = pop!(opts, :linewidth, 3)
     series!(
         xs,
-        cover,
+        cover;
         color=color,
         labels=String.(ADRIA.functional_group_names()),
-        linewidth=3,
+        linewidth=linewidth,
     )
     return ax
 end
