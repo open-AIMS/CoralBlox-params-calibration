@@ -312,7 +312,7 @@ group = [(i - 1) % 5 + 1 for i in 1:35]
 # Flattened coral background mortality rate.
 flt_mb_rate = corals.mb_rate
 # Plot parameters
-f = plot_coral_param(<Loc Name>, "Background Mortality", category, group, flt_mb_rate)
+f = plot_coral_param(<Location Name>, "Background Mortality", category, group, flt_mb_rate)
 ```
 
 # Arguments
