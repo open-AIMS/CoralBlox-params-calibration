@@ -36,3 +36,10 @@ validation_best_3_scc_idx = VALIDATION_STORE.ltmp_unique_ids[validation_sccs_sor
 
 @info "Three highest SCC validation reefs are: $validation_best_3_scc_idx"
 @info "Three lowest SCC validation reefs are: $validation_worst_3_scc_idx"
+
+# Mean model metrics
+validation_error_stats = collect_error_stats(
+    rs_raw.raw; observations=VALIDATION_STORE
+)
+@info "Mean model RMSE: $(mean(validation_error_stats.rmse_model))"
+@info "Mean model SCC: $(mean(validation_error_stats.srcc))"
