@@ -32,6 +32,7 @@ function _region_stats(
         historic_stats::Array{Union{Missing,Float64}},
         rmse::Float64,
         mae::Float64,
+        srcc::Float64,
         n_locations::Int64
     }
 }
@@ -65,25 +66,30 @@ function _region_stats(
 
     _rmse::Vector{Float64} = zeros(Float64, n_locations)
     _mae::Vector{Float64} = zeros(Float64, n_locations)
+    _srcc::Vector{Float64} = zeros(Float64, n_locations)
     _weights::Vector{Float64} = zeros(Float64, n_locations)
     for loc_idx in 1:n_locations
         has_data_mask = .!ismissing.(target_historic[loc_idx, :])
         _weights[loc_idx] = sum(has_data_mask)
 
         mod_data = target_model_data[:, loc_idx]'[has_data_mask]
-        obs_data = target_historic[loc_idx, :][has_data_mask]
+        obs_data = Vector{Float64}(target_historic[loc_idx, :][has_data_mask])
         _rmse[loc_idx] = rmse(mod_data, obs_data)
         _mae[loc_idx] = MAE(mod_data, obs_data)
+        _srcc[loc_idx] = corspearman(mod_data, obs_data)
     end
 
+    # Mean is weighted by the number of observations (years with data) in each location
     _mean_rmse::Float64 = mean(_rmse, weights(_weights))
     _mean_mae::Float64 = mean(_mae, weights(_weights))
+    _mean_srcc::Float64 = average_cc(_srcc; w=_weights)
 
     return (
         model_stats=model_stats,
         historic_stats=historic_stats,
         rmse=_mean_rmse,
         mae=_mean_mae,
+        srcc=_mean_srcc,
         n_locations=n_locations
     )
 end

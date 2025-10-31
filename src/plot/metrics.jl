@@ -89,126 +89,168 @@ end
 
 function plot_rmse_diff_map(
     raw_data::Array{Float64,3};
-    fig_opts::Dict=Dict(),
     observations::LocationDataStore=COMBINED_STORE,
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Figure
-    n_validation_obs = length(observations.ltmp_unique_ids)
-    ltmp_loc_indexes = collect(1:n_validation_obs)
-
-    error_stats = collect_error_stats.([raw_data], ltmp_loc_indexes; observations=observations)
-    rmse_, benchmark_, cc_, maee_, bias_, scc_ = eachrow(hcat(map(collect, error_stats)...))
-    rmse_diffs = benchmark_ .- rmse_
-
-    fig_size = get(fig_opts, :size, FIG_SIZE[:map])
-    fig_title = get(fig_opts, :title, "Benchmark RMSE - Model RMSE")
-    fig = Figure(size=fig_size)
-    ax = GeoAxis(
-        fig[1, 1],
-        dest="+proj=latlong +datum=WGS84",
-        title=fig_title,
-        titlesize=18,
-        xlabelsize=15,
-        ylabelsize=15,
-        xlabel="Longitude",
-        ylabel="Latitude"
+    fig_size = get!(fig_opts, :size, FIG_SIZE[:map])
+    fig = Figure(; fig_opts...)
+    plot_rmse_diff_map!(
+        fig[1, 1], raw_data;
+        observations=observations, axis_opts=axis_opts, opts=opts
     )
-    domain_gpkg = observations.domain_gpkg
-
-    observation_gpkg = domain_gpkg[[findfirst(domain_gpkg.UNIQUE_ID .== ltmp_id) for ltmp_id in observations.ltmp_unique_ids], :]
-
-    try
-        poly!.(ax, domain_gpkg.geom, color=:gray)
-        poly!.(ax, observation_gpkg.geom, color=:red)
-    catch
-        poly!.(ax, domain_gpkg.geometry, color=:gray)
-        poly!.(ax, observation_gpkg.geometry, color=:red)
-    end
-
-    max_val, min_val = extrema(rmse_diffs)
-    up_limit = maximum(abs.((max_val, min_val)))
-    lower_limit = -up_limit
-
-    try
-        scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD;
-            markersize=35, colorrange=(lower_limit, up_limit), color=rmse_diffs, colormap=:bam, alpha=0.8,
-            strokewidth=1, strokecolor=(:gray, 0.1)
-        )
-    catch
-        scatter!(ax, observation_gpkg.LON, observation_gpkg.LAT;
-            markersize=35, colorrange=(lower_limit, up_limit), color=rmse_diffs, colormap=:bam, alpha=0.8,
-            strokewidth=1, strokecolor=(:gray, 0.1)
-        )
-    end
-
-    Colorbar(
-        fig[1, 2];
-        colorrange=(lower_limit, up_limit), colormap=:bam, label="Benchmark RMSE - Model RMSE"
-    )
-
     return fig
 end
+function plot_rmse_diff_map!(
+    g::Union{GridPosition,GridLayout},
+    raw_data::Array{Float64,3};
+    observations::LocationDataStore=COMBINED_STORE,
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Nothing
+    n_obs = length(observations.ltmp_unique_ids)
+    ltmp_loc_indexes = collect(1:n_obs)
 
-function plot_metric_map(
+    error_stats = collect_error_stats.([raw_data], ltmp_loc_indexes; observations=observations)
+    rmse_, benchmark_, _, _, _, _ = eachrow(hcat(map(collect, error_stats)...))
+    rmse_diffs = benchmark_ .- rmse_
+
+    domain_gpkg = observations.domain_gpkg
+    geometries = domain_gpkg.geometry
+    lon, lat = eachcol(obs_lon_lat(observations, domain_gpkg))
+
+    plot_metric_map!(
+        g, rmse_diffs, geometries, lon, lat;
+        axis_opts=axis_opts, opts=opts
+    )
+
+    return nothing
+end
+
+function obs_lon_lat(observations, domain_gpkg)::DataFrame
+    ltmp_uids_obs = observations.ltmp_unique_ids
+    ltmp_idx_obs = [findfirst(domain_gpkg.UNIQUE_ID .== uid) for uid in ltmp_uids_obs]
+    return domain_gpkg[ltmp_idx_obs, [:LON, :LAT]]
+end
+
+function plot_correlation_map(
     raw_data::Array{Float64,3};
     metric_type::Symbol=:scc,
     observations::LocationDataStore=COMBINED_STORE,
-    fig_opts::Dict=Dict(),
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Figure
+    fig_size = pop!(fig_opts, :size, FIG_SIZE[:map])
+    fig = Figure(; size=fig_size, fig_opts)
+    plot_correlation_map!(
+        fig[1, 1], raw_data;
+        metric_type=metric_type, observations=observations, axis_opts=axis_opts, opts=opts,
+    )
+    return fig
+end
+function plot_correlation_map!(
+    g::Union{GridPosition,GridLayout},
+    raw_data::Array{Float64,3};
+    metric_type::Symbol=:srcc,
+    observations::LocationDataStore=COMBINED_STORE,
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Nothing
     n_validation_obs = length(observations.ltmp_unique_ids)
     ltmp_loc_indexes = collect(1:n_validation_obs)
 
     error_stats = collect_error_stats.(Ref(raw_data), ltmp_loc_indexes; observations=observations)
-    rmse_, benchmark_, cc_, maee_, bias_, scc_ = eachrow(hcat(map(collect, error_stats)...))
-    _metric = if metric_type == :pcc
+    _, _, cc_, _, _, srcc_ = eachrow(hcat(map(collect, error_stats)...))
+
+    _metric::Vector{Float64} = if metric_type == :pcc
         cc_
-    elseif metric_type == :scc
-        scc_
+    elseif metric_type == :srcc
+        srcc
     else
         error("Invalid `metric_type`. ")
     end
 
-
-    fig_size = get(fig_opts, :size, FIG_SIZE[:map])
-    fig_title = get(fig_opts, :title, "")
-    fig = Figure(size=fig_size)
-    ax = GeoAxis(
-        fig[1, 1],
-        dest="+proj=latlong +datum=WGS84",
-        xlabel="Longitude",
-        ylabel="Latitude",
-        title=fig_title,
-        titlesize=18,
-    )
-    observations = VALIDATION_STORE
     domain_gpkg = observations.domain_gpkg
-    domain_gpkg[[findfirst(domain_gpkg.UNIQUE_ID .== ltmp_id) for ltmp_id in observations.ltmp_unique_ids], :]
-    observation_gpkg = domain_gpkg[[findfirst(domain_gpkg.UNIQUE_ID .== ltmp_id) for ltmp_id in observations.ltmp_unique_ids], :]# domain_gpkg[domain_gpkg.UNIQUE_ID.∈[observations.ltmp_unique_ids], :]
-    try
-        poly!.(ax, domain_gpkg.geom, color=:gray)
-    catch
-        poly!.(ax, domain_gpkg.geometry, color=:gray)
-    end
+    geometries = domain_gpkg.geometry
+    lon, lat = eachcol(obs_lon_lat(observations, domain_gpkg))
 
-    max_val, min_val = extrema(_metric)
+    plot_metric_map!(
+        g, _metric, geometries, lon, lat;
+        axis_opts=axis_opts, opts=opts
+    )
+
+    return nothing
+end
+function plot_metric_map!(
+    g::Union{GridPosition,GridLayout},
+    metric::Vector{Float64},
+    geometries::Vector,
+    lon_valid::Vector{Float64},
+    lat_valid::Vector{Float64};
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Nothing
+    axis_opts = merge(
+        Dict(
+            :xlabel => get(axis_opts, :xlabel, "Longitude"),
+            :ylabel => get(axis_opts, :ylabel, "Latitude"),
+            :title => get(axis_opts, :title, "Benchmark RMSE - Model RMSE"),
+            :dest => "+proj=latlong +datum=WGS84",
+        ),
+        axis_opts
+    )
+    ax = GeoAxis(g[1, 1], ; axis_opts...)
+
+    poly!(ax, geometries, color=:gray)
+
+    max_val, min_val = extrema(metric)
     up_limit = maximum(abs.((max_val, min_val)))
     lower_limit = -up_limit
 
-    try
-        scatter!(ax, observation_gpkg.X_COORD, observation_gpkg.Y_COORD, markersize=35,
-            color=_metric, colorrange=(lower_limit, up_limit), colormap=:bam, alpha=0.6, strokewidth=1, strokecolor=(:gray, 0.1))
-    catch
-        scatter!(ax, observation_gpkg.LON, observation_gpkg.LAT, markersize=35,
-            color=_metric, colorrange=(lower_limit, up_limit), colormap=:bam, alpha=0.6, strokewidth=1, strokecolor=(:gray, 0.1))
-    end
-    Colorbar(fig[1, 2], colorrange=(lower_limit, up_limit), colormap=:bam,
-        label="")
+    colormap = get(opts, :colormap, :bam)
+    colorrange = get(opts, :colorrange, (lower_limit, up_limit))
+    alpha = get(opts, :alpha, 0.8)
+    strokewidth = get(opts, :strokewidth, 1)
+    strokecolor = get(opts, :strokecolor, (:gray, 0.1))
+    markersize = get(opts, :markersize, 35)
 
-    return fig
+    scatter!(ax, lon_valid, lat_valid;
+        colormap=colormap,
+        colorrange=colorrange,
+        color=metric,
+        alpha=alpha,
+        strokewidth=strokewidth,
+        strokecolor=strokecolor,
+        markersize=markersize,
+    )
+
+    if get(opts, :colorbar_visible, true)
+        colorbar_label = get(opts, :colorbar_label, "Benchmark RMSE - Model RMSE")
+        colorbar_ticklabelsize = get(opts, :colorbar_ticklabelsize, 16)
+        colorbar_ticks = get(opts, :colorbar_ticks, Makie.automatic)
+        colorbar_vertical = get(opts, :colorbar_vertical, true)
+        position = colorbar_vertical ? (1, 2) : (2, 1)
+        Colorbar(
+            g[position...];
+            colorrange=colorrange,
+            colormap=colormap,
+            ticks=colorbar_ticks,
+            label=colorbar_label,
+            ticklabelsize=colorbar_ticklabelsize,
+            vertical=colorbar_vertical
+        )
+        # ? Can we infer the aspect ration from the LON/LAT and update the Aspect accordingly?
+        # colsize!(g.layout, 1, Aspect(1, 0.15))
+    end
+
+    return nothing
 end
 
 function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED_STORE)::Figure
-    n_validation_obs = length(observations.ltmp_unique_ids)
-    ltmp_loc_indexes = collect(1:n_validation_obs)
+    # n_validation_obs = length(observations.ltmp_unique_ids)
+    # ltmp_loc_indexes = collect(1:n_validation_obs)
     error_stats = collect_error_stats(rs_raw; observations=observations)
     rmse_, benchmark_, maee_, pcc_, srcc_, bias_ = eachrow(hcat(map(collect, error_stats)...))
 
