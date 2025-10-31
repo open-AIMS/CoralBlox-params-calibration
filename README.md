@@ -1,8 +1,8 @@
 # ADRIA-CoralBlox calibration
 
-This repo is used to calibrate some parameters of ADRIA/CoralBlox model to match historic
-LTMP (Long-Term Monitoring Program) data for the GBR (Great Barrier Reef) between years 2008
-and 2022. The parameters calibrated here were:
+This repo is used to calibrate some parameters of ADRIA/CoralBlox model to match, as much as
+possible, historic LTMP (Long-Term Monitoring Program) data for the GBR (Great Barrier Reef)
+between years 2008 and 2022. The parameters calibrated here were:
 
 - `mb_rate`: Base mortality rate for each functional group and size class
 - `linear_extension`: Base linear extension for each functional group and size class
@@ -20,6 +20,10 @@ The equation used for the growth acceleration is:
 ```
 height / (1 + exp(-steepness * (available_space - midpoint))) + 1.0
 ```
+
+As part of this calibration, two datasets were generated, one with historical DHW values
+and another with historical cyclone/storm/COTS mortality rates. Further details on how these
+ can be found in sections below.
 
 ## Setup
 
@@ -42,8 +46,6 @@ Create a `calib_config.toml` file with the following entries:
 ```toml
 [Domains]
 rme_domain = "<path to RME dataset>"
-historical_cyclone_mortality = "<path to historic cyclone mortality dataset>"
-historical_dhw = "../datasets/dhw_scens.nc"
 
 [Geospatial]
 canonical_path = "<path to canonical gpkg>"
@@ -68,41 +70,35 @@ result_filename = "results.dat" # relative to out_dir
 
 ## Datasets
 
-### RME Data
-
-#### [rme_cover_20_reps_2008_2022.nc](datasets/rme_data/rme_cover_20_reps_2008_2022.nc)
-
-Results for 20 ReefModEngine repetitions. All repetitions use the same historic DHW scenario but were initialized with distinct initial coral cover values. These were taken from ReefMod-GBR CMIP6 counterfactuals (Apr. 2024), GCM CNRM-ESM2-1 and DHW SSP1-1.9. The original data was sliced to the timeframe from 2008 to 2022. Link: [https://data.mds.gbrrestoration.org/dataset/102.100.100/653201?view=overview](https://data.mds.gbrrestoration.org/dataset/102.100.100/653201?view=overview)
-
-## Config File Path Descriptions
-
 ### Domains
 
 Paths to different ADRIA domains or historic input files
-- `rme_domain` : Path to ReefModEngine
-- `historical_cyclone_mortality` : Path to historic environmental disturbances NetCDF file. These include cyclone/storm and/or COTS related mortality rates. See below for more information on [how these were generated](###dhw).
-- `historical_dhw` : Path to historic dhw scenarios NetCDF file.
+- `rme_domain` : Path to ReefModEngine dir "rme_ml_2025_06_05"
 
 ### Geospatial
 
 Paths to geopackages, shapefiles and geospatial location data.
 - `canonical_path` : Path to canonical geopackage
 - `ltmp_shp` : Path to LTMP regional shape files
-- `classification_path` : CSV file contains location classes in the same order as the ADRIA domain.
+- `classification_path` : CSV file contains location classes in the same order as the ADRIA
+domain.
 
 ### Observations
 
 Paths to data used as the target observation data for calibration.
-- `manta_tow_path` : NetCDF containing target mean and standard deviation for location classes not individual
-locations. Contained in `ltmp_data` directory.
-- `ltmp_reef_data` : Geopackage containing target data for individual locations. Contained in `ltmp_data` directory.
-- `composition_netcdf` : NetCDF containing coral composition for each ADRIA functional group at each ltmp
-photogrammetry location. Contained in the `ltmp_data` directory.
+- `manta_tow_path` : NetCDF containing target mean and standard deviation for location
+classes not individual locations. Contained in `ltmp_data` directory.
+- `ltmp_reef_data` : Geopackage containing target data for individual locations. Contained
+in `ltmp_data` directory.
+- `composition_netcdf` : NetCDF containing coral composition for each ADRIA functional group
+at each ltmp photogrammetry location. Contained in the `ltmp_data` directory.
 - `ltmp_modelled_obs` : Path to modelled regional coral cover data based on LTMP
   observations. This was developed by Murray Logan and Mike Emslie.
 
 ### Initialisation
-- `init_cover_filepath` : Data containing calibrated initial cover. Must be loaded into domain as follows.
+
+- `init_cover_filepath` : Data containing calibrated initial cover. Must be loaded into
+domain as follows.
 - `init_guess_filepath` : Optional file name for initial guess.
 - `ecorrap_param_filepath` : <!--TO DO-->
 
@@ -113,6 +109,7 @@ construct_cover!(dom, init_cover, location_classification.consecutive_classifica
 ```
 
 ### Outputs
+
 - `out_dir` : Directory to save results plots, intermediate progress reports and final
   calibration results
   `result_filename` : Name of file to save calibrated results to, relative to `out_dir`
@@ -133,9 +130,9 @@ julia> include("2_location_calibration.jl")
 #### Results analysis only.
 
 The calibration parameters used for results analysis are read from the `result_filename`
-file in the output directory, `out_dir`, that were defined in the calibration configuration file.
-Any plots already existing in this directory that were created using the same scripts will
-be **overwritten**.
+file in the output directory, `out_dir`, that were defined in the calibration configuration
+file. Any plots already existing in this directory that were created using the same scripts
+will be **overwritten**.
 
 ```julia-repl
 julia> include("1_setup.jl")
