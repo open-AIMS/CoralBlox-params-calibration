@@ -126,9 +126,8 @@ name numbering (excluding `2_calibration.jl`).
 
 ```julia-repl
 julia> include("1_setup.jl")
-julia> include("2b_location_calibration.jl")
-julia> include("3_regional_analysis.jl")
-julia> include("4_location_analysis.jl")
+julia> include("1b_data_split.jl")
+julia> include("2_location_calibration.jl")
 ```
 
 #### Results analysis only.
