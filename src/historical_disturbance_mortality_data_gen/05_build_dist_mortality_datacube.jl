@@ -58,4 +58,4 @@ new_axes = (
 )
 
 disturbance_mortality_scens = YAXArray(new_axes, repeat(new_cyclone_mortality_scens.data, 1, 1, 1, 2))
-savedataset(Dataset(; disturbance_mortality_scens), path="disturbance_data_gen/data/disturbance_mortality_scens.nc", driver=:netcdf, overwrite=true)
+savedataset(Dataset(; disturbance_mortality_scens), path="disturbance_data_gen/data/historical_disturbance_mortality_scens.nc", driver=:netcdf, overwrite=true)

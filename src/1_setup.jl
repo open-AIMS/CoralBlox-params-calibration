@@ -22,11 +22,11 @@ if (!@isdefined(dom) || reload_domain)
 
     @info "Attaching historic DHW and Cyclone/COTS data"
 
-    new_dhw_scens = open_dataset(HISTORIC_DHW_PATH).dhw_scens
+    new_dhw_scens = open_dataset(HISTORICAL_DHW_PATH).dhw_scens
     dom.dhw_scens .= read(new_dhw_scens[timesteps=At(START_YEAR:END_YEAR), scenarios=1])
     # @assert read(dom.dhw_scens[:, :, 1]) == Float32.(read(new_dhw_scens[timesteps=At(START_YEAR:END_YEAR), scenarios=1]))
 
-    new_cyclone_mortality_scens = open_dataset(HISTORIC_CYCLONE_MORTALITY_PATH).disturbance_mortality_scens
+    new_cyclone_mortality_scens = open_dataset(HISTORICAL_CYCLONE_MORTALITY_PATH).disturbance_mortality_scens
     dom.cyclone_mortality_scens .= read(new_cyclone_mortality_scens[:, :, :, [1]])
     # @assert dom.cyclone_mortality_scens == read(new_cyclone_mortality_scens[:, :, :, [1]])
 

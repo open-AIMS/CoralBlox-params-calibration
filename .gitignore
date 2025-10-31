@@ -20,3 +20,5 @@ Outputs/*
 
 src/statprof/
 src/gif
+
+src/historical_dhw_data_gen/data/CoralSea_GBR_coraltempv3p1_dhw_1985-2024-reefs.mat
