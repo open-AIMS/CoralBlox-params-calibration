@@ -42,8 +42,8 @@ Create a `calib_config.toml` file with the following entries:
 ```toml
 [Domains]
 rme_domain = "<path to RME dataset>"
-historic_cyclone_mortality = "<path to historic cyclone mortality dataset>"
-historic_dhw = "../datasets/dhw_scens.nc"
+historical_cyclone_mortality = "<path to historic cyclone mortality dataset>"
+historical_dhw = "../datasets/dhw_scens.nc"
 
 [Geospatial]
 canonical_path = "<path to canonical gpkg>"
@@ -80,8 +80,8 @@ Results for 20 ReefModEngine repetitions. All repetitions use the same historic 
 
 Paths to different ADRIA domains or historic input files
 - `rme_domain` : Path to ReefModEngine
-- `historic_cyclone_mortality` : Path to historic environmental disturbances NetCDF file. These include cyclone/storm and/or COTS related mortality rates.
-- `historic_dhw` : Path to historic dhw scenarios NetCDF file.
+- `historical_cyclone_mortality` : Path to historic environmental disturbances NetCDF file. These include cyclone/storm and/or COTS related mortality rates. See below for more information on [how these were generated](###dhw).
+- `historical_dhw` : Path to historic dhw scenarios NetCDF file.
 
 ### Geospatial
 
