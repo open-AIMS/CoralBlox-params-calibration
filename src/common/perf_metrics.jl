@@ -191,7 +191,7 @@ function collect_error_stats(
     cc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     maee_::Float64 = MAEE(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     bias_::Float64 = bias(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
-    scc_::Float64 = corspearman(
+    srcc_::Float64 = corspearman(
         sim_data[not_missing_obs], Vector{Float64}(obs_loc_data[not_missing_obs])
     )
 
@@ -199,7 +199,7 @@ function collect_error_stats(
     s = length(sim_data[not_missing_obs])
     benchmark_::Float64 = rmse(fill(μ_obs, s), obs_loc_data[not_missing_obs])
 
-    return rmse_, benchmark_, cc_, maee_, bias_, scc_
+    return rmse_, benchmark_, cc_, maee_, bias_, srcc_
 end
 
 """
@@ -381,12 +381,13 @@ Refs:
 - https://stats.stackexchange.com/questions/8019/averaging-correlation-values?utm_source=chatgpt.com
 - https://www.tandfonline.com/doi/abs/10.1080/00221309809595548
 """
-function average_cc(cc_data)
+function average_cc(cc_data::Vector{Float64}; w::Vector{Float64}=ones(Float64, length(cc_data)))
     # Apply fisher transformation
     f_data = atanh.(cc_data)
 
-    # Calculate confidence intervals and mean
-    f_confint = ADRIA.analysis.series_confint(atanh.(cc_data)[:, :]')
+    # Weighted mean
+    mean_cc = mean(f_data, weights(w))
 
-    return tanh.(f_confint)
+    # Apply inverse fisher transformation
+    return tanh.(mean_cc)
 end

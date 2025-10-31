@@ -17,6 +17,86 @@ management_area_stats = region_stats(Symbol.(management_area_masks), management_
 plot_regional_comparison(management_area_stats)
 ```
 """
+function plot_regional_comparison(
+    regional_stats::NamedTuple;
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    legend_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Figure
+    opts::Dict{Symbol,Any} = merge(BASE_OPTS_REGIONAL_COMPARISON, opts)
+    f = Figure(; fig_opts...)
+    plot_regional_comparison!(f, regional_stats; axis_opts=axis_opts, opts=opts)
+
+    if get(legend_opts, :show_legend, true)
+        legend_regional_comparison!(f[end+1, :]; legend_opts=legend_opts)
+    end
+
+    return f
+end
+function plot_regional_comparison!(
+    grid::Union{GridPosition,GridLayout,Figure},
+    regional_stats::NamedTuple;
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Nothing
+    sorted_keys = sort(collect(keys(regional_stats)), by=x -> parse(Int, split(string(x), " ")[2]))
+    n_plots = length(sorted_keys)
+    positions = fig_coord.(1:n_plots, Ref(n_plots); invert=true)
+
+    last_row_idx = maximum(getindex.(positions, 1))
+    for (idx, key) in enumerate(sorted_keys)
+        n_locations = regional_stats[key].n_locations
+        _rmse = trunc(regional_stats[key].rmse, digits=2)
+        _mae = trunc(regional_stats[key].mae, digits=2)
+        _srcc = trunc(regional_stats[key].srcc, digits=2)
+
+        # position = fig_coord(idx, n_plots; invert=true)
+        label_text = "$((string(key)))\n$n_locations reefs"
+        group_title = "\nRMSE: $_rmse | SRCC : $_srcc"
+        ax = Axis(
+            grid[positions[idx]...];
+            title=group_title,
+            xlabel="Year",
+            ylabel="Relative cover",
+            xticklabelsvisible=positions[idx][1] == last_row_idx ? true : false,
+            xlabelvisible=positions[idx][1] == last_row_idx ? true : false,
+            ylabelvisible=positions[idx][2] == 1 ? true : false,
+            yticklabelsvisible=positions[idx][2] == 1 ? true : false,
+            limits=(nothing, (0, 1)),
+            # limits=axis_limits,
+            xticks=get(axis_opts, :xticks, START_YEAR:3:END_YEAR),
+            xticklabelrotation=get(axis_opts, :xticklabelrotation, π / 4),
+            axis_opts...
+        )
+
+        plot_regional_comparison!(
+            ax,
+            regional_stats[key].model_stats,
+            replace(regional_stats[key].historic_stats, missing => NaN),
+            opts,
+        )
+
+        if get(opts, :showtextlabel, false)
+            tlsize = get(opts, :textlabelsize, 16)
+            tlbackground = get(opts, :textlabelbackground, :white)
+            textlabel!(ax, Point2f(2010, 0.8);
+                text=label_text,
+                fontsize=tlsize,
+                strokewidth=0,
+                background_color=tlbackground,
+                cornerradius=0.0
+            )
+        end
+    end
+
+    if get(opts, :show_title, true)
+        titlesize = get(opts, :titlesize, 18)
+        Label(grid[0, :], get(opts, :title, ""); fontsize=titlesize)
+    end
+
+    return nothing
+end
 function plot_regional_comparison!(
     ax::Axis,
     model_stats::Matrix{Float64},
@@ -46,79 +126,28 @@ function plot_regional_comparison!(
 
     return nothing
 end
-function plot_regional_comparison(
-    regional_stats::NamedTuple;
-    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-)::Figure
-    opts::Dict{Symbol,Any} = merge(BASE_OPTS_REGIONAL_COMPARISON, opts)
-    f = Figure(; fig_opts...)
-    plot_regional_comparison!(f, regional_stats; axis_opts=axis_opts, opts=opts)
-    legend_regional_comparison!(f[end+1, :]; opts=opts)
-    return f
-end
-function plot_regional_comparison!(
-    grid::Union{GridPosition,GridLayout,Figure},
-    regional_stats::NamedTuple;
-    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-)::Nothing
-    r_keys = keys(regional_stats)
-    n_plots = length(r_keys)
-
-    n_locations::Int64 = 0
-    _rmse::Float64 = 0.0
-    _mae::Float64 = 0.0
-    for (idx, key) in enumerate(r_keys)
-        n_locations = regional_stats[key].n_locations
-        _rmse = trunc(regional_stats[key].rmse, digits=2)
-        _mae = trunc(regional_stats[key].mae, digits=2)
-
-        ax = Axis(
-            grid[fig_coord(idx, n_plots)...],
-            title="$(string(key)) ($n_locations Reefs)\nRMSE: $_rmse | MAE: $_mae",
-            xlabel="Year",
-            ylabel="Relative cover",
-            # limits=axis_limits,
-            xticks=START_YEAR:2:END_YEAR,
-            xticklabelrotation=π / 4
-        )
-
-        plot_regional_comparison!(
-            ax,
-            regional_stats[key].model_stats,
-            replace(regional_stats[key].historic_stats, missing => NaN),
-            opts,
-        )
-    end
-
-    Label(grid[0, :], get(opts, :title, ""); fontsize=18)
-
-    return nothing
-end
 
 function legend_regional_comparison!(
     fig::Union{GridPosition,GridLayout,Figure};
-    opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
+    legend_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Nothing
     model_leg_element = [
-        LineElement(color=get(opts, :model_line_color, COLORS[:model_line_color])),
-        PolyElement(color=get(opts, :model_band_color, COLORS[:model_band_color]))
+        LineElement(color=pop!(legend_opts, :model_line_color, COLORS[:model_line_color])),
+        PolyElement(color=pop!(legend_opts, :model_band_color, COLORS[:model_band_color]))
     ]
     observed_leg_element = [
-        LineElement(color=get(opts, :historic_line_color, COLORS[:historic_line_color])),
-        PolyElement(color=get(opts, :historic_band_color, COLORS[:historic_band_color]))
+        LineElement(color=pop!(legend_opts, :historic_line_color, COLORS[:historic_line_color])),
+        PolyElement(color=pop!(legend_opts, :historic_band_color, COLORS[:historic_band_color]))
     ]
     leg_labels = ["Observed", "Model"]
 
     Legend(
         fig,
         [observed_leg_element, model_leg_element],
-        leg_labels,
-        orientation=:horizontal
+        leg_labels;
+        orientation=:horizontal,
+        legend_opts...
     )
-
     return nothing
 end
 function legend_regional_comparison!(

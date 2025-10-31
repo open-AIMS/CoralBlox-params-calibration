@@ -48,11 +48,11 @@ function _location_err_title(
     return title_text
 end
 
-function fig_coord(idx, n; max_rows=5)
+function fig_coord(idx, n; max_rows=5, invert=false)
     nrows = min(Int(floor(sqrt(n))), max_rows)
     col = Int(ceil(idx / nrows))
     row = Int(idx - (ceil(idx / nrows) - 1) * nrows)
-    return row, col
+    return invert ? (col, row) : (row, col)
 end
 
 """

@@ -2,27 +2,24 @@
 metrics_save_dir::String = joinpath(OUT_DIR, "metrics")
 mkpath(metrics_save_dir)
 
+fig_opts = Dict{Symbol,Any}(:title => "")
+
 # Maps
+fig_opts.title = "Benchmark RMSE - Model RMSE\nValidation Locations"
 rmse_diff_map = plot_rmse_diff_map(
-    rs_raw.raw;
-    observations=VALIDATION_STORE,
-    fig_opts=Dict(:title => "Benchmark RMSE - Model RMSE\nValidation Locations")
+    rs_raw.raw; observations=VALIDATION_STORE, fig_opts=fig_opts
 )
 save(joinpath(metrics_save_dir, "rmse_diff_map.png"), rmse_diff_map)
 
-pearson_coeff_map = plot_metric_map(
-    rs_raw.raw;
-    observations=VALIDATION_STORE,
-    metric_type=:pcc,
-    fig_opts=Dict(:title => "Pearson Correlation Coefficient\nValidation Locations")
+fig_opts.title = "Pearson Correlation Coefficient\nValidation Locations"
+pearson_coeff_map = plot_correlation_map(
+    rs_raw.raw; observations=VALIDATION_STORE, metric_type=:pcc, fig_opts=fig_opts
 )
 save(joinpath(metrics_save_dir, "pcc_map.png"), pearson_coeff_map)
 
-scc_map = plot_metric_map(
-    rs_raw.raw;
-    observations=VALIDATION_STORE,
-    metric_type=:scc,
-    fig_opts=Dict(:title => "Spearman Correlation Coefficient\nValidation Locations")
+fig_opts.title = "Spearman Correlation Coefficient\nValidation Locations"
+scc_map = plot_correlation_map(
+    rs_raw.raw; observations=VALIDATION_STORE, metric_type=:scc, fig_opts=fig_opts
 )
 save(joinpath(metrics_save_dir, "scc_map.png"), scc_map)
 
