@@ -219,6 +219,20 @@ spread of ltmp locations for a given year with a set of locations (class).
 
 Expects total cover of shape `[timesteps x location]`
 
-### Result Analysis
+## Historical DHW
 
-#### results_analysis.jl
+The script `src/historical_dhw_data_gen/01_generate_historical_dhw_data.jl` takes a file
+containing observed NOAA maximum DHWs at each of the reefs, selects the timeframe used in
+this calibration (2008-2022) and saves the result as a NetCDF file in
+`src/historical_dhw_data_gen/data/historical_dhw.nc`. Before running this script, the input
+file `CoralSea_GBR_coraltempv3p1_dhw_1985-2024-reefs.mat` must be placed at
+`src/historical_dhw_data_gen/data/`. This file can be found in the M&DS IS Store.
+
+The data in the input file is stored in a MATLAB structure array ‘R’. From this file, we
+have extracted the variables:
+
+- `years_dhw` : 1985 to 2024, where 1985 only contains from early 1985 as the SST dataset
+only starts from 1 Jan. Otherwise each year is for the maximum DHW from 1 July year-1 to 30
+June year, with the final year being from 1 July 2023 to 30 June 2024.
+- `dhw_max` : observed maximum DHWs at each reef
+
