@@ -301,6 +301,7 @@ version = "0.1.9"
 [[deps.BlackBoxOptim]]
 deps = ["CPUTime", "Compat", "Distributed", "Distributions", "JSON", "LinearAlgebra", "Printf", "Random", "Requires", "SpatialIndexing", "StatsBase"]
 git-tree-sha1 = "9c203a2515b5eeab8f2987614d2b1db83ef03542"
+pinned = true
 uuid = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 version = "0.6.3"
 weakdeps = ["HTTP", "Sockets"]
