@@ -213,7 +213,8 @@ June year, with the final year being from 1 July 2023 to 30 June 2024.
 
 The scripts in `src/historical_disturbance_mortality_data_gen` generate a NetCDF file with
 with mortality rate data for each timestep (years, from 2008 to 2022), location (all GBR
-reefs, labeled by RME_GBRMPA_ID) and functional group (tabular_Acropora, corymbose_Acropora, corymbose_non_Acropora, small_massives and large_massives). There are two scenarios, but
+reefs, labeled by RME_GBRMPA_ID) and functional group (tabular_Acropora, corymbose_Acropora,
+corymbose_non_Acropora, small_massives and large_massives). There are two scenarios, but
 both have the same data. That's because, although it is possible to save a YAXArray to a
 NetCDF file, with one of the dimensions having only one element (in this case, a single
 scenario), when we try to open this NetCDF using YAXArrays it raises an error.
@@ -223,7 +224,8 @@ applied but for some of the disturbances, the difference between the year after 
 before is greater than one year. We made the decision of the modelled and observed
 disturbances by year after.
 
-This process is semi-automated. After running script 1, the csv files generated (`template_disturbance_years_manta.csv` and `template_disturbance_years_transect.csv`) need
+This process is semi-automated. After running script 1, the csv files generated
+(`template_disturbance_years_manta.csv` and `template_disturbance_years_transect.csv`) need
 to be manually filled with the years before and after each disturbance with data from the
 Reef Monitoring Dashboard (https://apps.aims.gov.au/reef-monitoring/reefs). These csv files
 also need to be renamed to ("disturbance_years_manta.csv" and
