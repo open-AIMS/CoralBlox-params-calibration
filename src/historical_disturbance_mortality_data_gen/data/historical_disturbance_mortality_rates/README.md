@@ -1,5 +1,6 @@
 # Historical disturbance (storms/COTS) mortality rates
 
+- **Version** : 1.0.0
 - **Dataset custodian** : Pedro Ribeiro de Almeida
 - **Contact** : p.ribeirodealmeida@aims.gov.
 - **Purpose**: This dataset is for academic research purposes only. This dataset was generated as part of the CoralBlox-ADRIA calibration process.
