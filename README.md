@@ -122,9 +122,9 @@ name numbering (excluding `2_calibration.jl`).
 #### Running calibration and analysis
 
 ```julia-repl
-julia> include("1_setup.jl")
-julia> include("1b_data_split.jl")
-julia> include("2_location_calibration.jl")
+julia> include("01_a_setup.jl")
+julia> include("01_b_data_split.jl")
+julia> include("02_location_calibration.jl")
 ```
 
 #### Results analysis only.
@@ -135,10 +135,10 @@ file. Any plots already existing in this directory that were created using the s
 will be **overwritten**.
 
 ```julia-repl
-julia> include("1_setup.jl")
-julia> include("1b_data_split.jl")
-julia> include("3_regional_analysis.jl")
-julia> include("4_location_analysis.jl")
+julia> include("01_a_setup.jl")
+julia> include("01_b_data_split.jl")
+julia> include("03_result_analysis.jl")
+julia> include("04_location_analysis.jl")
 ```
 
 ## Changing Calibration Parameters
@@ -158,35 +158,11 @@ First execute `1_setup.jl`
 - `rm_ltmp_taxa` : Observed taxa composition at target locations
 - `raw_ltmp_reef_data` : Observed coral cover levels at target locations
 - `TARGET_DOM_IDXS` : ADRIA domain row index for each target location
-- `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK` : LTMP Region mask for ADRIA domains.
+- `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK` : LTMP Region mask for ADRIA domains
 - `ltmp_north`, `ltmp_central` and `ltmp_south` : Regional LTMP data
 - `ALL_LTMP_REEF` : All ltmp reef manta cover data
-- `ALL_LTMP_REEF_IDXS` : ADRIA domain row index for each ltmp location.
+- `ALL_LTMP_REEF_IDXS` : ADRIA domain row index for each ltmp location
 - `location_classification` : CSV containing location classification of GBR-wide locations
-
-## Calibration-specific branches
-
-Both ADRIA and CoralBlox have been modified to facilitate the calibration process.
-
-The `ADRIA.jl#takuya/calib` contains a run model function with an altered call signature:
-
-`rs_raw = ADRIA.run_model(dom, scens, scale_factors, target_loc_idxs, bleaching_threshold)`
-
-where `scale_factors` is a matrix of shape `[taxa x n_target_locs x n_parameter_scaled]`.
-The scale factors apply a different scaling coefficient for each location.
-
-The bleaching threshold parameter specifies the lower bound of the truncated normal
-distribution used to calculate bleaching mortality.
-
-The latest `CoralBlox.jl#main` contains an implementation of `linear_extension_scale_factors`
-which accepts parameters for a single location. It allows parameter values for a specific
-location to be changed:
-
-`linear_extension_scale_factors(::Matrix{Float64}, ::Float64, ::Matrix{Float64}, ::Matrix{Float64}, ::Float64)`
-
-In addition to the usual:
-
-`linear_extension_scale_factors(::AbstractArray{Float64, 3}, ::AbstractVector{Float64}, ::AbstractMatrix{Float64}, ::AbstractMatrix{Float64}, ::AbstractVector{Float64})`
 
 ## Error Functions
 

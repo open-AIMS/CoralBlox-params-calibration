@@ -4,10 +4,10 @@ using ProgressMeter
 include("./plot/plot.jl")
 include("common/param_bounds.jl")
 
-include("3a_analysis_setup.jl")
-include("3b_regional_analysis.jl")
-include("3c_metric_analysis.jl")
-include("3d_locs_time_series.jl")
+include("03_a_analysis_setup.jl")
+include("03_b_regional_analysis.jl")
+include("03_c_metric_analysis.jl")
+include("03_d_locs_time_series.jl")
 
 # Map with observation and validation locations
 f_obs_loc_map = plot_observation_locs(CALIBRATION_STORE, VALIDATION_STORE)

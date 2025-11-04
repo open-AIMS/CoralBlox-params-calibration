@@ -280,29 +280,24 @@ function plot_all_regions(
 end
 function plot_all_regions(
     north_results, north_obs, central_results, central_obs, south_results, south_obs;
-    fig_title="", fig_size=(800, 800)
+    fig_title="", fig_size=(800, 500)
 )::Figure
     f = Figure(; size=fig_size)
-    north_ax = plot_region(
-        f,
-        1,
-        1,
+
+    plot_region!(
+        f[1, 1],
         "North GBR\n$(size(north_results, 2)) validation locations",
         north_obs,
         north_results
     )
-    central_ax = plot_region(
-        f,
-        1,
-        2,
+    plot_region!(
+        f[1, 2],
         "Central GBR\n$(size(central_results, 2)) validation locations",
         central_obs,
         central_results
     )
-    south_ax = plot_region(
-        f,
-        1,
-        3,
+    plot_region!(
+        f[1, 3],
         "South GBR\n$(size(south_results, 2)) validation locations",
         south_obs,
         south_results
@@ -316,6 +311,7 @@ function plot_all_regions(
         PolyElement(color=(:red, 0.4)),
         LineElement(color=:red)
     ]
+
     Legend(
         f[2, :],
         [obs_el, sim_el],
@@ -324,8 +320,7 @@ function plot_all_regions(
     )
 
     # linkyaxes!(north_ax, central_ax, south_ax)
-
-    Label(f[0, :], fig_title; fontsize=20)
+    # Label(f[0, :], fig_title; fontsize=20)
 
     # resize_to_layout!(f)
     return f
@@ -335,16 +330,14 @@ end
     plot_region(f::Figure, row::Int64, col::Int64, title::String, obs::DataFrame, sim::YAXArray; showlegend::Bool = false, legend_row::Int64 = 2, legend_col::Int64 = 2)::Axis
 
 """
-function plot_region(
-    f::Figure,
-    row::Int64,
-    col::Int64,
+function plot_region!(
+    g::GridPosition,
     title::String,
     obs::DataFrame,
     sim::YAXArray;
-)::Axis
+)::Nothing
     ax = Axis(
-        f[row, col],
+        g,
         title=title,
         xlabel="year",
         ylabel="Relative Absolute Cover",
@@ -355,11 +348,11 @@ function plot_region(
     confints = ADRIA.analysis.series_confint(read(sim))
     xs::Vector{Float64} = collect(sim.timesteps)
 
-    band!(obs.Year, obs.lower, obs.upper, color=(:black, 0.4))
-    band!(xs, confints[:, 1], confints[:, 3], color=(:red, 0.4))
+    band!(ax, obs.Year, obs.lower, obs.upper, color=(:black, 0.4))
+    band!(ax, xs, confints[:, 1], confints[:, 3], color=(:red, 0.4))
 
-    lines!(obs.Year, obs.response, color=:black)
-    lines!(xs, confints[:, 2], color=:red, linewidth=2)
+    lines!(ax, obs.Year, obs.response, color=:black)
+    lines!(ax, xs, confints[:, 2], color=:red, linewidth=2)
 
-    return ax
+    return nothing
 end
