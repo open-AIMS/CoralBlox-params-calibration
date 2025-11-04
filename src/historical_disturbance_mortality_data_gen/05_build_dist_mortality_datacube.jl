@@ -1,5 +1,9 @@
+using ADRIA
+using CSV, YAXArrays, NetCDF, DataFrames
+using Dates, TimeZones
+
 # Read the CSV file
-survival_rates_path = "disturbance_data_gen/data/disturbance_survival_rates.csv"
+survival_rates_path = "historical_disturbance_mortality_data_gen/data/disturbance_survival_rates.csv"
 survival_rates_df = CSV.read(survival_rates_path, DataFrame; stringtype=String, comment="#")
 
 # Ensure that there are no duplicate pairs of reef/year
@@ -53,9 +57,40 @@ end
 new_axes = (
     Dim{:timesteps}(2008:2022),
     Dim{:locs}(collect(new_cyclone_mortality_scens.locs)),
-    Dim{:species}(String.([:tabular_Acropora, :corymbose_Acropora, :corymbose_non_Acropora, :small_massives, :large_massives])),
+    Dim{:species}(String.([
+        :tabular_Acropora,
+        :corymbose_Acropora,
+        :corymbose_non_Acropora,
+        :small_massives,
+        :large_massives
+    ])),
     Dim{:scenarios}(1:2)
 )
 
-disturbance_mortality_scens = YAXArray(new_axes, repeat(new_cyclone_mortality_scens.data, 1, 1, 1, 2))
-savedataset(Dataset(; disturbance_mortality_scens), path="disturbance_data_gen/data/historical_disturbance_mortality_scens.nc", driver=:netcdf, overwrite=true)
+properties = Dict{String,String}(
+    "timesteps" => "Vector{Int64} 2008:2022",
+    "locs" => "Vector{String} ['10-330', …, '23-049']",
+    "species" => "Vector{String} ['tabular_Acropora', 'corymbose_Acropora', 'corymbose_non_Acropora', 'small_massives', 'large_massives']",
+    "scenarios" => "Vector{Int64} [1,2] (both scenarios are identical)",
+    "unit" => "Proportion of coral cover lost (0-1)",
+    "created_at" => string(now(tz"UTC")),
+)
+
+disturbance_mortality_scens = YAXArray(
+    new_axes,
+    repeat(new_cyclone_mortality_scens.data, 1, 1, 1, 2),
+    properties
+)
+
+savedataset(
+    Dataset(; disturbance_mortality_scens);
+    path="historical_disturbance_mortality_data_gen/" *
+         "data/" *
+         "historical_disturbance_mortality_rates/" *
+         "historical_disturbance_mortality_rates.nc",
+    driver=:netcdf,
+    overwrite=true
+)
+
+# mypath = "C:/Users/pribeiro/AIMS/Code/ltmp_calibration/src/historical_disturbance_mortality_data_gen/data/historical_disturbance_mortality_rates.nc"
+# nc = ncinfo("C:/Users/pribeiro/AIMS/Code/ltmp_calibration/src/historical_disturbance_mortality_data_gen/data/historical_disturbance_mortality_rates/historical_disturbance_mortality_rates.nc")
