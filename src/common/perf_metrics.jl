@@ -151,15 +151,12 @@ function collect_error_stats(
             loc_areas=loc_areas
         )
 
-        # TODO Update once I change the other method to return a NamedTuple as well
-
-
-        rmse_model[loc] = error_stats[1]
-        rmse_benchmark[loc] = error_stats[2]
-        maee[loc] = error_stats[3]
-        pcc[loc] = error_stats[4]
-        srcc[loc] = error_stats[6]                   # This is right...
-        bias[loc] = error_stats[5]
+        rmse_model[loc] = error_stats.rmse_model
+        rmse_benchmark[loc] = error_stats.rmse_benchmark
+        maee[loc] = error_stats.maee
+        pcc[loc] = error_stats.pcc
+        srcc[loc] = error_stats.srcc
+        bias[loc] = error_stats.bias
     end
 
     error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :srcc, :bias)
