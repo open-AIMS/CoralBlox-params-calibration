@@ -36,6 +36,7 @@ global OUTPUT_CONFIG = CONFIG["Outputs"]
 global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
 global HISTORICAL_DHW_PATH = "historical_dhw_data_gen/data/historical_dhw.nc"
 global HISTORICAL_CYCLONE_MORTALITY_PATH = "historical_disturbance_mortality_data_gen/data/" *
+                                           "historical_disturbance_mortality_rates/" *
                                            "historical_disturbance_mortality_rates.nc"
 
 # Geospatial filepaths
