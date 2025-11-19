@@ -37,6 +37,26 @@ validation_best_3_scc_idx = VALIDATION_STORE.ltmp_unique_ids[validation_sccs_sor
 @info "Three highest SCC validation reefs are: $validation_best_3_scc_idx"
 @info "Three lowest SCC validation reefs are: $validation_worst_3_scc_idx"
 
+
+# Print stats
+stats_valid = collect_error_stats(rs_raw.raw; observations=VALIDATION_STORE)
+n_valid_locs = length(VALIDATION_STORE.ltmp_unique_ids)
+n_model_outperformed_valid = sum(stats_valid.rmse_model .< stats_valid.rmse_benchmark)
+
+stats_calib = collect_error_stats(rs_raw.raw; observations=CALIBRATION_STORE)
+n_calib_locs = length(CALIBRATION_STORE.ltmp_unique_ids)
+n_model_outperformed_calib = sum(stats_calib.rmse_model .< stats_calib.rmse_benchmark)
+
+n_locs = n_valid_locs + n_calib_locs
+n_model_outperformed = n_model_outperformed_valid + n_model_outperformed_calib
+@info "Number of validation locations where model outperformed benchmark: $(n_model_outperformed_valid) of $(n_valid_locs)"
+@info "Number of calibration locations where model outperformed benchmark: $(n_model_outperformed_calib) of $(n_calib_locs)"
+@info "Total number of locations where model outperformed benchmark: $(n_model_outperformed) of $(n_locs)"
+
+# Error stats for location with UNIQUE_ID = uid_
+uid_ = "20348100104"
+collect_error_stats(rs_raw.raw, findfirst(VALIDATION_STORE.ltmp_unique_ids .== uid_); observations=VALIDATION_STORE)
+
 # Mean model metrics
 validation_error_stats = collect_error_stats(
     rs_raw.raw; observations=VALIDATION_STORE
