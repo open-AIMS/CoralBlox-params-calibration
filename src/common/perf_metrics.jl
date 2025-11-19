@@ -188,7 +188,7 @@ function collect_error_stats(
     reef_id = get_ltmp_loc_unique_id(observations, ltmp_loc_idx)
 
     rmse_::Float64 = rmse(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
-    cc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    pcc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     maee_::Float64 = MAEE(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     bias_::Float64 = bias(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     srcc_::Float64 = corspearman(
@@ -199,7 +199,9 @@ function collect_error_stats(
     s = length(sim_data[not_missing_obs])
     benchmark_::Float64 = rmse(fill(μ_obs, s), obs_loc_data[not_missing_obs])
 
-    return rmse_, benchmark_, cc_, maee_, bias_, srcc_
+    error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :srcc, :bias)
+    NamedTuple{error_names}((rmse_, benchmark_, maee_, pcc_, srcc_, bias_))
+    # return rmse_, benchmark_, cc_, maee_, bias_, scc_
 end
 
 """
