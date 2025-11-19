@@ -41,15 +41,6 @@ for reef_id in disturbance_reef_ids
     end
 end
 
-# Only do that if we are matching the disturbance on the year_before
-# new_cyclone_mortality_scens[2:end, :, :, :] .= new_cyclone_mortality_scens[1:end-1, :, :, :].data
-# new_cyclone_mortality_scens[1, :, :, :] .= 0.0
-
-# This is a place where I know there are two disturbances in the first two years.
-# The first has high mortality and the second low mortality
-# new_cyclone_mortality_scens[locations=At("23048100104"), scenarios=At(1)][1:3, :].data
-
-# We need
 new_axes = (
     Dim{:timesteps}(2008:2022),
     Dim{:locs}(collect(new_cyclone_mortality_scens.locs)),
