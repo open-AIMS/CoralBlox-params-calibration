@@ -16,9 +16,6 @@ metric_map_fig = begin
     rmse_colorbar_ticks = (rmse_ticks_range, string.(rmse_ticks_range))
 
     g0 = fig[1, 1:2] = GridLayout()
-
-    # colsize!(fig.layout, 1, Relative(0.52))
-    # colsize!(fig.layout, 2, Relative(0.56))
     g1 = fig[2, 1:2] = GridLayout()
     g11 = g1[1, 1] = GridLayout()
     g12 = g1[1, 2] = GridLayout()
@@ -183,24 +180,14 @@ metric_map_fig = begin
     Label(g21[1, 1, Left()], "Validation reefs", rotation=π / 2, padding=left_label_padding, fontsize=11pt,)
 
     colgap!(g0, 32)
-    # rowgap!(g0,1000)
-    # colgap!(gr2, 1, -20)
-    # colgap!(gcb1, 00)
     colgap!(g1, -60)
     colgap!(gr2, -60)
     rowgap!(fig.layout, 1, 0)
     rowgap!(fig.layout, 2, -10)
 
-    # cb = fig[3, :] = GridLayout()
-    # cb1 = cb[1, 1] = GridLayout()
-    # cb2 = cb[1, 2] = GridLayout()
-
-    # cb_srcc.flipaxis, cb_rmse.flipaxis = false, false
     cb_srcc.vertical, cb_rmse.vertical = false, false
     cb_srcc.labelvisible, cb_rmse.labelvisible = false, false
     cb_srcc.width, cb_rmse.width = 180, 180
-    # cb_srcc.tellwidth, cb_rmse.tellwidth = false, false
-    # cb_srcc.tellheight, cb_rmse.tellheight = false, false
 
     resize_to_layout!(fig)
     fig
