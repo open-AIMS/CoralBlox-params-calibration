@@ -24,10 +24,10 @@ GeoMakie.GO.simplify.(geometries, ratio=0.5)
 
 include("../plot/regional_comparison.jl")
 for (idx_d, d) in enumerate(data)
-    # idx_d = 1
-    # d = data[idx_d]
+    keys_sort = sortperm(collect(parse.(Int, getindex.(split.(string.(keys(d)), " "), 2))))
     fig_reef_groups = plot_regional_comparison(
-        d;
+        d,
+        keys(d)[keys_sort];
         opts=Dict{Symbol,Any}(
             :show_title => false,
             :titlesize => 11pt,
