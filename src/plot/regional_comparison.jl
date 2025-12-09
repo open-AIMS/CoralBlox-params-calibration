@@ -18,7 +18,8 @@ plot_regional_comparison(management_area_stats)
 ```
 """
 function plot_regional_comparison(
-    regional_stats::NamedTuple;
+    regional_stats::NamedTuple,
+    regional_stats_sorted_keys::Tuple;
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
@@ -26,7 +27,10 @@ function plot_regional_comparison(
 )::Figure
     opts::Dict{Symbol,Any} = merge(BASE_OPTS_REGIONAL_COMPARISON, opts)
     f = Figure(; fig_opts...)
-    plot_regional_comparison!(f, regional_stats; axis_opts=axis_opts, opts=opts)
+    plot_regional_comparison!(
+        f, regional_stats, regional_stats_sorted_keys;
+        axis_opts=axis_opts, opts=opts
+    )
 
     if get(legend_opts, :show_legend, true)
         legend_regional_comparison!(f[end+1, :]; legend_opts=legend_opts)
@@ -36,16 +40,17 @@ function plot_regional_comparison(
 end
 function plot_regional_comparison!(
     grid::Union{GridPosition,GridLayout,Figure},
-    regional_stats::NamedTuple;
+    regional_stats::NamedTuple,
+    regional_stats_sorted_keys::Tuple;
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Nothing
-    sorted_keys = sort(collect(keys(regional_stats)), by=x -> parse(Int, split(string(x), " ")[2]))
-    n_plots = length(sorted_keys)
-    positions = fig_coord.(1:n_plots, Ref(n_plots); invert=true)
+    n_plots = length(regional_stats_sorted_keys)
+    invert_positions = get(opts, :invert_positions, true)
+    positions = fig_coord.(1:n_plots, Ref(n_plots); invert=invert_positions)
 
     last_row_idx = maximum(getindex.(positions, 1))
-    for (idx, key) in enumerate(sorted_keys)
+    for (idx, key) in enumerate(regional_stats_sorted_keys)
         n_locations = regional_stats[key].n_locations
         _rmse = trunc(regional_stats[key].rmse, digits=2)
         _mae = trunc(regional_stats[key].mae, digits=2)
@@ -80,7 +85,11 @@ function plot_regional_comparison!(
         if get(opts, :showtextlabel, false)
             tlsize = get(opts, :textlabelsize, 16)
             tlbackground = get(opts, :textlabelbackground, :white)
-            textlabel!(ax, Point2f(2010, 0.8);
+            tlposition = get(opts, :textlabelposition, Point2f(2008, 0.9))
+            textlabel!(
+                ax,
+                tlposition;
+                text_align=(:left, :top),
                 text=label_text,
                 fontsize=tlsize,
                 strokewidth=0,

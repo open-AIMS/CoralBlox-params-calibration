@@ -29,18 +29,22 @@ function _location_err_title(
     end
     reef_id::String = get_ltmp_loc_unique_id(observations, ltmp_loc_idx)
 
-    rmse_, benchmark_, cc_, maee_, bias_, scc_ = collect_error_stats(
+    error_stats = collect_error_stats(
         raw_data, ltmp_loc_idx; observations=observations
     )
-    rmse_, benchmark_, cc_, maee_, bias_, scc_ = trunc.(
-        [rmse_, benchmark_, cc_, maee_, bias_, scc_], digits=4
+
+    rmse_model, rmse_benchmark, pcc, maee, bias, srcc = trunc.(
+        getproperty.(
+            Ref(error_stats), [:rmse_model, :rmse_benchmark, :pcc, :maee, :bias, :srcc]
+        ),
+        digits=4
     )
 
     err_report_str = if get(opts, :short_title, true)
-        "RMSE: $(rmse_) | SCC: $(scc_)"
+        "RMSE (model): $(rmse_model) | RMSE (benchmark): $(rmse_benchmark) | SRCC: $(srcc)"
     else
-        "RMSE: $(rmse_) | μ bnch: $(benchmark_) | " *
-        "PCC: $(cc_) | SCC: $(scc_) | MAEE: $(maee_) | BIAS: $(bias_)"
+        "RMSE (model): $(rmse_model) | RMSE (benchmark): $(rmse_benchmark) | " *
+        "PCC: $(pcc) | SRCC: $(srcc) | MAEE: $(maee) | BIAS: $(bias)"
     end
 
     title_text = rich("$(reef_name)\n$(reef_id)\n", rich(err_report_str, fontsize=15))

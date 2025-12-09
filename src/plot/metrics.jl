@@ -10,8 +10,8 @@ function plot_rmse_scatter(
     _rmse_diff = sort(rmse_diff)
 
     # Calculate mean and confidence intervals
-    mean_rmse_diff = mean(_rmse_diff)
-    std_rmse_diff = std(_rmse_diff)
+    mean_rmse_diff = trunc(mean(_rmse_diff); digits=3)
+    std_rmse_diff = trunc(std(_rmse_diff); digits=3)
 
     n_greater_than_zero = sum(_rmse_diff .> 0)
     success_rate = round((n_greater_than_zero / length(_rmse_diff)) * 100, digits=2)
@@ -167,7 +167,7 @@ function plot_correlation_map!(
     _metric::Vector{Float64} = if metric_type == :pcc
         cc_
     elseif metric_type == :srcc
-        srcc
+        srcc_
     else
         error("Invalid `metric_type`. ")
     end
@@ -252,7 +252,7 @@ function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED
     # n_validation_obs = length(observations.ltmp_unique_ids)
     # ltmp_loc_indexes = collect(1:n_validation_obs)
     error_stats = collect_error_stats(rs_raw; observations=observations)
-    rmse_, benchmark_, maee_, pcc_, srcc_, bias_ = eachrow(hcat(map(collect, error_stats)...))
+    Δrmse = error_stats.rmse_benchmark .- error_stats.rmse_model
 
     validation_ids = [
         findfirst(id .== observations.domain_gpkg.UNIQUE_ID)
@@ -264,12 +264,13 @@ function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED
         observations.domain_gpkg[validation_ids, "LAT"]
     end
     y_coords_sortperm = sortperm(y_coords, rev=false)
-    heat_data = hcat(benchmark_ .- rmse_, pcc_, srcc_, bias_)[y_coords_sortperm, :]
+
+    heat_data = hcat(Δrmse, error_stats.pcc, error_stats.srcc, error_stats.bias)[y_coords_sortperm, :]
     x_labels = ["Benchmark - Model (RMSE)", "PCC", "SRCC", "Bias"]
     colormaps = [:Spectral, :Spectral, :Spectral, :Spectral]
 
-    bias_up_limit = ceil(maximum(abs.(bias_)), digits=1)
-    rmse_diff_up_limit = ceil(maximum(abs.(benchmark_ .- rmse_)), digits=1)
+    bias_up_limit = ceil(maximum(abs.(error_stats.bias)), digits=1)
+    rmse_diff_up_limit = ceil(maximum(abs.(Δrmse)), digits=1)
     colorranges = [
         (-rmse_diff_up_limit, rmse_diff_up_limit),
         (-1.0, 1.0),

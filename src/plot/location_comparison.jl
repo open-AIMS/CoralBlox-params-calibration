@@ -27,7 +27,7 @@ function plot_location_comparison(
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
 )::Figure where {T<:Real}
-    ltmp_loc_index = findfirst(VALIDATION_STORE.ltmp_unique_ids .== reef_id)
+    ltmp_loc_index = findfirst(observations.ltmp_unique_ids .== reef_id)
     return plot_location_comparison(
         raw_data,
         ltmp_loc_index,
@@ -51,7 +51,7 @@ function plot_location_comparison!(
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
 )::Nothing where {T<:Real}
-    ltmp_loc_index = findfirst(VALIDATION_STORE.ltmp_unique_ids .== reef_id)
+    ltmp_loc_index = findfirst(observations.ltmp_unique_ids .== reef_id)
     plot_location_comparison!(
         grid,
         raw_data,
@@ -459,7 +459,6 @@ function taxa_props_legend_elements()
     taxa = String.(ADRIA.functional_group_names())
     taxa_colors = COLORS[Symbol.(taxa)]
     n_taxa = length(taxa)
-    taxa_labels = titlecase.(join.(split.(taxa, "_"), " "))
     line_el_attrs = (linewidth=2, linepoints=[Point2f(0, 0.5), Point2f(1.0, 0.5)], colgap=0)
     return [
         LineElement(color=taxa_colors[i], ; line_el_attrs...) for i in 1:n_taxa
@@ -470,6 +469,8 @@ function legend_taxa_props!(
     f::Union{Figure,GridPosition,GridLayout};
     legend_opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )::Nothing
+    taxa = String.(ADRIA.functional_group_names())
+    taxa_labels = titlecase.(join.(split.(taxa, "_"), " "))
     Legend(f, taxa_props_legend_elements(), taxa_labels, "Functional groups"; legend_opts...)
     return nothing
 end
