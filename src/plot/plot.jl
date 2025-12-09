@@ -37,6 +37,11 @@ FIG_SIZE::Dict = Dict(
     :map => (500, 600),
 )
 
+# * Units relative to 1 CSS px
+inch = 96
+pt = 4 / 3
+cm = inch / 2.54
+
 # Load helpers before everything else
 include("./plot_helpers.jl")
 
