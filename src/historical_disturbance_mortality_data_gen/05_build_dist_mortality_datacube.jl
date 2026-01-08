@@ -15,7 +15,6 @@ RME = "C:/Users/pribeiro/AIMS/DataPackages/ReefMod/reefmod_domain"
 dom = ADRIA.load_domain(RMEDomain, RME_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
 new_cyclone_mortality_scens = deepcopy(dom.cyclone_mortality_scens)
 
-
 # Convert RME_UNIQUE_ID to RME_GBRMPA_ID because that's what is used in the RME domain
 target_gbrmpa_ids = canonical_gpkg[[findfirst(x -> x == id, canonical_gpkg.RME_UNIQUE_ID) for id in target_loc_ids], :RME_GBRMPA_ID]
 
@@ -24,7 +23,6 @@ new_cyclone_mortality_scens[locs=At(target_gbrmpa_ids)] .= 0.0
 
 # disturbance_reef_ids are not the same as target_loc_ids. The former is a subset of the latter.
 disturbance_reef_ids = unique(survival_rates_df.reef_id)
-
 
 survival_cols = "survival_rate_" .* functional_groups
 
@@ -49,11 +47,6 @@ end
 # new_cyclone_mortality_scens[2:end, :, :, :] .= new_cyclone_mortality_scens[1:end-1, :, :, :].data
 # new_cyclone_mortality_scens[1, :, :, :] .= 0.0
 
-# This is a place where I know there are two disturbances in the first two years.
-# The first has high mortality and the second low mortality
-# new_cyclone_mortality_scens[locations=At("23048100104"), scenarios=At(1)][1:3, :].data
-
-# We need
 new_axes = (
     Dim{:timesteps}(2008:2022),
     Dim{:locs}(collect(new_cyclone_mortality_scens.locs)),
@@ -91,6 +84,3 @@ savedataset(
     driver=:netcdf,
     overwrite=true
 )
-
-# mypath = "C:/Users/pribeiro/AIMS/Code/ltmp_calibration/src/historical_disturbance_mortality_data_gen/data/historical_disturbance_mortality_rates.nc"
-# nc = ncinfo("C:/Users/pribeiro/AIMS/Code/ltmp_calibration/src/historical_disturbance_mortality_data_gen/data/historical_disturbance_mortality_rates/historical_disturbance_mortality_rates.nc")
