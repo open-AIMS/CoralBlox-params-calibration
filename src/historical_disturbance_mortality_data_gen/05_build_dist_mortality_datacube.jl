@@ -1,5 +1,9 @@
+using ADRIA
+using CSV, YAXArrays, NetCDF, DataFrames
+using Dates, TimeZones
+
 # Read the CSV file
-survival_rates_path = "disturbance_data_gen/data/disturbance_survival_rates.csv"
+survival_rates_path = "historical_disturbance_mortality_data_gen/data/disturbance_survival_rates.csv"
 survival_rates_df = CSV.read(survival_rates_path, DataFrame; stringtype=String, comment="#")
 
 # Ensure that there are no duplicate pairs of reef/year
@@ -11,7 +15,6 @@ RME = "C:/Users/pribeiro/AIMS/DataPackages/ReefMod/reefmod_domain"
 dom = ADRIA.load_domain(RMEDomain, RME_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
 new_cyclone_mortality_scens = deepcopy(dom.cyclone_mortality_scens)
 
-
 # Convert RME_UNIQUE_ID to RME_GBRMPA_ID because that's what is used in the RME domain
 target_gbrmpa_ids = canonical_gpkg[[findfirst(x -> x == id, canonical_gpkg.RME_UNIQUE_ID) for id in target_loc_ids], :RME_GBRMPA_ID]
 
@@ -20,7 +23,6 @@ new_cyclone_mortality_scens[locs=At(target_gbrmpa_ids)] .= 0.0
 
 # disturbance_reef_ids are not the same as target_loc_ids. The former is a subset of the latter.
 disturbance_reef_ids = unique(survival_rates_df.reef_id)
-
 
 survival_cols = "survival_rate_" .* functional_groups
 
@@ -45,17 +47,40 @@ end
 # new_cyclone_mortality_scens[2:end, :, :, :] .= new_cyclone_mortality_scens[1:end-1, :, :, :].data
 # new_cyclone_mortality_scens[1, :, :, :] .= 0.0
 
-# This is a place where I know there are two disturbances in the first two years.
-# The first has high mortality and the second low mortality
-# new_cyclone_mortality_scens[locations=At("23048100104"), scenarios=At(1)][1:3, :].data
-
-# We need
 new_axes = (
     Dim{:timesteps}(2008:2022),
     Dim{:locs}(collect(new_cyclone_mortality_scens.locs)),
-    Dim{:species}(String.([:tabular_Acropora, :corymbose_Acropora, :corymbose_non_Acropora, :small_massives, :large_massives])),
+    Dim{:species}(String.([
+        :tabular_Acropora,
+        :corymbose_Acropora,
+        :corymbose_non_Acropora,
+        :small_massives,
+        :large_massives
+    ])),
     Dim{:scenarios}(1:2)
 )
 
-disturbance_mortality_scens = YAXArray(new_axes, repeat(new_cyclone_mortality_scens.data, 1, 1, 1, 2))
-savedataset(Dataset(; disturbance_mortality_scens), path="disturbance_data_gen/data/historical_disturbance_mortality_scens.nc", driver=:netcdf, overwrite=true)
+properties = Dict{String,String}(
+    "timesteps" => "Vector{Int64} 2008:2022",
+    "locs" => "Vector{String} ['10-330', …, '23-049']",
+    "species" => "Vector{String} ['tabular_Acropora', 'corymbose_Acropora', 'corymbose_non_Acropora', 'small_massives', 'large_massives']",
+    "scenarios" => "Vector{Int64} [1,2] (both scenarios are identical)",
+    "unit" => "Proportion of coral cover lost (0-1)",
+    "created_at" => string(now(tz"UTC")),
+)
+
+disturbance_mortality_scens = YAXArray(
+    new_axes,
+    repeat(new_cyclone_mortality_scens.data, 1, 1, 1, 2),
+    properties
+)
+
+savedataset(
+    Dataset(; disturbance_mortality_scens);
+    path="historical_disturbance_mortality_data_gen/" *
+         "data/" *
+         "historical_disturbance_mortality_rates/" *
+         "historical_disturbance_mortality_rates.nc",
+    driver=:netcdf,
+    overwrite=true
+)

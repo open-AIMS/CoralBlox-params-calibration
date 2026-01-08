@@ -211,48 +211,12 @@ June year, with the final year being from 1 July 2023 to 30 June 2024.
 
 ## Historical cyclone/storms/COTS mortality rates
 
-The scripts in `src/historical_disturbance_mortality_data_gen` generate a NetCDF file with
-with mortality rate data for each timestep (years, from 2008 to 2022), location (all GBR
-reefs, labeled by RME_GBRMPA_ID) and functional group (tabular_Acropora, corymbose_Acropora, corymbose_non_Acropora, small_massives and large_massives). There are two scenarios, but
-both have the same data. That's because, although it is possible to save a YAXArray to a
-NetCDF file, with one of the dimensions having only one element (in this case, a single
-scenario), when we try to open this NetCDF using YAXArrays it raises an error.
+Scripts in `src/historical_disturbance_mortality_data_gen` are used to generate the
+`historical_disturbance_mortality_rates.nc` dataset. This process is semi-automated. After
+running script 01, the csv files created (`template_disturbance_years_manta.csv` and `template_disturbance_years_transect.csv`) should be manually filled with the years before
+and after each disturbance with data from the Reef Monitoring Dashboard
+(https://apps.aims.gov.au/reef-monitoring/reefs). These csv files also need to be renamed to ("disturbance_years_manta.csv" and "disturbance_years_transect.csv") before the next script
+is run. To our knowledge, there is no automatic way of determining which year is before and
+after a disturbance.
 
-The dimension `timesteps` contains the years when the disturbance mortality rates should be
-applied but for some of the disturbances, the difference between the year after and year
-before is greater than one year. We made the decision of the modelled and observed
-disturbances by year after.
-
-This process is semi-automated. After running script 1, the csv files generated (`template_disturbance_years_manta.csv` and `template_disturbance_years_transect.csv`) need
-to be manually filled with the years before and after each disturbance with data from the
-Reef Monitoring Dashboard (https://apps.aims.gov.au/reef-monitoring/reefs). These csv files
-also need to be renamed to ("disturbance_years_manta.csv" and
-"disturbance_years_transect.csv") before the next scripts are run. To our knowledge, there
-is no automatic way of determining which year is before and after a disturbance. Therefore,
-this data (year before and after each disturbance) was manually collected by going to each
-reef's page individually on the Reef Monitoring Dashboard.
-
-The total coral mortality for each reef was estimated from the manta tow data and then
-decomposed into functional group mortalities using transect data (benthic community cover).
-In both cases mortality was estimated comparing the cover after and before a disturbance.
-
-A few caveats:
-
-- For two reefs ("Rebe Reef" and "Martin Reef") there are disturbances reported in the
-transect data that are not reported in the manta tow data with a big time window in the
-manta tow without data. In Rebe Reef there are two manta tow disturbances, one in 2005 and
-another in 2011, but in the transect data for the same reef there is a disturbance in 2009.
-The same happens in "Martin Reef" between 2013 and 2017, with an extra disturbance being
-reported in the transect data in 2015. For these, a new datapoint was manually added to have
-a "hook" where the data for this extra disturbance could be added. The same happened on the
-other way for "Taylor Reef" between 2016 and 2018 and for "Hoskyn Island" between 2008 and
-2010, where there is a disturbance reported in the manta tow data that was not reported in
-the transect. Again, in these cases an extra year was added and the mortality was "split" in
-two years.
-- We assume that the maximum mortality rate is 0.95. That is to handle cases where a
-functional group cover recorded data goes from a certain positive value to 0 - which can be
-misleading, since a very low density of some functional group could lead to no cover being
-recorded for that functional group just by chance.
-- Missing benthic disturbance cover data for some specific combinations of reef/disturbance
-is filled with either average across all reefs or within bioregion. That (missing benthic
-disturbance cover data) happened on 24 of the 154 pairs reef/disturbance.
+More details about this dataset can be found in `src\historical_disturbance_mortality_data_gen\data\historical_disturbance_mortality_rates\README.md`
