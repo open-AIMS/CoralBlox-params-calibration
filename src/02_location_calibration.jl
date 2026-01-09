@@ -137,7 +137,7 @@ function obj_func(
         return 5e5 + (sum(linext_overage) + sum(mbrate_overage) + sum(scale_factors .> 1.0))
     end
 
-    loc_cover = dropdims(sum(res.raw; dims=2); dims=2) .* loc_k_areas' ./ loc_areas'
+    loc_cover = dropdims(sum(res.raw; dims=(2, 3)); dims=(2, 3)) .* loc_k_areas' ./ loc_areas'
 
     # class_error_series = class_error(loc_cover)
     reef_error_series = reef_error(loc_cover)
@@ -146,7 +146,7 @@ function obj_func(
     reef_perf = temporal_variability(reef_error_series)
 
     taxa_cover = dropdims(
-        sum(permutedims(reshape(res.raw, (15, 7, 5, 3806)), (1, 3, 2, 4)); dims=3); dims=3
+        sum(res.raw; dims=3); dims=3
     )
     fg_corr = reef_taxa_error(taxa_cover)
 
