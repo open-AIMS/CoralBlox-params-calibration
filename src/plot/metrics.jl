@@ -88,7 +88,7 @@ function plot_metric_scatter(
 end
 
 function plot_rmse_diff_map(
-    raw_data::Array{Float64,3};
+    raw_data::Array{Float64,4};
     observations::LocationDataStore=COMBINED_STORE,
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
@@ -104,7 +104,7 @@ function plot_rmse_diff_map(
 end
 function plot_rmse_diff_map!(
     g::Union{GridPosition,GridLayout},
-    raw_data::Array{Float64,3};
+    raw_data::Array{Float64,4};
     observations::LocationDataStore=COMBINED_STORE,
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
@@ -135,7 +135,7 @@ function obs_lon_lat(observations, domain_gpkg)::DataFrame
 end
 
 function plot_correlation_map(
-    raw_data::Array{Float64,3};
+    raw_data::Array{Float64,4};
     metric_type::Symbol=:scc,
     observations::LocationDataStore=COMBINED_STORE,
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
@@ -152,7 +152,7 @@ function plot_correlation_map(
 end
 function plot_correlation_map!(
     g::Union{GridPosition,GridLayout},
-    raw_data::Array{Float64,3};
+    raw_data::Array{Float64,4};
     metric_type::Symbol=:srcc,
     observations::LocationDataStore=COMBINED_STORE,
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),

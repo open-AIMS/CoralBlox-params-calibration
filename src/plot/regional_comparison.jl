@@ -217,7 +217,9 @@ function plot_all_regions(
     fig_title="",
     fig_size=(800, 800)
 )::Figure
-    s_rac = (dropdims(sum(model_results.raw, dims=2), dims=2) .* site_k_area(dom)') ./ loc_area(dom)'
+    s_rac = (dropdims(sum(model_results.raw, dims=(2,3)), dims=(2,3)) .*
+        site_k_area(dom)') ./
+        loc_area(dom)'
 
     north_res = ADRIA.DataCube(s_rac[:, region_masks[1]];
         timesteps=ref_years, locations=1:count(region_masks[1]))

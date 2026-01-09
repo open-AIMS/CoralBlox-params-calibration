@@ -1,6 +1,6 @@
 """
-    plot_location_comparison(dom, raw_data::Array{Float64,3}, reef_id::String, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore=COMBINED_STORE)::Figure
-    plot_location_comparison(dom, raw_data::Array{Float64,3}, ltmp_loc_index::Int64, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore=COMBINED_STORE)::Figure
+    plot_location_comparison(dom, raw_data::Array{Float64,4}, reef_id::String, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore=COMBINED_STORE)::Figure
+    plot_location_comparison(dom, raw_data::Array{Float64,4}, ltmp_loc_index::Int64, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore=COMBINED_STORE)::Figure
 
 Plot LTMP Manta Tow Coral Cover against the modelled cover output given the LTMP location
 index.
@@ -18,7 +18,7 @@ these plots and to set axis and figure opts. See `filter_opts` dosctring for mor
     - `:show_benthic_composition` : defaults to true.
 """
 function plot_location_comparison(
-    raw_data::Array{Float64,3},
+    raw_data::Array{Float64,4},
     reef_id::String,
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
@@ -41,7 +41,7 @@ function plot_location_comparison(
 end
 function plot_location_comparison!(
     grid::Union{GridPosition,GridLayout},
-    raw_data::Array{Float64,3},
+    raw_data::Array{Float64,4},
     reef_id::String,
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
@@ -67,7 +67,7 @@ function plot_location_comparison!(
     return nothing
 end
 function plot_location_comparison(
-    raw_data::Array{Float64,3},
+    raw_data::Array{Float64,4},
     ltmp_loc_idx::Int64,
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
@@ -95,7 +95,7 @@ function plot_location_comparison(
 end
 function plot_location_comparison!(
     grid::Union{GridPosition,GridLayout},
-    raw_data::Array{Float64,3},
+    raw_data::Array{Float64,4},
     ltmp_loc_idx::Int64,
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
@@ -164,7 +164,7 @@ function plot_location_comparison!(
 
     if get(opts, :show_benthic_composition, true)
         cb_loc_id = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
-        cover = rs_raw.raw[:, :, cb_loc_id]
+        cover = rs_raw.raw[:, :, :, cb_loc_id]
         _except_patterns = setdiff(subplot_keys, ["benthic"])
         plot_taxa_props!(
             grid[current_row, 1], cover;
@@ -219,8 +219,8 @@ function plot_modelled_v_ltmp!(
     loc_area = ADRIA.loc_area(dom)[domain_loc_idx]
 
     loc_cover = dropdims(
-        sum(raw_data[:, :, domain_loc_idx], dims=2),
-        dims=2) .* loc_k_area ./ loc_area
+        sum(raw_data[:, :,:, domain_loc_idx], dims=(2,3)),
+        dims=(2,3)) .* loc_k_area ./ loc_area
 
     obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
@@ -440,7 +440,7 @@ function plot_taxa_props!(
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Axis
     color = COLORMAPS.taxa
-    cover = reshape(cover, (15, 7, 5))
+    cover = permutedims(cover, (1, 3, 2))
     cover = dropdims(sum(cover, dims=2), dims=2) ./ dropdims(sum(cover, dims=(2, 3)), dims=2)
     cover = permutedims(cover, (2, 1))
     xs = 2008:2022

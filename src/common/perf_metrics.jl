@@ -121,7 +121,7 @@ function _loc_cover(
     raw_data;
     loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom)
 )
-    dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
+    dropdims(sum(raw_data, dims=(2,3)), dims=(2,3)) .* loc_k_areas' ./ loc_areas'
 end
 
 """
@@ -130,7 +130,7 @@ end
 Error stats for a single location or for all locations.
 """
 function collect_error_stats(
-    raw_data;
+    raw_data::Array{Float64,4};
     observations::LocationDataStore=CALIBRATION_STORE,
     loc_k_areas=ADRIA.site_k_area(dom),
     loc_areas=ADRIA.loc_area(dom)
@@ -163,7 +163,7 @@ function collect_error_stats(
     return NamedTuple{error_names}((rmse_model, rmse_benchmark, maee, pcc, srcc, bias))
 end
 function collect_error_stats(
-    raw_data,
+    raw_data::Array{Float64,4},
     ltmp_loc_idx;
     observations::LocationDataStore=CALIBRATION_STORE,
     loc_k_areas=ADRIA.site_k_area(dom),
@@ -325,7 +325,7 @@ function class_error(
     return err_series ./ err_counts
 end
 
-function rmse_diff(rs_raw::Array{Float64,3}, observations::LocationDataStore)::Vector{Float64}
+function rmse_diff(rs_raw::Array{Float64,4}, observations::LocationDataStore)::Vector{Float64}
     n_validation_locs = length(observations.ltmp_cover_to_domain)
     model_rmse = zeros(Float64, n_validation_locs)
     benchmark_rmse = zeros(Float64, n_validation_locs)
@@ -340,7 +340,7 @@ function rmse_diff(rs_raw::Array{Float64,3}, observations::LocationDataStore)::V
 end
 
 function location_correlation_coefficients(
-    raw_data::Array{Float64,3},
+    raw_data::Array{Float64,4},
     observations::LocationDataStore;
     correlation_metric::Symbol=:spearman
 )
