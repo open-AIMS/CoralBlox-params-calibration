@@ -80,12 +80,16 @@ Plot the proportion of coral population composed of each functional group. Popul
 proportions are calculated using the average coral diameter of each size class.
 """
 function taxa_population_proportions(raw_data; fig_size=(800, 400))::Figure
-    sc_mean_area = reshape(
-        permutedims(ADRIA.colony_areas()[2], (2, 1)),
-        (1, 35, 1)
-    )
-    population = raw_data ./ sc_mean_area
-    population = reshape(population, (15, 7, 5, 3806))
+    ca = ADRIA.colony_areas()[2]
+    population = zeros(size(raw_data)...)
+
+    for fg in 1:5
+        for sc in 1:7
+            @views population[:,fg,sc,:] .= (raw_data[:,fg,sc,:] ./ ca[fg,sc])
+        end
+    end
+
+    population = permutedims(population, (1,3,2,4))
     population = dropdims(sum(population, dims=4), dims=4)
     population ./= sum(population, dims=(2, 3))
     population = dropdims(sum(population, dims=2), dims=2)
@@ -118,13 +122,16 @@ Calculate the percentage of coral population occupied by each size class split b
 group.
 """
 function temporal_size_class_proportions(raw_data; fig_size=(1000, 1000))::Figure
-    sc_mean_area = reshape(
-        permutedims(ADRIA.colony_areas()[2], (2, 1)),
-        (1, 35, 1)
-    )
-    n_locs = size(raw_data, 3)
-    population = raw_data ./ sc_mean_area
-    population = reshape(population, (15, 7, 5, n_locs))
+    ca = ADRIA.colony_areas()[2]
+    population = zeros(size(raw_data)...)
+
+    for fg in 1:5
+        for sc in 1:7
+            @views population[:,fg,sc,:] .= (raw_data[:,fg,sc,:] ./ ca[fg,sc])
+        end
+    end
+    population = permutedims(population, (1,3,2,4))
+
     population = dropdims(sum(population, dims=4), dims=4)
     population ./= sum(population, dims=2)
     population = permutedims(population, (3, 2, 1))
@@ -312,7 +319,7 @@ group = [(i - 1) % 5 + 1 for i in 1:35]
 # Flattened coral background mortality rate.
 flt_mb_rate = corals.mb_rate
 # Plot parameters
-f = plot_coral_param(<Loc Name>, "Background Mortality", category, group, flt_mb_rate)
+f = plot_coral_param(<Location Name>, "Background Mortality", category, group, flt_mb_rate)
 ```
 
 # Arguments

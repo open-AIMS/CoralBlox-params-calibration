@@ -5,6 +5,12 @@ mkpath(regional_analysis_save_dir)
 
 canonical_reefs = dom.loc_data
 
+base_opts = Dict{Symbol,Any}(
+    :textlabelbackground => "#ededeb",
+    :showtextlabel => true,
+    :invert_positions => false
+)
+
 # * Regions
 region_masks = [NORTH_MASK, CENTRAL_MASK, SOUTH_MASK]
 regions = [:North, :Central, :South]
@@ -12,30 +18,23 @@ regions = [:North, :Central, :South]
 region_stats_validation = region_stats(regions, region_masks; observations=VALIDATION_STORE)
 region_stats_calibration = region_stats(regions, region_masks; observations=CALIBRATION_STORE)
 
-# Plot valid and calib on the same plot
-fig_regions = plot_regional_comparison(
-    region_stats_validation,
-    region_stats_calibration;
-    fig_title="Regions comparison",
-    fig_size=(1000, 400)
-)
-save(joinpath(regional_analysis_save_dir, "regional__regions.png"), fig_regions)
-
 # Plot just valid.
 fig_regions_valid = plot_regional_comparison(
-    region_stats_validation;
-    fig_title="Regions comparison - Validation Loc",
-    fig_size=(1000, 400)
+    region_stats_validation,
+    keys(region_stats_validation);
+    opts=merge(base_opts, Dict{Symbol,Any}(:title => "Regional comparison - Validation")),
+    fig_opts=Dict{Symbol,Any}(:size => (1000, 400))
 )
-save(joinpath(regional_analysis_save_dir, "regional__regions_validation.png"), fig_regions_valid)
+save(joinpath(regional_analysis_save_dir, "regional__regions__validation.png"), fig_regions_valid)
 
 # Plot just calib
 fig_regions_calib = plot_regional_comparison(
-    region_stats_calibration;
-    fig_title="Regions comparison - Calibration Loc",
-    fig_size=(1000, 400)
+    region_stats_calibration,
+    keys(region_stats_calibration);
+    opts=merge(base_opts, Dict{Symbol,Any}(:title => "Regional comparison - Calibration")),
+    fig_opts=Dict{Symbol,Any}(:size => (1000, 400))
 )
-save(joinpath(regional_analysis_save_dir, "regional__regions_calibration.png"), fig_regions_calib)
+save(joinpath(regional_analysis_save_dir, "regional__regions__calibration.png"), fig_regions_calib)
 
 # * Management Areas
 mareas = unique(canonical_reefs.management_area_short)
@@ -43,39 +42,51 @@ marea_masks = [canonical_reefs.management_area_short .== area for area in mareas
 r_stats_validation = region_stats(Symbol.(mareas), marea_masks; observations=VALIDATION_STORE)
 r_stats_calibration = region_stats(Symbol.(mareas), marea_masks; observations=CALIBRATION_STORE)
 
-# Plot valid and calib on the same plot
+# Plot just valid.
 fig_mang_area = plot_regional_comparison(
     r_stats_validation,
-    r_stats_calibration;
-    fig_title="Management areas comparison",
-    fig_size=(1000, 400)
+    keys(r_stats_validation);
+    opts=merge(
+        base_opts,
+        Dict{Symbol,Any}(:title => "Management areas comparison\nValidation Locations",)
+    ),
+    fig_opts=Dict{Symbol,Any}(:size => (1000, 400))
 )
-save(joinpath(regional_analysis_save_dir, "regional__management_areas.png"), fig_mang_area)
+save(joinpath(regional_analysis_save_dir, "regional__management_areas__validation.png"), fig_mang_area)
 
-# Plot just valid. or calib.
-# fig_mang_area = plot_regional_comparison(r_stats_calibration;
-#     fig_title="Management areas comparison\nValidation Locations", fig_size=(1000, 400))
-# save(joinpath(regional_analysis_save_dir, "regional__management_areas.png"), fig_mang_area)
+fig_mang_area = plot_regional_comparison(
+    r_stats_calibration,
+    keys(r_stats_calibration);
+    opts=merge(base_opts, Dict{Symbol,Any}(:title => "Management areas comparison\nCalibration Locations")),
+    fig_opts=Dict{Symbol,Any}(:size => (1000, 400))
+)
+save(joinpath(regional_analysis_save_dir, "regional__management_areas__calibration.png"), fig_mang_area)
 
 # * Spatial Grouping
 spatial_groups = unique(canonical_reefs.CB_CALIB_GROUPS)
 spatial_group_masks = [canonical_reefs.CB_CALIB_GROUPS .== group for group in spatial_groups]
 
-spatial_group_stats_valid = region_stats(Symbol.("Group " .* string.(spatial_groups)), spatial_group_masks; observations=VALIDATION_STORE)
 spatial_group_stats_calib = region_stats(Symbol.("Group " .* string.(spatial_groups)), spatial_group_masks; observations=CALIBRATION_STORE)
+spatial_group_stats_valid = region_stats(Symbol.("Group " .* string.(spatial_groups)), spatial_group_masks; observations=VALIDATION_STORE)
 
-# Plot valid and calib on the same plot
-fig_spat_gps = plot_regional_comparison(
-    spatial_group_stats_valid,
-    spatial_group_stats_calib;
-    fig_title="Spatial grouping comparison",
-    fig_size=(1000, 800)
-)
-save(joinpath(regional_analysis_save_dir, "regional__spatial_grouping.png"), fig_spat_gps)
+keys_sort = sortperm(collect(parse.(Int, getindex.(split.(string.(keys(spatial_group_stats_valid)), " "), 2))))
 
 # Plot just valid. or calib.
-# fig_spat_gps = plot_regional_comparison(spatial_group_stats; fig_title="Spatial grouping comparison\nValidation Locations", fig_size=(1000, 800))
-# save(joinpath(regional_analysis_save_dir, "regional__spatial_grouping.png"), fig_spat_gps)
+fig_spat_gps = plot_regional_comparison(
+    spatial_group_stats_valid,
+    keys(spatial_group_stats_valid)[keys_sort];
+    opts=merge(base_opts, Dict{Symbol,Any}(:title => "Reef groups (validation reefs)", :invert_positions => true)),
+    fig_opts=Dict{Symbol,Any}(:size => (1000, 800))
+)
+save(joinpath(regional_analysis_save_dir, "regional__spatial_grouping__validation.png"), fig_spat_gps)
+
+fig_spat_gps = plot_regional_comparison(
+    spatial_group_stats_calib,
+    keys(spatial_group_stats_calib)[keys_sort];
+    opts=merge(base_opts, Dict{Symbol,Any}(:title => "Reef groups (calibration reefs)", :invert_positions => true)),
+    fig_opts=Dict{Symbol,Any}(:size => (1000, 800))
+)
+save(joinpath(regional_analysis_save_dir, "regional__spatial_grouping__calibration.png"), fig_spat_gps)
 
 # * Sectors
 sectors_path = "C:/Users/pribeiro/AIMS/Datasets/AIMS_Sectors.csv"
@@ -94,16 +105,22 @@ end
 sectors_group_stats_validation = region_stats(Symbol.(sector_names), sector_masks; observations=VALIDATION_STORE)
 sectors_group_stats_calibration = region_stats(Symbol.(sector_names), sector_masks; observations=CALIBRATION_STORE)
 
-# Plot valid and calib on the same plot
-fig_sectors = plot_regional_comparison(
-    sectors_group_stats_validation, sectors_group_stats_calibration;
-    fig_title="Sectors comparison", fig_size=(1000, 600)
-)
-save(joinpath(regional_analysis_save_dir, "regional__sectors.png"), fig_sectors)
-
 # Plot just valid. or calib.
-# fig_sectors = plot_regional_comparison(sectors_group_stats; fig_title="Sectors comparison\nValidation Locations", fig_size=(1000, 600))
-# save(joinpath(regional_analysis_save_dir, "regional__sectors.png"), fig_sectors)
+fig_sectors = plot_regional_comparison(
+    sectors_group_stats_validation,
+    keys(sectors_group_stats_validation);
+    opts=merge(base_opts, Dict{Symbol,Any}(:title => "Sectors (validation reefs)")),
+    fig_opts=Dict{Symbol,Any}(:size => (1000, 600))
+)
+save(joinpath(regional_analysis_save_dir, "regional__sectors__validation.png"), fig_sectors)
+
+fig_sectors = plot_regional_comparison(
+    sectors_group_stats_calibration,
+    keys(sectors_group_stats_calibration);
+    opts=merge(base_opts, Dict{Symbol,Any}(:title => "Sectors (calibration reefs)", :invert_positions => true)),
+    fig_opts=Dict{Symbol,Any}(:size => (1000, 900))
+)
+save(joinpath(regional_analysis_save_dir, "regional__sectors__calibration.png"), fig_sectors)
 
 # # TODO Bioregions
 # Should be almost identical to CB_CALIB_GROUPS
@@ -112,7 +129,7 @@ save(joinpath(regional_analysis_save_dir, "regional__sectors.png"), fig_sectors)
 # The LTMP data used here is the modelled data from Murray Logan and Mike Emslie
 f_all_regions = plot_all_regions(
     dom, rs_raw;
-    fig_title="Regions comparison (modelled LTMP data)\nAll reefs", fig_size=(900, 400)
+    fig_title="Regional comparison (modelled LTMP data)\nAll reefs", fig_size=(900, 400)
 )
 save(joinpath(regional_analysis_save_dir, "locs_reg.png"), f_all_regions)
 
@@ -123,11 +140,10 @@ NORTH_VALIDATION_MASK = NORTH_MASK .&& validation_mask
 CENTRAL_VALIDATION_MASK = CENTRAL_MASK .&& validation_mask
 SOUTH_VALIDATION_MASK = SOUTH_MASK .&& validation_mask
 
-include("plot/plot.jl")
 f_all_regions_validation = plot_all_regions(
     dom, rs_raw;
     region_masks=[NORTH_VALIDATION_MASK, CENTRAL_VALIDATION_MASK, SOUTH_VALIDATION_MASK],
-    fig_title="Regions comparison (modelled LTMP data)\nValidation reefs",
+    fig_title="Regional comparison (modelled LTMP data)\nValidation reefs",
     fig_size=(900, 400)
 )
 save(joinpath(regional_analysis_save_dir, "locs_reg_validation.png"), f_all_regions_validation)

@@ -6,12 +6,17 @@ COLORMAPS = (
 COLORS = (
     model_vs_obs_color_model="#1E88E5",
     model_vs_obs_color_obs="#D81B60",
-    model_dist_color_dhw="#389821",
+    model_dist_color_dhw="#eb4034",
     model_dist_color_dist="#31004D",
     model_line_color="#1E88E5",
     model_band_color=("#1E88E5", 0.4),
     historic_line_color="#D81B60",
     historic_band_color=("#D81B60", 0.3),
+    NamedTuple(zip(
+        Symbol.(ADRIA.functional_group_names()),
+        Makie.ColorSchemes.seaborn_colorblind6[1:5],
+    )
+    )...
 )
 
 FONT_SIZES = (
@@ -31,6 +36,11 @@ BASE_AXIS_OPTS::Dict = Dict(
 FIG_SIZE::Dict = Dict(
     :map => (500, 600),
 )
+
+# * Units relative to 1 CSS px
+inch = 96
+pt = 4 / 3
+cm = inch / 2.54
 
 # Load helpers before everything else
 include("./plot_helpers.jl")

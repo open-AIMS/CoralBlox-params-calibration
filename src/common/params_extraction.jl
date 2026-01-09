@@ -6,26 +6,33 @@ calibrated_params = deserialize(coral_param_fn)
 params_dir_path = joinpath(OUT_DIR, "params")
 !isdir(params_dir_path) && mkdir(params_dir_path)
 
+fgroup_names = ADRIA.functional_group_names()
+
 # Coral params
-# CORAL_PARAM_NAMES
-coral_params_df = DataFrame(calibrated_params[PARAM_IDXS[1]:PARAM_IDXS[2]]', CORAL_PARAM_NAMES)
-CSV.write(joinpath(params_dir_path, "coral_params.csv"), coral_params_df)
 
-# Scale Factors params
-scale_params_df = DataFrame(calibrated_params[PARAM_IDXS[3]:PARAM_IDXS[4]]', SCALE_FACTOR_NAMES)
-CSV.write(joinpath(params_dir_path, "scale_params.csv"), scale_params_df)
+## Linear extension
+linear_extension_mask = occursin.(Ref("_linear_extension"), string.(CORAL_PARAM_NAMES))
+linear_extension_data = calibrated_params[(PARAM_IDXS[1]:PARAM_IDXS[2])[linear_extension_mask]]
+linear_extension_df = DataFrame(reshape(linear_extension_data, 7, 5), fgroup_names)
+CSV.write(joinpath(params_dir_path, "linear_extension_params.csv"), linear_extension_df)
 
-growth_accel_params_df = DataFrame(calibrated_params[PARAM_IDXS[5]:PARAM_IDXS[6]]', GROWTH_ACCEL_NAMES)
-CSV.write(joinpath(params_dir_path, "growth_accel_params.csv"), growth_accel_params_df)
+## Mb_rate
+mb_rate_mask = occursin.(Ref("_mb_rate"), string.(CORAL_PARAM_NAMES))
+mb_rate_data = calibrated_params[(PARAM_IDXS[1]:PARAM_IDXS[2])[mb_rate_mask]]
+mb_rate_df = DataFrame(reshape(mb_rate_data, 7, 5), fgroup_names)
+CSV.write(joinpath(params_dir_path, "mb_rate_params.csv"), mb_rate_df)
 
-# In case we want to check the calibrated values
-# scale_lin_ext = calibrated_params[PARAM_IDXS[3]:PARAM_IDXS[4]][[occursin(r"linear_extension", s) for s in SCALE_FACTOR_NAMES]]
-# mean(scale_lin_ext)
-# std(scale_lin_ext)
+## Dist mean
+dist_mean_mask = occursin.(Ref("_dist_mean"), string.(CORAL_PARAM_NAMES))
+dist_mean_data = calibrated_params[(PARAM_IDXS[1]:PARAM_IDXS[2])[dist_mean_mask]]
+dist_mean_df = DataFrame(reshape(dist_mean_data, 7, 5)', fgroup_names)
+CSV.write(joinpath(params_dir_path, "dist_mean_params.csv"), dist_mean_df)
 
-# scale_mb_rate = calibrated_params[PARAM_IDXS[3]:PARAM_IDXS[4]][[occursin(r"mb_rate", s) for s in SCALE_FACTOR_NAMES]]
-# mean(scale_mb_rate)
-# std(scale_mb_rate)
+## Linear extension scale factor
+linear_extension_scale_mask = occursin.(Ref("linear_extension_scale"), string.(CORAL_PARAM_NAMES))
+linear_extension_scale_data = calibrated_params[(PARAM_IDXS[1]:PARAM_IDXS[2])[linear_extension_scale_mask]]
+linear_extension_scale_df = DataFrame(reshape(linear_extension_scale_data, 12, 5), fgroup_names)
+CSV.write(joinpath(params_dir_path, "linear_extension_scale_params.csv"), linear_extension_scale_df)
 
 ## Mb_rate scale factor
 mb_rate_scale_mask = occursin.(Ref("mb_rate_scale"), string.(CORAL_PARAM_NAMES))

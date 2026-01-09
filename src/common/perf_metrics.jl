@@ -121,7 +121,7 @@ function _loc_cover(
     raw_data;
     loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom)
 )
-    dropdims(sum(raw_data, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
+    dropdims(sum(raw_data, dims=(2,3)), dims=(2,3)) .* loc_k_areas' ./ loc_areas'
 end
 
 """
@@ -130,7 +130,7 @@ end
 Error stats for a single location or for all locations.
 """
 function collect_error_stats(
-    raw_data;
+    raw_data::Array{Float64,4};
     observations::LocationDataStore=CALIBRATION_STORE,
     loc_k_areas=ADRIA.site_k_area(dom),
     loc_areas=ADRIA.loc_area(dom)
@@ -139,34 +139,31 @@ function collect_error_stats(
     n_locations = size(observations.ltmp_coral_cover, 1)
 
     # Vectors to hold error stats for each location
-    rmse_model, rmse_benchmark, maee, pcc, scc, bias =
+    rmse_model, rmse_benchmark, maee, pcc, srcc, bias =
         collect.(eachcol(repeat(zeros(Float64, n_locations), 1, n_locations)))
 
     for loc in 1:n_locations
         error_stats = collect_error_stats(
             raw_data,
-            ltmp_loc_idx;
+            loc;
             observations=observations,
             loc_k_areas=loc_k_areas,
             loc_areas=loc_areas
         )
 
-        # TODO Update once I change the other method to return a NamedTuple as well
-
-
-        rmse_model[loc] = error_stats[1]
-        rmse_benchmark[loc] = error_stats[2]
-        maee[loc] = error_stats[3]
-        pcc[loc] = error_stats[4]
-        scc[loc] = error_stats[6]                   # This is right...
-        bias[loc] = error_stats[5]
+        rmse_model[loc] = error_stats.rmse_model
+        rmse_benchmark[loc] = error_stats.rmse_benchmark
+        maee[loc] = error_stats.maee
+        pcc[loc] = error_stats.pcc
+        srcc[loc] = error_stats.srcc
+        bias[loc] = error_stats.bias
     end
 
-    error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :scc, :bias)
-    return NamedTuple{error_names}((rmse_model, rmse_benchmark, maee, pcc, scc, bias))
+    error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :srcc, :bias)
+    return NamedTuple{error_names}((rmse_model, rmse_benchmark, maee, pcc, srcc, bias))
 end
 function collect_error_stats(
-    raw_data,
+    raw_data::Array{Float64,4},
     ltmp_loc_idx;
     observations::LocationDataStore=CALIBRATION_STORE,
     loc_k_areas=ADRIA.site_k_area(dom),
@@ -188,10 +185,10 @@ function collect_error_stats(
     reef_id = get_ltmp_loc_unique_id(observations, ltmp_loc_idx)
 
     rmse_::Float64 = rmse(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
-    cc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    pcc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     maee_::Float64 = MAEE(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     bias_::Float64 = bias(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
-    scc_::Float64 = corspearman(
+    srcc_::Float64 = corspearman(
         sim_data[not_missing_obs], Vector{Float64}(obs_loc_data[not_missing_obs])
     )
 
@@ -199,7 +196,8 @@ function collect_error_stats(
     s = length(sim_data[not_missing_obs])
     benchmark_::Float64 = rmse(fill(μ_obs, s), obs_loc_data[not_missing_obs])
 
-    return rmse_, benchmark_, cc_, maee_, bias_, scc_
+    error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :srcc, :bias)
+    return NamedTuple{error_names}((rmse_, benchmark_, maee_, pcc_, srcc_, bias_))
 end
 
 """
@@ -326,22 +324,22 @@ function class_error(
     return err_series ./ err_counts
 end
 
-function rmse_diff(rs_raw::Array{Float64,3}, observations::LocationDataStore)::Vector{Float64}
+function rmse_diff(rs_raw::Array{Float64,4}, observations::LocationDataStore)::Vector{Float64}
     n_validation_locs = length(observations.ltmp_cover_to_domain)
     model_rmse = zeros(Float64, n_validation_locs)
     benchmark_rmse = zeros(Float64, n_validation_locs)
     for i in 1:n_validation_locs
-        rmse_, benchmark_, cc_, maee_, bias_, scc_ = collect_error_stats(
+        error_stats = collect_error_stats(
             rs_raw, i; observations=observations
         )
-        model_rmse[i] = rmse_
-        benchmark_rmse[i] = benchmark_
+        model_rmse[i] = error_stats.rmse_model
+        benchmark_rmse[i] = error_stats.rmse_benchmark
     end
     return benchmark_rmse .- model_rmse
 end
 
 function location_correlation_coefficients(
-    raw_data::Array{Float64,3},
+    raw_data::Array{Float64,4},
     observations::LocationDataStore;
     correlation_metric::Symbol=:spearman
 )
@@ -381,12 +379,13 @@ Refs:
 - https://stats.stackexchange.com/questions/8019/averaging-correlation-values?utm_source=chatgpt.com
 - https://www.tandfonline.com/doi/abs/10.1080/00221309809595548
 """
-function average_cc(cc_data)
+function average_cc(cc_data::Vector{Float64}; w::Vector{Float64}=ones(Float64, length(cc_data)))
     # Apply fisher transformation
     f_data = atanh.(cc_data)
 
-    # Calculate confidence intervals and mean
-    f_confint = ADRIA.analysis.series_confint(atanh.(cc_data)[:, :]')
+    # Weighted mean
+    mean_cc = mean(f_data, weights(w))
 
-    return tanh.(f_confint)
+    # Apply inverse fisher transformation
+    return tanh.(mean_cc)
 end
