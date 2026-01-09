@@ -112,9 +112,8 @@ function plot_rmse_diff_map!(
     n_obs = length(observations.ltmp_unique_ids)
     ltmp_loc_indexes = collect(1:n_obs)
 
-    error_stats = collect_error_stats.([raw_data], ltmp_loc_indexes; observations=observations)
-    rmse_, benchmark_, _, _, _, _ = eachrow(hcat(map(collect, error_stats)...))
-    rmse_diffs = benchmark_ .- rmse_
+    error_stats = collect_error_stats(raw_data; observations=observations)
+    rmse_diffs = error_stats.rmse_benchmark .- error_stats.rmse_model
 
     domain_gpkg = observations.domain_gpkg
     geometries = domain_gpkg.geometry
@@ -161,8 +160,9 @@ function plot_correlation_map!(
     n_validation_obs = length(observations.ltmp_unique_ids)
     ltmp_loc_indexes = collect(1:n_validation_obs)
 
-    error_stats = collect_error_stats.(Ref(raw_data), ltmp_loc_indexes; observations=observations)
-    _, _, cc_, _, _, srcc_ = eachrow(hcat(map(collect, error_stats)...))
+    error_stats = collect_error_stats(raw_data; observations=observations)
+    cc_ = error_stats.pcc
+    srcc_ = error_stats.srcc
 
     _metric::Vector{Float64} = if metric_type == :pcc
         cc_

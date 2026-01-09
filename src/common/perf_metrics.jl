@@ -197,8 +197,7 @@ function collect_error_stats(
     benchmark_::Float64 = rmse(fill(μ_obs, s), obs_loc_data[not_missing_obs])
 
     error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :srcc, :bias)
-    NamedTuple{error_names}((rmse_, benchmark_, maee_, pcc_, srcc_, bias_))
-    # return rmse_, benchmark_, cc_, maee_, bias_, scc_
+    return NamedTuple{error_names}((rmse_, benchmark_, maee_, pcc_, srcc_, bias_))
 end
 
 """
@@ -330,11 +329,11 @@ function rmse_diff(rs_raw::Array{Float64,4}, observations::LocationDataStore)::V
     model_rmse = zeros(Float64, n_validation_locs)
     benchmark_rmse = zeros(Float64, n_validation_locs)
     for i in 1:n_validation_locs
-        rmse_, benchmark_, cc_, maee_, bias_, scc_ = collect_error_stats(
+        error_stats = collect_error_stats(
             rs_raw, i; observations=observations
         )
-        model_rmse[i] = rmse_
-        benchmark_rmse[i] = benchmark_
+        model_rmse[i] = error_stats.rmse_model
+        benchmark_rmse[i] = error_stats.rmse_benchmark
     end
     return benchmark_rmse .- model_rmse
 end
