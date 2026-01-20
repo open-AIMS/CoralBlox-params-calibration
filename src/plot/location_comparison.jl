@@ -178,8 +178,9 @@ function plot_location_comparison!(
     titlehalign = pop!(fig_opts, :titlehalign, :center)
     titlevalign = pop!(fig_opts, :titlevalign, :center)
     titlefont = pop!(fig_opts, :titlefont, :regular)
+    titlejustification = pop!(fig_opts, :titlejustification, :left)
     Label(grid[0, :], title_text, fontsize=titlesize, tellwidth=false, halign=titlehalign,
-        valign=titlevalign, font=titlefont
+        valign=titlevalign, font=titlefont, justification=titlejustification, padding=(0, 0, -15, 0)
     )
 
     return nothing
@@ -219,8 +220,8 @@ function plot_modelled_v_ltmp!(
     loc_area = ADRIA.loc_area(dom)[domain_loc_idx]
 
     loc_cover = dropdims(
-        sum(raw_data[:, :,:, domain_loc_idx], dims=(2,3)),
-        dims=(2,3)) .* loc_k_area ./ loc_area
+        sum(raw_data[:, :, :, domain_loc_idx], dims=(2, 3)),
+        dims=(2, 3)) .* loc_k_area ./ loc_area
 
     obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
