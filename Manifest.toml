@@ -2,7 +2,7 @@
 
 julia_version = "1.11.7"
 manifest_format = "2.0"
-project_hash = "b91dddbf31bb3ae6ee3f75f23256adc2e6f186bb"
+project_hash = "1eef6c5c72589070a8817c7bc6f794be6c2dc912"
 
 [[deps.ADRIA]]
 deps = ["ADRIAIndicators", "ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataEnvelopmentAnalysis", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FLoops", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "HypothesisTests", "ImageIO", "InteractiveUtils", "Interpolations", "JMcDM", "JSON", "JuliennedArrays", "LERC_jll", "LinearAlgebra", "Logging", "MLJ", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "SIRUS", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StableRNGs", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
@@ -306,6 +306,7 @@ version = "0.1.9"
 [[deps.BlackBoxOptim]]
 deps = ["CPUTime", "Compat", "Distributed", "Distributions", "JSON", "LinearAlgebra", "Printf", "Random", "Requires", "SpatialIndexing", "StatsBase"]
 git-tree-sha1 = "9c203a2515b5eeab8f2987614d2b1db83ef03542"
+pinned = true
 uuid = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 version = "0.6.3"
 weakdeps = ["HTTP", "Sockets"]
@@ -372,6 +373,7 @@ version = "1.0.1+0"
 [[deps.CSV]]
 deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
 git-tree-sha1 = "deddd8725e5e1cc49ee205a1964256043720a6c3"
+pinned = true
 uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 version = "0.10.15"
 
@@ -384,6 +386,7 @@ version = "1.1.1"
 [[deps.CairoMakie]]
 deps = ["CRC32c", "Cairo", "Cairo_jll", "Colors", "FileIO", "FreeType", "GeometryBasics", "LinearAlgebra", "Makie", "PrecompileTools"]
 git-tree-sha1 = "5017d6849aff775febd36049f7d926a5fb6677ec"
+pinned = true
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 version = "0.15.8"
 
@@ -659,6 +662,7 @@ version = "0.9.1"
 [[deps.DataFrames]]
 deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
 git-tree-sha1 = "d8928e9169ff76c6281f39a659f9bca3a573f24c"
+pinned = true
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 version = "1.8.1"
 
@@ -681,6 +685,7 @@ version = "1.0.1"
 
 [[deps.Dates]]
 deps = ["Printf"]
+pinned = true
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 version = "1.11.0"
 
@@ -807,12 +812,14 @@ version = "0.1.12"
 [[deps.DiskArrays]]
 deps = ["ConstructionBase", "LRUCache", "Mmap", "OffsetArrays"]
 git-tree-sha1 = "e8c9406f3164633756a0db93334ef23102933eef"
+pinned = true
 uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
 version = "0.4.18"
 
 [[deps.Distances]]
 deps = ["LinearAlgebra", "Statistics", "StatsAPI"]
 git-tree-sha1 = "c7e3a542b999843086e2f29dac96a618c105be1d"
+pinned = true
 uuid = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 version = "0.10.12"
 weakdeps = ["ChainRulesCore", "SparseArrays"]
@@ -1121,6 +1128,7 @@ version = "0.2.0"
 [[deps.GeoDataFrames]]
 deps = ["ArchGDAL", "DataAPI", "DataFrames", "Extents", "GeoFormatTypes", "GeoInterface", "Pkg", "Reexport", "Tables"]
 git-tree-sha1 = "6f4d393daf7f0059f234a8855a55c008dab735c1"
+pinned = true
 uuid = "62cb38b5-d8d2-4862-a48e-6a340996859f"
 version = "0.3.13"
 
@@ -1154,12 +1162,14 @@ weakdeps = ["Makie", "RecipesBase"]
 [[deps.GeoMakie]]
 deps = ["Colors", "CoordinateTransformations", "Downloads", "GeoFormatTypes", "GeoInterface", "GeoJSON", "Geodesy", "GeometryBasics", "GeometryOps", "ImageIO", "LinearAlgebra", "Makie", "NaturalEarth", "Proj", "Reexport", "Statistics", "StructArrays"]
 git-tree-sha1 = "9d4bd9dbf25be0fa96bf26eac94a1316db374ede"
+pinned = true
 uuid = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 version = "0.7.16"
 
 [[deps.Geodesy]]
 deps = ["CoordinateTransformations", "Dates", "LinearAlgebra", "StaticArrays"]
 git-tree-sha1 = "d48fa6a8d49350670b5ba409dbe2ddec791b4808"
+pinned = true
 uuid = "0ef565a4-170c-5f04-8de2-149903a85f3d"
 version = "1.2.0"
 
@@ -1176,6 +1186,7 @@ weakdeps = ["GeoInterface"]
 [[deps.GeometryOps]]
 deps = ["AbstractTrees", "AdaptivePredicates", "CoordinateTransformations", "DataAPI", "DelaunayTriangulation", "ExactPredicates", "Extents", "GeoFormatTypes", "GeoInterface", "GeometryOpsCore", "LinearAlgebra", "Random", "SortTileRecursiveTree", "StaticArrays", "Statistics", "Tables"]
 git-tree-sha1 = "e1d6ac818ec4ce98ea9ec5d81dfa3a1871cc9c5d"
+pinned = true
 uuid = "3251bfac-6a57-4b6d-aa61-ac1fef2975ab"
 version = "0.1.33"
 
@@ -1231,6 +1242,7 @@ version = "1.4.0"
 [[deps.GraphMakie]]
 deps = ["DataStructures", "GeometryBasics", "Graphs", "LinearAlgebra", "Makie", "NetworkLayout", "PolynomialRoots", "SimpleTraits", "StaticArrays"]
 git-tree-sha1 = "98b32aaa0007dee58428379c921974b510af0654"
+pinned = true
 uuid = "1ecd5474-83a3-4783-bb4f-06765db800d2"
 version = "0.6.3"
 
@@ -1278,6 +1290,7 @@ version = "0.17.2"
 [[deps.HDF5_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "LibCURL_jll", "Libdl", "MPICH_jll", "MPIPreferences", "MPItrampoline_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "OpenSSL_jll", "TOML", "Zlib_jll", "libaec_jll"]
 git-tree-sha1 = "82a471768b513dc39e471540fdadc84ff80ff997"
+pinned = true
 uuid = "0234f1f7-429e-5d53-9886-15a909be8d59"
 version = "1.14.3+3"
 
@@ -1366,6 +1379,7 @@ version = "1.0.0"
 [[deps.Infiltrator]]
 deps = ["InteractiveUtils", "Markdown", "REPL", "UUIDs"]
 git-tree-sha1 = "d07c6718c1ce7324341947f8f608f5d69795dde5"
+pinned = true
 uuid = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
 version = "1.9.7"
 
@@ -1837,6 +1851,7 @@ version = "1.10.1+0"
 [[deps.MAT]]
 deps = ["CodecZlib", "Dates", "HDF5", "OrderedCollections", "PooledArrays", "SparseArrays", "StringEncodings", "Tables"]
 git-tree-sha1 = "dc4920291ef8e4aead248e7133da4cb0429e27e3"
+pinned = true
 uuid = "23992714-dd62-5051-b70f-ba57cb901cac"
 version = "0.11.4"
 
@@ -2133,6 +2148,7 @@ version = "0.4.26"
 [[deps.NetCDF]]
 deps = ["DiskArrays", "NetCDF_jll"]
 git-tree-sha1 = "853b381b2164bbe980b94e8411324a6b3b811dd6"
+pinned = true
 uuid = "30363a11-5582-574a-97bb-aa9a979735b9"
 version = "0.12.2"
 
@@ -2345,6 +2361,7 @@ version = "0.12.3"
 [[deps.Parquet]]
 deps = ["CategoricalArrays", "CodecZlib", "CodecZstd", "DataAPI", "Dates", "Decimals", "LittleEndianBase128", "Missings", "Mmap", "SentinelArrays", "Snappy", "Tables", "Thrift"]
 git-tree-sha1 = "b34432cb917ae43123f1648eeb2a87ae8c5d2aa0"
+pinned = true
 uuid = "626c502c-15b0-58ad-a749-f091afb673ae"
 version = "0.8.6"
 
@@ -2449,6 +2466,7 @@ version = "1.11.0"
 [[deps.ProgressMeter]]
 deps = ["Distributed", "Printf"]
 git-tree-sha1 = "fbb92c6c56b34e1a2c4c36058f68f332bec840e7"
+pinned = true
 uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
 version = "1.11.0"
 
@@ -2531,6 +2549,7 @@ version = "1.3.4"
 [[deps.ReefMonitoring]]
 deps = ["ArchGDAL", "CSV", "DataFrames", "Dates", "GeoDataFrames", "HTTP", "JSON", "NetCDF", "ProgressMeter", "StringDistances", "YAXArrays"]
 git-tree-sha1 = "e42dc20e96c0b0592b63b4776ea7a43d573b704f"
+pinned = true
 repo-rev = "main"
 repo-url = "https://github.com/DanTanAtAims/Reef-Monitoring"
 uuid = "a3af5ec7-7e43-4bf4-9531-3ce64fba4f24"
@@ -2561,6 +2580,7 @@ version = "0.4.1"
 [[deps.Revise]]
 deps = ["CodeTracking", "FileWatching", "InteractiveUtils", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "Preferences", "REPL", "UUIDs"]
 git-tree-sha1 = "dfd6fab9aa325b382773b8930998ce84c2918e5e"
+pinned = true
 uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
 version = "3.13.1"
 weakdeps = ["Distributed"]
@@ -2852,6 +2872,7 @@ version = "3.5.0"
 [[deps.Statistics]]
 deps = ["LinearAlgebra"]
 git-tree-sha1 = "ae3bb1eb3bba077cd276bc5cfc337cc65c3075c0"
+pinned = true
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 version = "1.11.1"
 weakdeps = ["SparseArrays"]
@@ -2868,6 +2889,7 @@ version = "1.8.0"
 [[deps.StatsBase]]
 deps = ["AliasTables", "DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
 git-tree-sha1 = "be5733d4a2b03341bdcab91cea6caa7e31ced14b"
+pinned = true
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.9"
 
@@ -2947,6 +2969,7 @@ version = "0.3.0"
 
 [[deps.TOML]]
 deps = ["Dates"]
+pinned = true
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 version = "1.0.3"
 
@@ -3017,6 +3040,7 @@ version = "0.11.6"
 [[deps.TimeZones]]
 deps = ["Artifacts", "Dates", "Downloads", "InlineStrings", "Mocking", "Printf", "Scratch", "TZJData", "Unicode", "p7zip_jll"]
 git-tree-sha1 = "d422301b2a1e294e3e4214061e44f338cafe18a2"
+pinned = true
 uuid = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 version = "1.22.2"
 weakdeps = ["RecipesBase"]
@@ -3059,6 +3083,7 @@ version = "0.1.0"
 [[deps.Typst_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "OpenSSL_jll"]
 git-tree-sha1 = "0fc7d5d3083a3753abe4b4eb10a87c0146fa5f20"
+pinned = true
 uuid = "eb4b1da6-20f6-5c66-9826-fdb8ad410d0e"
 version = "0.14.2+0"
 
