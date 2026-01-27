@@ -5,9 +5,7 @@ using TOML
 using Dates
 using CSV, DataFrames, YAXArrays
 using StatsBase, Statistics
-using BlackBoxOptim
 
-using CairoMakie
 using ADRIA
 using ADRIA: GDF, AG, DimensionalData
 
