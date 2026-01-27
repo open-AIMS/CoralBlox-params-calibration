@@ -21,37 +21,76 @@ function ADRIA.bin_edges(; unit=:m)
     ) .* ADRIA.linear_scale(:cm, unit)
 end
 
-global CONFIG = TOML.parsefile("calib_config.toml")
+src_path = dirname(@__DIR__)
+datasets_path = joinpath(dirname(src_path), "datasets")
+
+global CONFIG = TOML.parsefile(joinpath(src_path, "calib_config.toml"))
 
 # Configuration sections
 global DOMAIN_CONFIG = CONFIG["Domains"]
 global GEOSPATIAL_CONFIG = CONFIG["Geospatial"]
-global TARGET_CONFIG = CONFIG["Observations"]
 global INITIALISATION_CONFIG = CONFIG["Initialisation"]
 global OUTPUT_CONFIG = CONFIG["Outputs"]
 
 # ADRIA Domain paths
 global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
-global HISTORICAL_DHW_PATH = "historical_dhw_data_gen/data/historical_dhw.nc"
-global HISTORICAL_CYCLONE_MORTALITY_PATH = "historical_disturbance_mortality_data_gen/"*
-                                           "data/"*
-                                           "historical_disturbance_mortality_rates/" *
-                                           "historical_disturbance_mortality_rates.nc"
+global HISTORICAL_DHW_PATH = joinpath(
+    src_path,
+    "historical_dhw_data_gen",
+    "data",
+    "historical_dhw.nc"
+)
+global HISTORICAL_CYCLONE_MORTALITY_PATH = joinpath(
+    src_path,
+    "historical_disturbance_mortality_data_gen/",
+    "data/",
+    "historical_disturbance_mortality_rates/",
+    "historical_disturbance_mortality_rates.nc"
+)
 
 # Geospatial filepaths
 global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"]
-global LTMP_SHP_PATH = GEOSPATIAL_CONFIG["ltmp_shp"]
-global LOC_CLASS_PATH = GEOSPATIAL_CONFIG["classification_path"]            # location classes
+global LTMP_SHP_PATH = get(
+    GEOSPATIAL_CONFIG,
+    "ltmp_shp",
+    joinpath(datasets_path, "spatial_data/gbr_3Zone 2.shp")
+)
+global LOC_CLASS_PATH = get(
+    GEOSPATIAL_CONFIG,
+    "classification_path",
+    joinpath(datasets_path, "spatial_data/location_classification_MPA.csv")
+)
 
 # Calibration Target / Observational Data
-global LOC_CLASS_TARGET_PATH = TARGET_CONFIG["manta_tow_path"]              # target data for location classes
-global LTMP_REEF_DATA_PATH = TARGET_CONFIG["ltmp_reef_data"]                # target data for ltmp locs
-global COMPOSITION_PATH = TARGET_CONFIG["composition_netcdf"]
-global LTMP_MODELLED_OBS_PATH = TARGET_CONFIG["ltmp_modelled_obs"]
+global TARGET_CONFIG = get(CONFIG, "Observations", Dict())
+global LOC_CLASS_TARGET_PATH = get(
+    TARGET_CONFIG,
+    "manta_tow_path",
+    joinpath(datasets_path, "ltmp_data/manta_tow_mean_std.nc")
+)
+global LTMP_REEF_DATA_PATH = get(
+    TARGET_CONFIG,
+    "ltmp_reef_data",
+    joinpath(datasets_path, "ltmp_data/manta_tow_data_reef_lvl.gpkg")
+)
+global COMPOSITION_PATH = get(
+    TARGET_CONFIG,
+    "composition_netcdf",
+    joinpath(datasets_path, "ltmp_data/coral_composition.nc")
+)
+global LTMP_MODELLED_OBS_PATH = get(
+    TARGET_CONFIG,
+    "ltmp_modelled_obs",
+    joinpath(datasets_path, "ltmp_data/modelled_brms.beta.ry.disp.csv")
+)
 
 # Initialisation filepaths
-global INIT_COVER_PATH = INITIALISATION_CONFIG["init_cover_filepath"]
-global INIT_GUESS_PATH = INITIALISATION_CONFIG["init_guess_filepath"]       # optional
+global INIT_COVER_PATH = get(
+    INITIALISATION_CONFIG,
+    "init_cover_filepath",
+    joinpath(datasets_path, "spatial_data/init_cover.dat")
+)
+global INIT_GUESS_PATH = get(INITIALISATION_CONFIG, "init_guess_filepath", "")
 global ECORRAP_PARAM_PATH = INITIALISATION_CONFIG["ecorrap_param_filepath"]
 
 # Output filepaths
