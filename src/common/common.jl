@@ -9,18 +9,6 @@ using StatsBase, Statistics
 using ADRIA
 using ADRIA: GDF, AG, DimensionalData
 
-function ADRIA.bin_edges(; unit=:m)
-    return Matrix(
-        [
-            2.5 7.5 12.5 25.0 50.0 80.0 120.0 160.0;
-            2.5 7.5 12.5 20.0 30.0 60.0 100.0 150.0;
-            2.5 7.5 12.5 20.0 30.0 40.0 50.0 60.0;
-            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0;
-            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0
-        ]
-    ) .* ADRIA.linear_scale(:cm, unit)
-end
-
 src_path = dirname(@__DIR__)
 datasets_path = joinpath(dirname(src_path), "datasets")
 
@@ -117,7 +105,9 @@ function extract_param_group_idx(model_spec::DataFrame, needle::String)::Vector{
     needle_pos = contains.(string.(model_spec.fieldname), needle)
     return findall(needle_pos)
 end
-function extract_param_group_idx(model::ADRIA.Model, component, needle::String)::Vector{Int64}
+function extract_param_group_idx(
+    model::ADRIA.Model, component, needle::String
+)::Vector{Int64}
     comp_params = ADRIA.component_params(model, component)
     return extract_param_group_idx(comp_params, needle)
 end
@@ -164,7 +154,9 @@ end
 Given an index of a location in the coral composition yaxarray, return the index of the
 same location in the domain geopackage.
 """
-function composition_idx_to_domain(loc_data_store::LocationDataStore, composition_idx::Int64)
+function composition_idx_to_domain(
+    loc_data_store::LocationDataStore, composition_idx::Int64
+)
     return loc_data_store.composition_to_domain[composition_idx]
 end
 
