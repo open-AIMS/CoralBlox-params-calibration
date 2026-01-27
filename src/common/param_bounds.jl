@@ -380,6 +380,8 @@ function copy(dom::RMEDomain)::RMEDomain
         dom.dhw_scens,
         dom.wave_scens,
         dom.cyclone_mortality_scens,
+        dom.seed_target_locations,
+        dom.fog_target_locations,
         dom.model,
         dom.sim_constants
     )
