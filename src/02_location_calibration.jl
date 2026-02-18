@@ -1,13 +1,12 @@
-include("plot/plot.jl")
-
 """
 Calibrate linear extension, background mortality and fecundity.
 Attempt to calibrate location-specific scaling as well.
 """
 
 using ADRIA: bleaching_mortality!
-using BlackBoxOptim: init_rng!
+using BlackBoxOptim
 
+include("plot/plot.jl")
 include("./common/param_bounds.jl")
 
 """

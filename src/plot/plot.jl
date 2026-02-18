@@ -1,3 +1,5 @@
+using CairoMakie
+
 COLORMAPS = (
     ltmp_disturbances=:seaborn_bright6,
     taxa=:seaborn_colorblind6

@@ -45,27 +45,27 @@ Create a `calib_config.toml` file with the following entries:
 
 ```toml
 [Domains]
-rme_domain = "<path to RME dataset>"
+rme_domain = <path to RME dataset>
 
 [Geospatial]
-canonical_path = "<path to canonical gpkg>"
-ltmp_shp = "../datasets/spatial_data/gbr_3Zone 2.shp"
-classification_path = "../datasets/spatial_data/location_classification_MPA.csv"
+canonical_path = <path to canonical gpkg>
+ltmp_shp = "../datasets/spatial_data/gbr_3Zone 2.shp"                             # Optional
+classification_path = "../datasets/spatial_data/location_classification_MPA.csv"  # Optional
 
 [Observations]
-manta_tow_path = "../datasets/ltmp_data/manta_tow_mean_std.nc"
-ltmp_reef_data = "../datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"
-composition_netcdf = "../datasets/ltmp_data/coral_composition.nc"
-ltmp_modelled_obs = "../datasets/ltmp_data/modelled_brms.beta.ry.disp.csv"
+manta_tow_path = "../datasets/ltmp_data/manta_tow_mean_std.nc"                    # Optional
+ltmp_reef_data = "../datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"             # Optional
+composition_netcdf = "../datasets/ltmp_data/coral_composition.nc"                 # Optional
+ltmp_modelled_obs = "../datasets/ltmp_data/modelled_brms.beta.ry.disp.csv"        # Optional
 
 [Initialisation]
-init_cover_filepath = "../datasets/spatial_data/init_cover.dat"
-init_guess_filepath = ""  # optional
-ecorrap_param_filepath = "C:/Users/pribeiro/AIMS/Datasets/interped_vals.nc"
+init_cover_filepath = "../datasets/spatial_data/init_cover.dat"                   # Optional
+init_guess_filepath = ""                                                          # Optional
+ecorrap_param_filepath = <path to interped_vals.nc>
 
 [Outputs]
-out_dir = "..\\Outputs\\test_dir"
-result_filename = "results.dat" # relative to out_dir
+out_dir = <path to output dir>
+result_filename = <path to results.dat>                               # relative to out_dir
 ```
 
 ## Datasets
