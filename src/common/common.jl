@@ -79,7 +79,6 @@ global INIT_COVER_PATH = get(
     joinpath(datasets_path, "spatial_data/init_cover.dat")
 )
 global INIT_GUESS_PATH = get(INITIALISATION_CONFIG, "init_guess_filepath", "")
-global ECORRAP_PARAM_PATH = INITIALISATION_CONFIG["ecorrap_param_filepath"]
 
 # Output filepaths
 global OUT_DIR = OUTPUT_CONFIG["out_dir"]
