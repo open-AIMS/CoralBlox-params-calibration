@@ -61,7 +61,6 @@ ltmp_modelled_obs = "../datasets/ltmp_data/modelled_brms.beta.ry.disp.csv"      
 [Initialisation]
 init_cover_filepath = "../datasets/spatial_data/init_cover.dat"                   # Optional
 init_guess_filepath = ""                                                          # Optional
-ecorrap_param_filepath = <path to interped_vals.nc>
 
 [Outputs]
 out_dir = <path to output dir>
@@ -100,7 +99,6 @@ at each ltmp photogrammetry location. Contained in the `ltmp_data` directory.
 - `init_cover_filepath` : Data containing calibrated initial cover. Must be loaded into
 domain as follows.
 - `init_guess_filepath` : Optional file name for initial guess.
-- `ecorrap_param_filepath` : <!--TO DO-->
 
 Initial cover must be loaded as follows.
 ```julia
