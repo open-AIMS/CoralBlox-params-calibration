@@ -183,6 +183,7 @@ function plot_correlation_map!(
 
     return nothing
 end
+
 function plot_metric_map!(
     g::Union{GridPosition,GridLayout},
     metric::Vector{Float64},
@@ -220,11 +221,26 @@ function plot_metric_map!(
     strokecolor = get(opts, :strokecolor, (:gray, 0.1))
     markersize = get(opts, :markersize, 35)
 
-    scatter!(ax, lon_valid, lat_valid;
+    high_mask = metric .> 0
+    low_mask = metric .<= 0
+
+    scatter!(ax, lon_valid[low_mask], lat_valid[low_mask];
         colormap=colormap,
         colorrange=colorrange,
-        color=metric,
+        color=metric[low_mask],
         alpha=alpha,
+        marker=:circle,
+        strokewidth=strokewidth,
+        strokecolor=strokecolor,
+        markersize=markersize,
+    )
+
+    scatter!(ax, lon_valid[high_mask], lat_valid[high_mask];
+        colormap=colormap,
+        colorrange=colorrange,
+        color=metric[high_mask],
+        alpha=alpha,
+        marker=:star5,
         strokewidth=strokewidth,
         strokecolor=strokecolor,
         markersize=markersize,
