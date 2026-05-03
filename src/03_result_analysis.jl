@@ -53,12 +53,19 @@ n_model_outperformed = n_model_outperformed_valid + n_model_outperformed_calib
 @info "Total number of locations where model outperformed benchmark: $(n_model_outperformed) of $(n_locs)"
 
 # Error stats for location with UNIQUE_ID = uid_
-uid_ = "20348100104"
-collect_error_stats(rs_raw.raw, findfirst(VALIDATION_STORE.ltmp_unique_ids .== uid_); observations=VALIDATION_STORE)
+# uid_ = "20348100104"
+# collect_error_stats(rs_raw.raw, findfirst(VALIDATION_STORE.ltmp_unique_ids .== uid_); observations=VALIDATION_STORE)
 
 # Mean model metrics
+calibration_error_stats = collect_error_stats(
+    rs_raw.raw; observations=CALIBRATION_STORE
+)
 validation_error_stats = collect_error_stats(
     rs_raw.raw; observations=VALIDATION_STORE
 )
-@info "Mean model RMSE: $(mean(validation_error_stats.rmse_model))"
-@info "Mean model SCC: $(mean(validation_error_stats.srcc))"
+
+@info "Mean model calib.RMSE: $(mean(calibration_error_stats.rmse_model))"
+@info "Mean model valid.  RMSE: $(mean(validation_error_stats.rmse_model))"
+
+@info "Mean model calib. SRCC: $(mean(calibration_error_stats.srcc))"
+@info "Mean model valid. SRCC: $(mean(validation_error_stats.srcc))"
