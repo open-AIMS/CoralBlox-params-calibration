@@ -84,7 +84,7 @@ global INIT_GUESS_PATH = get(INITIALISATION_CONFIG, "init_guess_filepath", "")
 
 # Output filepaths
 global OUT_DIR = OUTPUT_CONFIG["out_dir"]
-global RESULT_FN = OUTPUT_CONFIG["result_filename"]
+global RESULT_FN = get(OUTPUT_CONFIG, "result_filename", "results.dat")
 
 const START_YEAR = 2008
 const END_YEAR = 2022
