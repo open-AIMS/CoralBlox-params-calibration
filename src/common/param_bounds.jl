@@ -391,6 +391,8 @@ function copy(dom::RMEDomain)::RMEDomain
         dom.cyclone_mortality_scens,
         dom.seed_target_locations,
         dom.fog_target_locations,
+        dom.mc_target_locations,
+        dom.shade_target_locations,
         dom.model,
         dom.sim_constants
     )
