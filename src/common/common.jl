@@ -49,6 +49,8 @@ global LOC_CLASS_PATH = get(
     joinpath(datasets_path, "spatial_data/location_classification_MPA.csv")
 )
 
+global GBRMPA_MAINLAND_PATH = joinpath(datasets_path, "spatial_data/Great_Barrier_Reef_Features.geojson")
+
 # Calibration Target / Observational Data
 global TARGET_CONFIG = get(CONFIG, "Observations", Dict())
 global LOC_CLASS_TARGET_PATH = get(

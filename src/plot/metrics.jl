@@ -205,6 +205,10 @@ function plot_metric_map!(
 
     poly!(ax, geometries, color=:gray)
 
+
+    poly!(ax, GBRMPA_MAINLAND_GPKG.geometry[1], color="#121212")
+
+
     max_val, min_val = extrema(metric)
     up_limit = maximum(abs.((max_val, min_val)))
     lower_limit = -up_limit
