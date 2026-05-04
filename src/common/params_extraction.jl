@@ -25,7 +25,7 @@ CSV.write(joinpath(params_dir_path, "mb_rate_params.csv"), mb_rate_df)
 ## Dist mean
 dist_mean_mask = occursin.(Ref("_dist_mean"), string.(CORAL_PARAM_NAMES))
 dist_mean_data = calibrated_params[(PARAM_IDXS[1]:PARAM_IDXS[2])[dist_mean_mask]]
-dist_mean_df = DataFrame(reshape(dist_mean_data, 7, 5)', fgroup_names)
+dist_mean_df = DataFrame(reshape(dist_mean_data, 5, 7)', fgroup_names)
 CSV.write(joinpath(params_dir_path, "dist_mean_params.csv"), dist_mean_df)
 
 ## Linear extension scale factor
