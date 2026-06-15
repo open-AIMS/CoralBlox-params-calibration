@@ -131,7 +131,7 @@ function plot_location_comparison!(
         spatial_data = observations.domain_gpkg[:, [:RME_UNIQUE_ID, :RME_GBRMPA_ID]]
         reef_gbrmpa_id = spatial_data[spatial_data.RME_UNIQUE_ID.==reef_id, :RME_GBRMPA_ID][1]
 
-        loc_dhw_scens = dhw_scens[locs=At(reef_gbrmpa_id)]
+        loc_dhw_scens = dhw_scens[locations=At(reef_gbrmpa_id)]
         loc_cyc_scens = cyc_scens[locs=At(reef_gbrmpa_id)]
 
         _except_patterns = setdiff(subplot_keys, ["model_dist"])
@@ -259,11 +259,11 @@ end
 
 function plot_coralblox_disturbances!(
     fig::Union{Figure,GridLayout,GridPosition,GridSubposition},
-    loc_dhw_scens::AbstractVector{R1},
-    loc_cyclone_scens::AbstractMatrix{R2};
+    loc_dhw_scens,
+    loc_cyclone_scens;
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
-)::Nothing where {R1,R2<:Real}
+)::Nothing
     axis_opts = merge(
         Dict(
             BASE_AXIS_OPTS...,
@@ -279,9 +279,9 @@ function plot_coralblox_disturbances!(
 end
 
 function plot_dhw_scens!(
-    ax::Axis, dhw_scens::AbstractVector{R};
+    ax::Axis, dhw_scens;
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
-)::Nothing where {R<:Real}
+)::Nothing
     dhw_data::Vector{Float64} = Float64.(collect(dhw_scens))
     timesteps::Vector{Int64} = collect(dhw_scens.timesteps.val.data)
     linewidth = get(opts, :linewidth, 4)
@@ -293,12 +293,13 @@ function plot_dhw_scens!(
 end
 
 function plot_cyclone_scens!(
-    ax::Axis, cyc_scens::AbstractMatrix{Float64};
+    ax::Axis, cyc_scens;
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )::Nothing
     sum_cyc_scens = dropdims(sum(cyc_scens; dims=2), dims=2)
     any(sum_cyc_scens .> 0) || return nothing
-    target_years = sum_cyc_scens[sum_cyc_scens.>0].timesteps.val.data
+    timesteps_vec = collect(sum_cyc_scens.timesteps.val.data)
+    target_years = timesteps_vec[collect(sum_cyc_scens) .> 0]
     linewidth = get(opts, :linewidth, 4)
     vlines!(
         ax, target_years;
