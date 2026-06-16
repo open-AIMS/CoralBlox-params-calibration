@@ -272,7 +272,7 @@ if isnothing(best_init_state)
     res = bboptimize(
         obj_func;
         SearchRange=sample_bounds,
-        MaxSteps=100_000,
+        MaxSteps=1_000_000,
         NThreads=available_threads - 1,
         CallbackFunction=save_results_callback,
         CallbackInterval=0  # run at end of every step
@@ -283,7 +283,7 @@ else
         obj_func,
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
-        MaxSteps=100_000,
+        MaxSteps=1_000_000,
         NThreads=available_threads - 1,
         CallbackFunction=save_results_callback,
         CallbackInterval=0  # run at end of every step

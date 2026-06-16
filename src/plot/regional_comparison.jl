@@ -57,8 +57,8 @@ function plot_regional_comparison!(
         _srcc = trunc(regional_stats[key].srcc, digits=2)
 
         # position = fig_coord(idx, n_plots; invert=true)
-        label_text = "$((string(key)))\n$n_locations reefs"
-        group_title = "\nRMSE: $_rmse | SRCC : $_srcc"
+        label_text = "$((string(key))) ($n_locations reefs)"
+        group_title = "$label_text\nRMSE: $_rmse | SRCC : $_srcc"
         ax = Axis(
             grid[positions[idx]...];
             title=group_title,
@@ -217,9 +217,9 @@ function plot_all_regions(
     fig_title="",
     fig_size=(800, 800)
 )::Figure
-    s_rac = (dropdims(sum(model_results.raw, dims=(2,3)), dims=(2,3)) .*
-        site_k_area(dom)') ./
-        loc_area(dom)'
+    s_rac = (dropdims(sum(model_results.raw, dims=(2, 3)), dims=(2, 3)) .*
+             site_k_area(dom)') ./
+            loc_area(dom)'
 
     north_res = ADRIA.DataCube(s_rac[:, region_masks[1]];
         timesteps=ref_years, locations=1:count(region_masks[1]))

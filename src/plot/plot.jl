@@ -39,6 +39,8 @@ FIG_SIZE::Dict = Dict(
     :map => (500, 600),
 )
 
+GBRMPA_MAINLAND_GPKG = GDF.read(GBRMPA_MAINLAND_PATH)
+
 # * Units relative to 1 CSS px
 inch = 96
 pt = 4 / 3

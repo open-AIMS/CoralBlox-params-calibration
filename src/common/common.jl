@@ -49,6 +49,8 @@ global LOC_CLASS_PATH = get(
     joinpath(datasets_path, "spatial_data/location_classification_MPA.csv")
 )
 
+global GBRMPA_MAINLAND_PATH = joinpath(datasets_path, "spatial_data/Great_Barrier_Reef_Features.geojson")
+
 # Calibration Target / Observational Data
 global TARGET_CONFIG = get(CONFIG, "Observations", Dict())
 global LOC_CLASS_TARGET_PATH = get(
@@ -82,7 +84,7 @@ global INIT_GUESS_PATH = get(INITIALISATION_CONFIG, "init_guess_filepath", "")
 
 # Output filepaths
 global OUT_DIR = OUTPUT_CONFIG["out_dir"]
-global RESULT_FN = OUTPUT_CONFIG["result_filename"]
+global RESULT_FN = get(OUTPUT_CONFIG, "result_filename", "results.dat")
 
 const START_YEAR = 2008
 const END_YEAR = 2022

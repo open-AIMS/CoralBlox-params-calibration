@@ -121,7 +121,7 @@ function _loc_cover(
     raw_data;
     loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom)
 )
-    dropdims(sum(raw_data, dims=(2,3)), dims=(2,3)) .* loc_k_areas' ./ loc_areas'
+    dropdims(sum(raw_data, dims=(2, 3)), dims=(2, 3)) .* loc_k_areas' ./ loc_areas'
 end
 
 """
@@ -135,7 +135,6 @@ function collect_error_stats(
     loc_k_areas=ADRIA.site_k_area(dom),
     loc_areas=ADRIA.loc_area(dom)
 )::NamedTuple
-    loc_cover = _loc_cover(raw_data; loc_k_areas=loc_k_areas, loc_areas=loc_areas)
     n_locations = size(observations.ltmp_coral_cover, 1)
 
     # Vectors to hold error stats for each location
@@ -182,7 +181,6 @@ function collect_error_stats(
 
     domain_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
     sim_data = loc_cover[:, domain_idx]
-    reef_id = get_ltmp_loc_unique_id(observations, ltmp_loc_idx)
 
     rmse_::Float64 = rmse(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     pcc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
