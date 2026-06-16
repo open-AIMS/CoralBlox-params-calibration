@@ -49,7 +49,7 @@ function construct_location_cover!(
     location_sample::AbstractVector{Float64},
     bin_edges::AbstractMatrix{Float64}
 )::Nothing
-    n_taxa::Int64 = N_TAXA
+    n_taxa::Int64 = size(bin_edges, 1)
     # Calculate relative cover for each taxonomy and reuse location sample memory
     taxonomy_covers::Vector{Float64} = location_sample[2:(1+n_taxa)] .* (
         location_sample[1] ./ sum(location_sample[2:(1+n_taxa)])
@@ -76,12 +76,14 @@ function construct_cover!(
     location_types::AbstractVector{Int64}
 )::Nothing
     n_location_types = maximum(location_types)
-    temporary_cover::Matrix{Float64} = zeros(Float64, N_SIZE_CLASSES, N_TAXA)
     bin_edges::Matrix{Float64} = ADRIA.bin_edges()
+    n_taxa::Int64 = size(bin_edges, 1)
+    n_size_classes::Int64 = size(bin_edges, 2) - 1
+    temporary_cover::Matrix{Float64} = zeros(Float64, n_size_classes, n_taxa)
 
-    location_mask::BitVector = BitVector([true for _ in 1:N_LOCATIONS])
+    location_mask::BitVector = BitVector([true for _ in 1:ADRIA.n_locations(dom)])
 
-    stride::Int64 = STRIDE
+    stride::Int64 = 1 + 2 * n_taxa
     for loc_type in 1:n_location_types
         @views construct_location_cover!(
             temporary_cover,
@@ -89,7 +91,7 @@ function construct_cover!(
             bin_edges
         )
         location_mask .= location_types .== loc_type
-        dom.init_coral_cover[:, location_mask] .= reshape(temporary_cover, (N_PARAMS,))
+        dom.init_coral_cover[:, location_mask] .= vec(temporary_cover)
     end
     return nothing
 end
