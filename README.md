@@ -41,28 +41,38 @@ Add the required version of ADRIA using:
 The latest version of CoralBlox is also required:
 `add https://www.github.com/open-AIMS/CoralBlox.jl#main`
 
-Create a `calib_config.toml` file with the following entries:
+Create a `config.toml` file **at the repo root** (not in `src/`) with the following
+entries. The `[operation]` and `[results]` sections are ADRIA's own (consumed directly by
+`ADRIA.setup()`); everything specific to this calibration repo lives under the
+`[calibration]` table:
 
 ```toml
-[Domains]
+[operation]
+threshold = 1e-6      # Result values below this will be set to 0.0
+rng_seed = 1          # Fixed seed for ADRIA's internal RNG (recruitment/settlement) and BlackBoxOptim
+
+[results]
+output_dir = "./outputs"
+
+[calibration.domains]
 rme_domain = <path to RME dataset>
 
-[Geospatial]
+[calibration.geospatial]
 canonical_path = <path to canonical gpkg>
 ltmp_shp = "../datasets/spatial_data/gbr_3Zone 2.shp"                             # Optional
 classification_path = "../datasets/spatial_data/location_classification_MPA.csv"  # Optional
 
-[Observations]
+[calibration.observations]
 manta_tow_path = "../datasets/ltmp_data/manta_tow_mean_std.nc"                    # Optional
 ltmp_reef_data = "../datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"             # Optional
 composition_netcdf = "../datasets/ltmp_data/coral_composition.nc"                 # Optional
 ltmp_modelled_obs = "../datasets/ltmp_data/modelled_brms.beta.ry.disp.csv"        # Optional
 
-[Initialisation]
+[calibration.initialisation]
 init_cover_filepath = "../datasets/spatial_data/init_cover.dat"                   # Optional
 init_guess_filepath = ""                                                          # Optional
 
-[Outputs]
+[calibration.outputs]
 out_dir = <path to output dir>
 result_filename = <path to results.dat>                               # relative to out_dir
 ```

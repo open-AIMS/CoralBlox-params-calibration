@@ -5,15 +5,15 @@ using CSV, DataFrames
 using YAXArrays, NetCDF
 using TOML
 
-isdefined(Main, :CONFIG) || (global CONFIG = TOML.parsefile("calib_config.toml"))
+isdefined(Main, :CONFIG) || (global CONFIG = TOML.parsefile("config.toml"))
 
-isdefined(Main, :OUTPUT_CONFIG) || (global OUTPUT_CONFIG = CONFIG["Outputs"])
+isdefined(Main, :OUTPUT_CONFIG) || (global OUTPUT_CONFIG = CONFIG["calibration"]["outputs"])
 isdefined(Main, :OUT_DIR) || (global OUT_DIR = OUTPUT_CONFIG["out_dir"])
 
-isdefined(Main, :DOMAIN_CONFIG) || global DOMAIN_CONFIG = CONFIG["Domains"]
+isdefined(Main, :DOMAIN_CONFIG) || global DOMAIN_CONFIG = CONFIG["calibration"]["domains"]
 isdefined(Main, :RME_DOMAIN_PATH) || global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
 
-isdefined(Main, :GEOSPATIAL_CONFIG) || (global GEOSPATIAL_CONFIG = CONFIG["Geospatial"])
+isdefined(Main, :GEOSPATIAL_CONFIG) || (global GEOSPATIAL_CONFIG = CONFIG["calibration"]["geospatial"])
 isdefined(Main, :CANONICAL_PATH) || (global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"])
 
 """

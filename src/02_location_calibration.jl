@@ -265,6 +265,12 @@ mkpath(joinpath(OUT_DIR, "taxa_pop"))
 
 threads_display = available_threads == 1 ? available_threads : available_threads - 1
 @info "Using $(threads_display) threads."
+
+@info "Using RNG seed $(RNG_SEED) for this calibration run (config.toml: operation.rng_seed)."
+# NOTE: with NThreads > 0, evaluation/archive-update order depends on OS thread
+# scheduling, not just the RNG. Reproducibility here is "deterministic modulo
+# thread scheduling" (same seed + hardware + thread count is likely, but not
+# guaranteed, bit-exact). Only NThreads=0 (single-threaded) would be bit-exact.
 if isnothing(best_init_state)
     # Include additional config if using BorgMOEA
     # Method=:borg_moea,
@@ -275,7 +281,9 @@ if isnothing(best_init_state)
         MaxSteps=1_000_000,
         NThreads=available_threads - 1,
         CallbackFunction=save_results_callback,
-        CallbackInterval=0  # run at end of every step
+        CallbackInterval=0,  # run at end of every step
+        RngSeed=RNG_SEED,
+        RandomizeRngSeed=false
     )
 else
     @info "Using initial guess."
@@ -286,7 +294,9 @@ else
         MaxSteps=1_000_000,
         NThreads=available_threads - 1,
         CallbackFunction=save_results_callback,
-        CallbackInterval=0  # run at end of every step
+        CallbackInterval=0,  # run at end of every step
+        RngSeed=RNG_SEED,
+        RandomizeRngSeed=false
     )
 end
 

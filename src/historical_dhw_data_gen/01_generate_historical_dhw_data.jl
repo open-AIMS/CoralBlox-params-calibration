@@ -4,8 +4,8 @@ using NetCDF
 using YAXArrays
 using TOML
 
-isdefined(Main, :CONFIG) || (global CONFIG = TOML.parsefile("calib_config.toml"))
-isdefined(Main, :GEOSPATIAL_CONFIG) || (global GEOSPATIAL_CONFIG = CONFIG["Geospatial"])
+isdefined(Main, :CONFIG) || (global CONFIG = TOML.parsefile("config.toml"))
+isdefined(Main, :GEOSPATIAL_CONFIG) || (global GEOSPATIAL_CONFIG = CONFIG["calibration"]["geospatial"])
 isdefined(Main, :CANONICAL_PATH) || (global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"])
 
 begin

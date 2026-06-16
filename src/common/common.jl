@@ -14,13 +14,23 @@ include("./constants.jl")
 src_path = dirname(@__DIR__)
 datasets_path = joinpath(dirname(src_path), "datasets")
 
-global CONFIG = TOML.parsefile(joinpath(src_path, "calib_config.toml"))
+global CONFIG = TOML.parsefile(joinpath(dirname(src_path), "config.toml"))
 
 # Configuration sections
-global DOMAIN_CONFIG = CONFIG["Domains"]
-global GEOSPATIAL_CONFIG = CONFIG["Geospatial"]
-global INITIALISATION_CONFIG = CONFIG["Initialisation"]
-global OUTPUT_CONFIG = CONFIG["Outputs"]
+global DOMAIN_CONFIG = CONFIG["calibration"]["domains"]
+global GEOSPATIAL_CONFIG = CONFIG["calibration"]["geospatial"]
+global INITIALISATION_CONFIG = CONFIG["calibration"]["initialisation"]
+global OUTPUT_CONFIG = CONFIG["calibration"]["outputs"]
+
+# Single source of truth for the run seed, shared by ADRIA and BlackBoxOptim (passed
+# explicitly as RngSeed). We set ENV["ADRIA_RNG_SEED"] ourselves here rather than relying
+# on ADRIA.setup() to wire it up: ADRIA.setup() resolves config.toml via
+# joinpath(pwd(), "config.toml"), which fails silently (falls back to defaults) whenever
+# pwd() isn't the repo root — e.g. when scripts are run from inside src/, per this repo's
+# README. Setting the env var explicitly here makes ADRIA's RNG seeding correct
+# regardless of pwd() or whether ADRIA.setup()'s own file lookup succeeds.
+global RNG_SEED = CONFIG["operation"]["rng_seed"]
+ENV["ADRIA_RNG_SEED"] = string(RNG_SEED)
 
 # ADRIA Domain paths
 global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
@@ -54,7 +64,7 @@ global LOC_CLASS_PATH = get(
 global GBRMPA_MAINLAND_PATH = joinpath(datasets_path, "spatial_data/Great_Barrier_Reef_Features.geojson")
 
 # Calibration Target / Observational Data
-global TARGET_CONFIG = get(CONFIG, "Observations", Dict())
+global TARGET_CONFIG = get(CONFIG["calibration"], "observations", Dict())
 global LOC_CLASS_TARGET_PATH = get(
     TARGET_CONFIG,
     "manta_tow_path",

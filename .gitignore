@@ -14,7 +14,7 @@ JuliaSysimage.dll
 
 docs/build/
 
-calib_config.toml
+config.toml
 
 Outputs/*
 
