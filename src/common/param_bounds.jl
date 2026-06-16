@@ -156,7 +156,7 @@ julia> coral_df[ordered_idxs, :].fieldname
 
 """
 function sc_fg_param_idxs(param_name::String, coral_df::DataFrame)::Vector{Int64}
-    idxs = zeros(Int64, 35)
+    idxs = zeros(Int64, N_PARAMS)
 
     n_taxa, n_sizes = size(ADRIA.bin_widths())
     counter::Int64 = 1
@@ -198,8 +198,8 @@ linear_extension_mean = [
     0.011934 0.00747208 0.00748131 0.00942616 0.0133995 0.0141176 0.0
 ]
 
-lin_ext_lb = linear_extension_mean[:, :] .* 0.9
-lin_ext_ub = linear_extension_mean[:, :] .* 1.1
+lin_ext_lb = linear_extension_mean[:, :] .* LIN_EXT_LB_FACTOR
+lin_ext_ub = linear_extension_mean[:, :] .* LIN_EXT_UB_FACTOR
 
 lin_ext_lb = flatten_group_size(lin_ext_lb)
 lin_ext_ub = flatten_group_size(lin_ext_ub)
@@ -213,8 +213,8 @@ mb_rate_mean = [
     0.282609 0.0799508 0.0446043 0.026387 0.0135135 0.016 0.0272109
 ]
 
-mb_rate_lb = mb_rate_mean[:, :] .* 0.9
-mb_rate_ub = mb_rate_mean[:, :] .* 1.1
+mb_rate_lb = mb_rate_mean[:, :] .* MB_RATE_LB_FACTOR
+mb_rate_ub = mb_rate_mean[:, :] .* MB_RATE_UB_FACTOR
 
 mb_rate_lb = flatten_group_size(mb_rate_lb)
 mb_rate_ub = flatten_group_size(mb_rate_ub)
@@ -255,11 +255,11 @@ set_bounds!(sample_bounds, lin_ext_idx, lin_ext_lb, lin_ext_ub)
 set_bounds!(sample_bounds, mbrate_idx, mb_rate_lb, mb_rate_ub)
 
 n_mbrate_scale_idx = length(mbrate_scale_idx)
-mbrate_scale_lb, mbrate_scale_up = fill(-1.0, n_mbrate_scale_idx), fill(1.0, n_mbrate_scale_idx)
+mbrate_scale_lb, mbrate_scale_up = fill(MB_RATE_SCALE_LB, n_mbrate_scale_idx), fill(MB_RATE_SCALE_UB, n_mbrate_scale_idx)
 set_bounds!(sample_bounds, mbrate_scale_idx, mbrate_scale_lb, mbrate_scale_up)
 
 n_lin_ext_scale_idx = length(lin_ext_scale_idx)
-lin_ext_scale_lb, lin_ext_scale_up = fill(0.7, n_lin_ext_scale_idx), fill(1.5, n_lin_ext_scale_idx)
+lin_ext_scale_lb, lin_ext_scale_up = fill(LIN_EXT_SCALE_LB, n_lin_ext_scale_idx), fill(LIN_EXT_SCALE_UB, n_lin_ext_scale_idx)
 set_bounds!(sample_bounds, lin_ext_scale_idx, lin_ext_scale_lb, lin_ext_scale_up)
 
 coral_start_idx = 1
@@ -271,8 +271,8 @@ const BIOGROUPS_ORDERING = sort(unique(canonical_gpkg.CB_CALIB_GROUPS))
 n_biogroups = length(BIOGROUPS_ORDERING)
 
 # Add parameters for location-specific scaling
-n_groups = 5
-n_size_classes = 7
+n_groups = N_TAXA
+n_size_classes = N_SIZE_CLASSES
 n_factors = 2  # growth, mortality
 
 # Location-based growth scaling
@@ -284,16 +284,16 @@ MIDPOINT_PARAM_IDX = 3
 
 growth_acc_start_idx = coral_end_idx + 1
 
-biogroup_accel_bounds::Matrix = Matrix{Tuple{Float64,Float64}}(undef, n_biogroups, 3)
+biogroup_accel_bounds::Matrix = Matrix{Tuple{Float64,Float64}}(undef, n_biogroups, N_GROWTH_ACCEL_PARAMS)
 
-biogroup_accel_bounds[:, STEEPNESS_PARAM_IDX] .= [(-20.0, -15.0)]
-biogroup_accel_bounds[:, HEIGHT_PARAM_IDX] .= [(0.0, 2.0)]
-biogroup_accel_bounds[:, MIDPOINT_PARAM_IDX] .= [(0.0, 0.3)]
+biogroup_accel_bounds[:, STEEPNESS_PARAM_IDX] .= [GROWTH_ACCEL_STEEPNESS_BOUNDS]
+biogroup_accel_bounds[:, HEIGHT_PARAM_IDX] .= [GROWTH_ACCEL_HEIGHT_BOUNDS]
+biogroup_accel_bounds[:, MIDPOINT_PARAM_IDX] .= [GROWTH_ACCEL_MIDPOINT_BOUNDS]
 
 append!(sample_bounds, accel_params_array_to_vec(biogroup_accel_bounds))
 growth_acc_end_idx = length(sample_bounds)
 
-sc_dist_bounds = fill((0.25, 2.0), n_biogroups)
+sc_dist_bounds = fill((SC_DIST_LB, SC_DIST_UB), n_biogroups)
 
 sc_dist_start_idx = growth_acc_end_idx + 1
 append!(sample_bounds, sc_dist_bounds)
@@ -349,7 +349,7 @@ function insert_init_loc_cover!(
             non_missing_idx, :, idx
         ] .* size_class_props' ./ sum(observations.coral_composition[non_missing_idx, :, idx])
         dom.init_coral_cover[:, dom_idx] .=
-            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tmp_cover
+            reshape(permutedims(loc_cov, (2, 1)), (N_PARAMS,)) .* tmp_cover
     end
     for (idx, dom_idx) in enumerate(observations.ltmp_cover_to_domain)
         tot_cov =
@@ -369,7 +369,7 @@ function get_scale_factors(
     cb_calib_groups = sort(unique(dom.loc_data.CB_CALIB_GROUPS))
     scale_factor_names = scale_factor_array_to_vec(generate_scale_factor_names(cb_calib_groups))
     return scale_factor_vec_to_array(
-        collect(scenario_df[1, scale_factor_names]), 5, length(BIOGROUPS_ORDERING), 2
+        collect(scenario_df[1, scale_factor_names]), N_TAXA, length(BIOGROUPS_ORDERING), n_factors
     )
 end
 

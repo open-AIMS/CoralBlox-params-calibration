@@ -52,7 +52,7 @@ function validate_linear_extension_coefficients(
 end
 
 function _to_group_size(flat_vec::Vector{Float64})::Matrix{Float64}
-    return permutedims(reshape(flat_vec, (7, 5)), (2, 1))
+    return permutedims(reshape(flat_vec, (N_SIZE_CLASSES, N_TAXA)), (2, 1))
 end
 
 # For finding minimum index

@@ -5,7 +5,7 @@ include("1_setup.jl")
 
 corals = ADRIA.to_coral_spec(scen[1, :])
 
-coral_cover = rs_raw.raw .* reshape(site_k_area(dom), (1, 1, 3806))
+coral_cover = rs_raw.raw .* reshape(site_k_area(dom), (1, 1, N_LOCATIONS))
 
 # Identify temporal region of interest
 temporal_range = 2008:2014
@@ -17,18 +17,18 @@ for i in 1:length(LIMITED_LOCATIONS)
     domain_loc_pos = findfirst(x -> x == location_unique_id, dom.loc_data.UNIQUE_ID)
     ltmp_loc_pos = findfirst(x -> !ismissing(x) && x == location_unique_id, ltmp_reef_data.RME_UNIQUE_ID)
 
-    linear_ext = permutedims(reshape(corals.linear_extension, (7, 5)), (2, 1))
-    linear_ext[:, 7] .= 0.0
+    linear_ext = permutedims(reshape(corals.linear_extension, (N_SIZE_CLASSES, N_TAXA)), (2, 1))
+    linear_ext[:, N_SIZE_CLASSES] .= 0.0
     linear_ext .*= scale_factors[:, limited_loc_pos, 1]
 
-    mb_rate = permutedims(reshape(corals.mb_rate, (7, 5)), (2, 1))
+    mb_rate = permutedims(reshape(corals.mb_rate, (N_SIZE_CLASSES, N_TAXA)), (2, 1))
     mb_rate .*= scale_factors[:, limited_loc_pos, 2]
 
     # Bar plot groupings
-    cat = [floor((i - 1) / 5) + 1 for i in 1:35]
-    grp = [(i - 1) % 5 + 1 for i in 1:35]
+    cat = [floor((i - 1) / N_TAXA) + 1 for i in 1:N_PARAMS]
+    grp = [(i - 1) % N_TAXA + 1 for i in 1:N_PARAMS]
 
-    flt_linear_ext = reshape(linear_ext, (35,))
+    flt_linear_ext = reshape(linear_ext, (N_PARAMS,))
 
     save_dir = joinpath(OUT_DIR, "Location_$(location_unique_id)")
 
@@ -37,7 +37,7 @@ for i in 1:length(LIMITED_LOCATIONS)
     f = plot_coral_param(location_unique_id, "Linear Extension", cat[1:30], grp[1:30], flt_linear_ext[1:30])
     save(joinpath(save_dir, "linexts.png"), f)
 
-    flt_mb_rate = reshape(mb_rate, (35,))
+    flt_mb_rate = reshape(mb_rate, (N_PARAMS,))
 
     f = plot_coral_param(location_unique_id, "Background Mortality", cat, grp, flt_mb_rate)
     save(joinpath(save_dir, "mbrates.png"), f)

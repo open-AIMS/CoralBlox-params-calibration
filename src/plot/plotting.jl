@@ -7,14 +7,14 @@ function plot_class_size_props(
     init_cover,
     class_idx
 )::Figure
-    class_state = init_cover[(class_idx-1)*11+1:class_idx*11]
+    class_state = init_cover[(class_idx-1)*STRIDE+1:class_idx*STRIDE]
     taxa_names = ADRIA.functional_group_names()
-    taxa_prop = class_state[7:11]
+    taxa_prop = class_state[(N_TAXA+2):STRIDE]
     f = Figure(; size=(1200, 900))
-    ax = Axis(f[1, 1], xlabel="taxonomy", xticks=(1:5, String.(taxa_names)), ylabel="taxa size lambda", title="class: $(class_idx)")
+    ax = Axis(f[1, 1], xlabel="taxonomy", xticks=(1:N_TAXA, String.(taxa_names)), ylabel="taxa size lambda", title="class: $(class_idx)")
     barplot!(
         ax,
-        1:5,
+        1:N_TAXA,
         taxa_prop
     )
     return f
@@ -27,14 +27,14 @@ function plot_class_properties(
     init_cover,
     class_idx
 )::Figure
-    class_state = init_cover[(class_idx-1)*11+1:class_idx*11]
+    class_state = init_cover[(class_idx-1)*STRIDE+1:class_idx*STRIDE]
     taxa_names = ADRIA.functional_group_names()
-    taxa_prop = class_state[2:6] ./ sum(class_state[2:6])
+    taxa_prop = class_state[2:(N_TAXA+1)] ./ sum(class_state[2:(N_TAXA+1)])
     f = Figure(; size=(1200, 900))
-    ax = Axis(f[1, 1], xlabel="taxonomy", xticks=(1:5, String.(taxa_names)), ylabel="taxa proportions", title="class: $(class_idx)")
+    ax = Axis(f[1, 1], xlabel="taxonomy", xticks=(1:N_TAXA, String.(taxa_names)), ylabel="taxa proportions", title="class: $(class_idx)")
     barplot!(
         ax,
-        1:5,
+        1:N_TAXA,
         taxa_prop
     )
     return f
@@ -47,7 +47,7 @@ Plot the proportion of coral cover composed of each functional group as a line g
 the raw modelled output cover matrix as input.
 """
 function taxa_cover_proportions(raw_data; fig_size=(800, 400))::Figure
-    cover = reshape(raw_data, (15, 7, 5, 3806))
+    cover = reshape(raw_data, (N_TIMESTEPS, N_SIZE_CLASSES, N_TAXA, N_LOCATIONS))
     cover = dropdims(sum(cover, dims=4), dims=4)
     cover ./= sum(cover, dims=(2, 3))
     cover = dropdims(sum(cover, dims=2), dims=2)
@@ -83,8 +83,8 @@ function taxa_population_proportions(raw_data; fig_size=(800, 400))::Figure
     ca = ADRIA.colony_areas()[2]
     population = zeros(size(raw_data)...)
 
-    for fg in 1:5
-        for sc in 1:7
+    for fg in 1:N_TAXA
+        for sc in 1:N_SIZE_CLASSES
             @views population[:,fg,sc,:] .= (raw_data[:,fg,sc,:] ./ ca[fg,sc])
         end
     end
@@ -125,8 +125,8 @@ function temporal_size_class_proportions(raw_data; fig_size=(1000, 1000))::Figur
     ca = ADRIA.colony_areas()[2]
     population = zeros(size(raw_data)...)
 
-    for fg in 1:5
-        for sc in 1:7
+    for fg in 1:N_TAXA
+        for sc in 1:N_SIZE_CLASSES
             @views population[:,fg,sc,:] .= (raw_data[:,fg,sc,:] ./ ca[fg,sc])
         end
     end
@@ -339,7 +339,7 @@ function plot_coral_param(
     fig = Figure(; size=(1300, 900))
     ax = Axis(
         fig[1, 1],
-        xticks=1:length(category)/5,
+        xticks=1:length(category)/N_TAXA,
         title="$(loc): $(param_name)"
     )
 
@@ -384,7 +384,7 @@ function plot_bleaching_mortality(
     loc_cover,
     loc_bleaching
 )::Figure
-    prop_sc_fg_cover = permutedims(reshape(loc_cover, (15, 7, 5)), (1, 3, 2))
+    prop_sc_fg_cover = permutedims(reshape(loc_cover, (N_TIMESTEPS, N_SIZE_CLASSES, N_TAXA)), (1, 3, 2))
     prop_sc_fg_cover = prop_sc_fg_cover ./ sum(prop_sc_fg_cover, dims=(2, 3))
     perc_loss = dropdims(sum(prop_sc_fg_cover .* loc_bleaching, dims=(2, 3)), dims=(2, 3))
 
@@ -427,7 +427,7 @@ function plot_cyclone_mortality(
     loc_cover,
     loc_cyclone
 )::Figure
-    prop_sc_fg_cover = permutedims(reshape(loc_cover, (15, 7, 5)), (1, 3, 2))
+    prop_sc_fg_cover = permutedims(reshape(loc_cover, (N_TIMESTEPS, N_SIZE_CLASSES, N_TAXA)), (1, 3, 2))
     prop_sc_fg_cover = dropdims(sum(prop_sc_fg_cover ./ sum(prop_sc_fg_cover, dims=(2, 3)), dims=3), dims=3)
     perc_loss = dropdims(sum(prop_sc_fg_cover .* loc_cyclone, dims=2), dims=2)
 
