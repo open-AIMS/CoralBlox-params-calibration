@@ -88,9 +88,6 @@ global INIT_GUESS_PATH = get(INITIALISATION_CONFIG, "init_guess_filepath", "")
 global OUT_DIR = OUTPUT_CONFIG["out_dir"]
 global RESULT_FN = get(OUTPUT_CONFIG, "result_filename", "results.dat")
 
-const START_YEAR = 2008
-const END_YEAR = 2022
-
 if !@isdefined(OPTIONS)
     global reload_domain = false
 

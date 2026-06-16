@@ -12,11 +12,6 @@ end
 # Avoid reloading the domain every time
 # Load ReefModDomain
 if (!@isdefined(dom) || reload_domain)
-    if START_YEAR < 2008
-        START_YEAR = 2008
-        @warn "Setting start year to $(START_YEAR). 2008 is the earliest possible start for ReefModDomain."
-    end
-
     @info "Loading RMEDomain"
     dom = ADRIA.load_domain(RMEDomain, RME_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
 

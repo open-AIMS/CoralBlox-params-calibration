@@ -10,6 +10,11 @@ changed here without re-deriving every dependent reshape/index.
 
 # --- Core domain dimensions -------------------------------------------------
 
+# Calibration/simulation period (inclusive). Earliest possible start for
+# ReefModDomain is 2008.
+const START_YEAR = 2008
+const END_YEAR = 2022
+
 # Number of coral functional groups / taxa (ADRIA.functional_group_names())
 const N_TAXA = 5
 
