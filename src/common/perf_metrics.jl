@@ -1,4 +1,5 @@
 using StatsBase
+using DataStructures
 
 function temporal_correlation(err_series)::Float64
     return cor(1:length(err_series), err_series)
@@ -57,59 +58,47 @@ function constant_error_statistics(
     filename,
     stat_func=mean
 )::DataFrame
-    north_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_north.Year)
-    central_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_central.Year)
-    south_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_south.Year)
+    region_data = OrderedDict(
+        "North" => ltmp_north,
+        "Central" => ltmp_central,
+        "South" => ltmp_south
+    )
 
-    north_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_north.Year) - 1
-    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) - 1
-    south_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_south.Year) - 1
+    n = length(region_data)
+    regions_vec = Vector{String}(undef, n)
+    rmse_vec = Vector{Float64}(undef, n)
+    cc_vec = Vector{Float64}(undef, n)
+    maee_vec = Vector{Float64}(undef, n)
+    bias_vec = Vector{Float64}(undef, n)
 
-    north_xs = ltmp_north.Year[north_ind:north_end]
-    central_xs = ltmp_central.Year[central_ind:central_end]
-    south_xs = ltmp_south.Year[south_ind:south_end]
+    for (i, (region, df)) in enumerate(region_data)
+        start_ind::Int64 = findfirst(x -> x >= START_YEAR, df.Year)
+        end_ind::Int64 = findfirst(x -> x >= END_YEAR, df.Year) - 1
 
-    north_resp = ltmp_north.response[north_ind:north_end]
-    central_resp = ltmp_central.response[central_ind:central_end]
-    south_resp = ltmp_south.response[south_ind:south_end]
+        xs = df.Year[start_ind:end_ind]
+        resp = df.response[start_ind:end_ind]
+        stat = fill(stat_func(resp), length(xs))
 
-    north_stat = repeat([stat_func(north_resp)], length(north_xs))
-    central_stat = repeat([stat_func(central_resp)], length(central_xs))
-    south_stat = repeat([stat_func(south_resp)], length(south_xs))
+        r::Float64 = rmse(stat, resp)
+        cc::Float64 = cor(stat, resp)
+        me::Float64 = MAEE(stat, resp)
+        b::Float64 = bias(stat, resp)
 
-    rmse_north::Float64 = rmse(north_stat, north_resp)
-    rmse_central::Float64 = rmse(central_stat, central_resp)
-    rmse_south::Float64 = rmse(south_stat, south_resp)
+        @info "$(region) — RMSE: $(r), R: $(cc), MAEE: $(me), BIAS: $(b)"
 
-    @info "RMSE North: $(rmse_north), Central: $(rmse_central), South: $(rmse_south)"
-
-    # Coefficient of Determination
-    cc_north::Float64 = cor(north_stat, north_resp)
-    cc_central::Float64 = cor(central_stat, central_resp)
-    cc_south::Float64 = cor(south_stat, south_resp)
-
-    @info "Correlation Coefficient North: $(cc_north), Central: $(cc_central), South: $(cc_south)"
-
-    # MAEE
-    maee_north::Float64 = MAEE(north_stat, north_resp)
-    maee_central::Float64 = MAEE(central_stat, central_resp)
-    maee_south::Float64 = MAEE(south_stat, south_resp)
-
-    @info "Mean Absolute Exponential Error North: $(maee_north), Central: $(maee_central), South: $(maee_south)"
-
-    # bias
-    bias_north::Float64 = bias(north_stat, north_resp)
-    bias_central::Float64 = bias(central_stat, central_resp)
-    bias_south::Float64 = bias(south_stat, south_resp)
-
-    @info "Bias North: $(bias_north), Central: $(bias_central), South: $(bias_south)"
+        regions_vec[i] = region
+        rmse_vec[i] = r
+        cc_vec[i] = cc
+        maee_vec[i] = me
+        bias_vec[i] = b
+    end
 
     err_csv = DataFrame(
-        Regions=["North", "Central", "South"],
-        RMSE=[rmse_north, rmse_central, rmse_south],
-        R=[cc_north, cc_central, cc_south],
-        MAEE=[maee_north, maee_central, maee_south],
-        BIAS=[bias_north, bias_central, bias_south]
+        Regions=regions_vec,
+        RMSE=rmse_vec,
+        R=cc_vec,
+        MAEE=maee_vec,
+        BIAS=bias_vec
     )
 
     CSV.write(filename, err_csv, writeheader=true)
