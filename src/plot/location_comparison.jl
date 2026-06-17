@@ -23,7 +23,7 @@ function plot_location_comparison(
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
     disturbances;
-    opts::Dict{Symbol,Any}=Dict{Symbol,Ay}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
 )::Figure where {T<:Real}
@@ -46,7 +46,7 @@ function plot_location_comparison!(
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
     disturbances;
-    opts::Dict{Symbol,Any}=Dict{Symbol,Ay}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
@@ -72,7 +72,7 @@ function plot_location_comparison(
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
     disturbances;
-    opts::Dict{Symbol,Any}=Dict{Symbol,Ay}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
@@ -100,7 +100,7 @@ function plot_location_comparison!(
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
     disturbances;
-    opts::Dict{Symbol,Any}=Dict{Symbol,Ay}(),
+    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
