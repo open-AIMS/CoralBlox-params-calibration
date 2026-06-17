@@ -41,86 +41,9 @@ Add the required version of ADRIA using:
 The latest version of CoralBlox is also required:
 `add https://www.github.com/open-AIMS/CoralBlox.jl#main`
 
-Create a `config.toml` file **at the repo root** (not in `src/`) with the following
-entries. The `[operation]` and `[results]` sections are ADRIA's own (consumed directly by
-`ADRIA.setup()`); everything specific to this calibration repo lives under the
-`[calibration]` table:
-
-```toml
-[operation]
-threshold = 1e-6      # Result values below this will be set to 0.0
-rng_seed = 1          # Fixed seed for ADRIA's internal RNG (recruitment/settlement) and BlackBoxOptim
-
-[results]
-output_dir = "./outputs"
-
-[calibration.domains]
-rme_domain = <path to RME dataset>
-
-[calibration.geospatial]
-canonical_path = <path to canonical gpkg>
-ltmp_shp = "../datasets/spatial_data/gbr_3Zone 2.shp"                             # Optional
-classification_path = "../datasets/spatial_data/location_classification_MPA.csv"  # Optional
-
-[calibration.observations]
-manta_tow_path = "../datasets/ltmp_data/manta_tow_mean_std.nc"                    # Optional
-ltmp_reef_data = "../datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"             # Optional
-composition_netcdf = "../datasets/ltmp_data/coral_composition.nc"                 # Optional
-ltmp_modelled_obs = "../datasets/ltmp_data/modelled_brms.beta.ry.disp.csv"        # Optional
-
-[calibration.initialisation]
-init_cover_filepath = "../datasets/spatial_data/init_cover.dat"                   # Optional
-init_guess_filepath = ""                                                          # Optional
-
-[calibration.outputs]
-out_dir = <path to output dir>
-result_filename = <path to results.dat>                               # relative to out_dir
-```
-
-## Datasets
-
-### Domains
-
-Paths to different ADRIA domains or historic input files
-- `rme_domain` : Path to ReefModEngine dir "rme_ml_2025_06_05"
-
-### Geospatial
-
-Paths to geopackages, shapefiles and geospatial location data.
-- `canonical_path` : Path to canonical geopackage
-- `ltmp_shp` : Path to LTMP regional shape files
-- `classification_path` : CSV file contains location classes in the same order as the ADRIA
-domain.
-
-### Observations
-
-Paths to data used as the target observation data for calibration.
-- `manta_tow_path` : NetCDF containing target mean and standard deviation for location
-classes not individual locations. Contained in `ltmp_data` directory.
-- `ltmp_reef_data` : Geopackage containing target data for individual locations. Contained
-in `ltmp_data` directory.
-- `composition_netcdf` : NetCDF containing coral composition for each ADRIA functional group
-at each ltmp photogrammetry location. Contained in the `ltmp_data` directory.
-- `ltmp_modelled_obs` : Path to modelled regional coral cover data based on LTMP
-  observations. This was developed by Murray Logan and Mike Emslie.
-
-### Initialisation
-
-- `init_cover_filepath` : Data containing calibrated initial cover. Must be loaded into
-domain as follows.
-- `init_guess_filepath` : Optional file name for initial guess.
-
-Initial cover must be loaded as follows.
-```julia
-init_cover = deserialize(init_cover_fn)
-construct_cover!(dom, init_cover, location_classification.consecutive_classification)
-```
-
-### Outputs
-
-- `out_dir` : Directory to save results plots, intermediate progress reports and final
-  calibration results
-  `result_filename` : Name of file to save calibrated results to, relative to `out_dir`
+Copy `config.toml.template` to `config.toml` at the repo root and fill in your
+machine-specific paths. The template documents all fields inline, including which are
+required and what the relative-path defaults are for optional fields.
 
 ## Running scripts
 
