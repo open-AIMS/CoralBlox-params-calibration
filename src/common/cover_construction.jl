@@ -67,22 +67,38 @@ function construct_location_cover!(
 end
 
 """
-First Float describes relative habitable cover. Next 5 Floats describe Taxonomy weightings,
-next 5 describe size class exponential parametrization.
+    compute_cover(vec_sample, location_types, n_locations)::Matrix{Float64}
+
+Compute per-location initial coral cover from a flat location-type sample vector.
+
+`vec_sample` is packed as `n_location_types` contiguous blocks, each of stride
+`1 + 2 * n_taxa` elements:
+
+    1                     - Location relative habitable cover
+    [2, 1 + n_taxa]       - Taxonomy cover weights
+    [2 + n_taxa, stride]  - Taxonomy size exponential parametrisation (lambda per taxon)
+
+All locations sharing the same `location_types` entry receive identical cover.
+
+# Arguments
+- `vec_sample`     : Flat sample vector; length must equal `(1 + 2*n_taxa) * n_location_types`
+- `location_types` : Integer type label per location (1-indexed, dense, no gaps)
+- `n_locations`    : Total number of spatial locations in the domain
 """
-function construct_cover!(
-    dom::Domain,
+function compute_cover(
     vec_sample::Vector{Float64},
-    location_types::AbstractVector{Int64}
-)::Nothing
+    location_types::AbstractVector{Int64},
+    n_locations::Int64
+)::Matrix{Float64}
     n_location_types = maximum(location_types)
     bin_edges::Matrix{Float64} = ADRIA.bin_edges()
     n_taxa::Int64 = size(bin_edges, 1)
     n_size_classes::Int64 = size(bin_edges, 2) - 1
     temporary_cover::Matrix{Float64} = zeros(Float64, n_size_classes, n_taxa)
+    cover::Matrix{Float64} = zeros(Float64, n_size_classes * n_taxa, n_locations)
+    location_mask::BitVector = BitVector(undef, n_locations)
 
-    location_mask::BitVector = BitVector([true for _ in 1:ADRIA.n_locations(dom)])
-
+    # Each location-type block occupies `stride` consecutive elements in vec_sample
     stride::Int64 = 1 + 2 * n_taxa
     for loc_type in 1:n_location_types
         @views construct_location_cover!(
@@ -91,7 +107,17 @@ function construct_cover!(
             bin_edges
         )
         location_mask .= location_types .== loc_type
-        dom.init_coral_cover[:, location_mask] .= vec(temporary_cover)
+        # vec() flattens column-major (size_class-fastest), matching cover's row layout
+        cover[:, location_mask] .= vec(temporary_cover)
     end
+    return cover
+end
+
+function construct_cover!(
+    dom::Domain,
+    vec_sample::Vector{Float64},
+    location_types::AbstractVector{Int64}
+)::Nothing
+    dom.init_coral_cover .= compute_cover(vec_sample, location_types, ADRIA.n_locations(dom))
     return nothing
 end
