@@ -1,5 +1,14 @@
 include("common.jl")
 
+HISTORICAL_DHW_PATH = joinpath(
+    @__DIR__, "../src/historical_dhw_data_gen/data/historical_dhw.nc"
+)
+HISTORICAL_CYCLONE_MORTALITY_PATH = joinpath(
+    @__DIR__,
+    "../src/historical_disturbance_mortality_data_gen/data/",
+    "historical_disturbance_mortality_rates/historical_disturbance_mortality_rates.nc"
+)
+
 if !@isdefined(canonical_gpkg) || reload_canonical
     @info "Loading Canonical gpkg"
     canonical_gpkg = GDF.read(canonical_path)
@@ -15,48 +24,23 @@ if !@isdefined(reload_shp)
     reload_shp = true
 end
 
-# Avoid reloading the domain every time
-# Load ReefModDomain
 if (!@isdefined(dom) || reload_domain)
-    if reefmod_domain
-        if start_year < 2008
-            start_year = 2008
-            @warn "Setting start year to $(start_year). 2008 is the earliest possible start for ReefModDomain."
-        end
+    @info "Loading RMEDomain"
+    dom = ADRIA.load_domain(RMEDomain, rme_domain_path, "45", timeframe=(start_year, end_year))
 
-        @info "Loading ReefModDomain"
-        dom = ADRIA.load_domain(ReefModDomain, reefmod_domain_path, "45", timeframe=(start_year, end_year))
-    elseif !reefmod_domain
-        # Load the RME Domain
-        if start_year < 2000
-            start_year = 2000
-            @warn "Setting start year to $(start_year). 2000 is earlier possible start for RMEDomain."
-        end
-        @info "Loading RMEDomain"
-        dom = ADRIA.load_domain(RMEDomain, rme_domain_path, "45", timeframe=(start_year, end_year))
-    end
+    @info "Attaching historic DHW and Cyclone/COTS data"
+    new_dhw_scens = open_dataset(HISTORICAL_DHW_PATH).dhw_scens
+    dom.dhw_scens .= read(new_dhw_scens[timesteps=At(start_year:end_year), scenarios=1])
 
-    @info "Attaching historic DHW"
-    historic_dhw_path = joinpath(rme_domain_path, "data_files", "dhw", "GBR_past_DHW_CRW_5km_1985_2022_Dec_2022.csv")
-    dhw_data_df = CSV.read(historic_dhw_path, DataFrame)
-
-    # Available DHW data starts 1985 - 2022
-    target_years = string.(start_year:end_year)
-    dhw_data = reshape(Matrix(dhw_data_df[:, target_years])', 15, 3806, 1)
-
-    dom.dhw_scens = ADRIA.DataCube(dhw_data; timesteps=target_years, locs=collect(caxes(dom.dhw_scens)[2]), scenarios=1:1)
-
-    @info "Loading default parameters"
-    scens = ADRIA.param_table(dom)
+    new_cyclone_mortality_scens = open_dataset(HISTORICAL_CYCLONE_MORTALITY_PATH).disturbance_mortality_scens
+    dom.cyclone_mortality_scens .= read(new_cyclone_mortality_scens[:, :, :, [1]])
 
     reload_domain = false
-
-    @info "Forcing Results Rerun"
     rerun = true
 end
 
 if !@isdefined(LTMP_DATA) || reload_ltmp
-    LTMP_DATA = CSV.read("ltmp_data/modelled_brms.beta.ry.disp.csv", DataFrame, header=true)
+    LTMP_DATA = CSV.read(joinpath(@__DIR__, "../datasets/ltmp_data/modelled_brms.beta.ry.disp.csv"), DataFrame, header=true)
     LTMP_DATA[!, :Region] = String.(LTMP_DATA[:, :Region])
 
     ltmp_north_mask = ["Northern GBR" == reg for reg in LTMP_DATA.Region]
@@ -71,7 +55,7 @@ if !@isdefined(LTMP_DATA) || reload_ltmp
     ltmp_central_period = (ltmp_central.Year .>= start_year) .& (ltmp_central.Year .<= end_year)
     ltmp_south_period = (ltmp_south.Year .>= start_year) .& (ltmp_south.Year .<= end_year)
 
-    reload_tmp = false
+    reload_ltmp = false
 end
 
 if !@isdefined(region_shps) || reload_shp
@@ -79,52 +63,17 @@ if !@isdefined(region_shps) || reload_shp
     reload_shp = false
 end
 
+function _region_shape_mask(dom, region_shapes, idx)::BitVector
+    region_shape = region_shapes.geometry[idx]
+    geoms = GI.geometry.(eachrow(dom.loc_data))
+    return [AG.contains(region_shape, AG.centroid(geom)) for geom in geoms]
+end
+
 if !@isdefined(NORTH_MASK)
-    const NORTH_MASK = BitVector([AG.contains(region_shps.geometry[1], AG.centroid(polygn)) for polygn in dom.site_data.geom])  # .&& ltmp_loc_mask
-    const CENTRAL_MASK = BitVector([AG.contains(region_shps.geometry[2], AG.centroid(polygn)) for polygn in dom.site_data.geom])  # .&& ltmp_loc_mask
-    const SOUTH_MASK = BitVector([AG.contains(region_shps.geometry[3], AG.centroid(polygn)) for polygn in dom.site_data.geom])  # .&& ltmp_loc_mask
+    const NORTH_MASK = _region_shape_mask(dom, region_shps, 1)
+    const CENTRAL_MASK = _region_shape_mask(dom, region_shps, 2)
+    const SOUTH_MASK = _region_shape_mask(dom, region_shps, 3)
     const NOT_CONTAINED = (!).(NORTH_MASK .|| CENTRAL_MASK .|| SOUTH_MASK)
-end
-
-
-if !isdefined(Main, :uniform_initial_cover)
-    uniform_initial_cover = false
-end
-
-if uniform_initial_cover
-    @info "Using LTMP data to intialise uniform cover for north, central and southern GBR regions"
-    north_index = findfirst(x -> x >= start_year, ltmp_north.Year)
-    central_index = findfirst(x -> x >= start_year, ltmp_central.Year)
-    south_index = findfirst(x -> x >= start_year, ltmp_south.Year)
-
-    north_cover::Float64 = ltmp_north.response[north_index]
-    central_cover::Float64 = ltmp_central.response[central_index]
-    south_cover::Float64 = ltmp_south.response[south_index]
-
-    interp_cover = (north_cover + central_cover + south_cover) / 3
-
-    # Maintain species distributions, normalise to meet equivalent cover
-    init_loc_cover = sum(dom.init_coral_cover, dims=:species)
-
-    dom.init_coral_cover[locs=NORTH_MASK] .*= north_cover ./ init_loc_cover[locs=NORTH_MASK]
-    dom.init_coral_cover[locs=CENTRAL_MASK] .*= central_cover ./ init_loc_cover[locs=CENTRAL_MASK]
-    dom.init_coral_cover[locs=SOUTH_MASK] .*= south_cover ./ init_loc_cover[locs=SOUTH_MASK]
-
-    # Locations not contained in the shapes defined, are assigned averaged values
-    if any(NOT_CONTAINED)
-        dom.init_coral_cover[locs=NOT_CONTAINED] .*= interp_cover ./ init_loc_cover[locs=NOT_CONTAINED]
-    end
-
-    dom.init_coral_cover ./= dom.site_data.k'
-    # Convert total cover to relative cover
-
-    uniform_initial_cover = false
-end
-
-if !@isdefined(north_res) && @isdefined(s_rac)
-    north_res = s_rac[sites=NORTH_MASK]
-    central_res = s_rac[sites=CENTRAL_MASK]
-    south_res = s_rac[sites=SOUTH_MASK]
 end
 
 location_classification = CSV.read(classification_path, DataFrame)
@@ -140,26 +89,28 @@ manta_tow_std = readcubedata(manta_tow_classes.std)
 # Load manta tow ltmp reef level data
 ltmp_reef_data = GDF.read(ltmp_reef_data_path)
 
-# Order year columns in ascending order
-ltmp_reef_years = parse.(Int64, names(ltmp_reef_data)[5:end])
-ltmp_reef_perm = sortperm(ltmp_reef_years) .+ 4
+# Identify year columns by name (some cols like "match_reason" are not years)
+let all_names = names(ltmp_reef_data)
+    is_year = [tryparse(Int64, n) !== nothing for n in all_names]
+    year_idxs = findall(is_year)
+    non_year_idxs = findall(.!is_year)
+    sorted_year_idxs = year_idxs[sortperm(parse.(Int64, all_names[year_idxs]))]
+    global ltmp_reef_data = DataFrames.select(ltmp_reef_data, [non_year_idxs; sorted_year_idxs]...)
+end
+# Divide all year columns by 100 (stored as percentages)
+first_yr_idx = findfirst(x -> tryparse(Int64, x) !== nothing, names(ltmp_reef_data))
+ltmp_reef_data[:, first_yr_idx:end] ./= 100
 
-ltmp_reef_data_names = names(ltmp_reef_data)
-ltmp_reef_data_names[5:end] .= ltmp_reef_data_names[ltmp_reef_perm]
-
-# Rorder columns
-ltmp_reef_data = select!(ltmp_reef_data, ltmp_reef_data_names...)
-
-# Rescale to be proportions
-ltmp_reef_data[:, 5:end] ./= 100
 first_yr_idx = findfirst(x -> x == "2008", names(ltmp_reef_data))
 raw_ltmp_reef_data = Matrix(ltmp_reef_data[:, first_yr_idx:end])
 
 ltmp_reefmod_idxs = [
     ismissing(id) ? -1 : findfirst(
         x -> x == id,
-        dom.site_data.UNIQUE_ID
+        dom.loc_data.UNIQUE_ID
     ) for id in ltmp_reef_data.RME_UNIQUE_ID
 ]
 
 ENV["ADRIA_DEBUG"] = false
+
+@info "Successfuly finished running 1_setup.jl"
