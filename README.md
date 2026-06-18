@@ -72,6 +72,36 @@ julia> include("03_result_analysis.jl")
 julia> include("04_location_analysis.jl")
 ```
 
+## Initial Coral Cover
+
+ADRIA requires an initial coral cover for every location in the domain. Because historical
+coral cover observations (LTMP manta tow and photogrammetry data) are only available for a
+subset of GBR reefs, a two-phase assignment is used:
+
+### Phase 1 — Classification-based cover (all locations)
+
+Every location is assigned an initial cover profile derived from its ecological class. Classes
+are defined by aggregating depth, turbidity, wave energy, shelf position, and LTMP region into
+a mixed-radix index (see `datasets/spatial_data/location_classification_MPA.csv`, produced by
+[Data-Gen-Calibration](https://github.com/DanTanAtAims/Data-Gen-Calibration/tree/main/src/classification)).
+All locations sharing the same class receive the same cover profile. The parameters of this
+profile (total cover, taxonomic composition weights, and size-class exponential rate per
+taxon) are jointly calibrated alongside the coral growth and mortality parameters.
+
+### Phase 2 — Observation-based override (locations with historical data)
+
+After Phase 1, cover is overwritten at locations where observations exist:
+
+- *LTMP manta tow sites*: the total cover is rescaled to match the earliest non-missing
+  observed cover, preserving the composition shape from Phase 1.
+- *Photogrammetry sites*: both the taxonomic composition and size-class distribution are
+  replaced with observed values; only the total cover magnitude is retained from Phase 1.
+
+The index vectors `ltmp_cover_to_domain` and `composition_to_domain` inside each
+`LocationDataStore` (`CALIBRATION_STORE`, `VALIDATION_STORE`, `COMBINED_STORE`) are the sole
+record of which domain locations have observed data. Everything outside these index sets
+retains its Phase 1 cover unchanged.
+
 ## Changing Calibration Parameters
 
 In order to reduce the number of files to be edited when making changes to which parameters
