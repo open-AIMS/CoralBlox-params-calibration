@@ -12,6 +12,7 @@ using ADRIA: GDF, AG, DimensionalData
 include("./constants.jl")
 
 src_path = dirname(@__DIR__)
+root_path = dirname(src_path)
 datasets_path = joinpath(dirname(src_path), "datasets")
 
 global CONFIG = TOML.parsefile(joinpath(dirname(src_path), "config.toml"))

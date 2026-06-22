@@ -6,7 +6,7 @@ mkpath(validation_save_dir)
 
 cyc_scens = dom.cyclone_mortality_scens[scenarios=1]
 dhw_scens = dom.dhw_scens[scenarios=1]
-disturbances_path = "../datasets/ltmp_data/disturbances.nc"
+disturbances_path = joinpath(root_path, "datasets/ltmp_data/disturbances.nc")
 disturbances = open_dataset(disturbances_path).layer
 
 n_calibration_locs = length(CALIBRATION_STORE.ltmp_cover_to_domain)
