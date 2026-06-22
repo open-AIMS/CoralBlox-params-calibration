@@ -58,7 +58,7 @@ function plot_metric_scatter(
     title = get(axis_opts, :title, "")
     xlabel = get(axis_opts, :xlabel, "Index")
     ylabel = get(axis_opts, :ylabel, "Metric value")
-    yticks = get(axis_opts, :yticks, Makie.automatic)
+    yticks = get(axis_opts, :yticks, automatic)
 
     fig = Figure(; size=size)
     ax = Axis(
@@ -249,7 +249,7 @@ function plot_metric_map!(
     if get(opts, :colorbar_visible, true)
         colorbar_label = get(opts, :colorbar_label, "Benchmark RMSE - Model RMSE")
         colorbar_ticklabelsize = get(opts, :colorbar_ticklabelsize, 16)
-        colorbar_ticks = get(opts, :colorbar_ticks, Makie.automatic)
+        colorbar_ticks = get(opts, :colorbar_ticks, automatic)
         colorbar_vertical = get(opts, :colorbar_vertical, true)
         position = colorbar_vertical ? (1, 2) : (2, 1)
         Colorbar(

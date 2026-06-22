@@ -4,7 +4,7 @@
         ltmp_loc_idx;
         fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
         observations::LocationDataStore=COMBINED_STORE,
-    )::Makie.RichText
+    )::RichText
 
 Construct a Rich Test string containing the location unique id, location name and the error
 statistics for the location.
@@ -20,7 +20,7 @@ function _location_err_title(
     ltmp_loc_idx;
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
-)::Makie.RichText
+)::RichText
     domain_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
     reef_name::String = try
         observations.domain_gpkg.GBR_NAME[domain_idx]

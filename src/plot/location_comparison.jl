@@ -370,14 +370,14 @@ function legend_ltmp_disturbances!(
     f::Figure, row::Int64, loc_disturbances::YAXArray{Int16,2}; col::Int64=2
 )
     disturbance_mask = read(dropdims(sum(loc_disturbances, dims=1), dims=1) .> 0)
-    colors = Makie.ColorSchemes.seaborn_bright6[disturbance_mask]
+    colors = ColorSchemes.seaborn_bright6[disturbance_mask]
     labels = collect(loc_disturbances.disturbances.val)[disturbance_mask]
     return legend_ltmp_disturbances!(f, row, colors, labels; col=col)
 end
 function legend_ltmp_disturbances!(
     f::Figure, row::Int64, disturbances::YAXArray{Int16,3}; col::Int64=2
 )
-    colors = Makie.ColorSchemes.seaborn_bright6
+    colors = ColorSchemes.seaborn_bright6
     labels = collect(disturbances.disturbance)
     return legend_ltmp_disturbances!(f, row, colors, labels; col=col)
 end

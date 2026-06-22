@@ -154,7 +154,7 @@ function temporal_size_class_proportions(raw_data; fig_size=(1000, 1000))::Figur
         )
         sr = series!(ax, xs, population[i, :, :], color=col)
     end
-    line_elements = [LineElement(color=c) for c in Makie.ColorSchemes.oslo10[1:n_functional_groups]]
+    line_elements = [LineElement(color=c) for c in ColorSchemes.oslo10[1:n_functional_groups]]
     Legend(
         f[end+1, :],
         line_elements,
@@ -348,11 +348,11 @@ function plot_coral_param(
         category,
         data,
         dodge=group,
-        color=Makie.wong_colors()[group]
+        color=wong_colors()[group]
     )
 
     labels = String.(ADRIA.functional_group_names())
-    elements = [PolyElement(polycolor=Makie.wong_colors()[i]) for i in 1:length(labels)]
+    elements = [PolyElement(polycolor=wong_colors()[i]) for i in 1:length(labels)]
     title = "Functional Groups"
 
     Legend(fig[1, 2], elements, labels, title)
