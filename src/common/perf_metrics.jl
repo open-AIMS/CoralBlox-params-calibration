@@ -213,7 +213,7 @@ Calculate the functional group correlation and temporal correlation between aggr
 data created for reefmod.
 
 Uses the complement of the absolute pearson correlation coefficient such that 0 indicates
-a perfect fit, and >= 0 indicates no or negative correlation.
+a perfect fit, and > 0 indicates no or negative correlation.
 
 The score indicates the mean correlation.
 """
