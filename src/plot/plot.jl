@@ -1,4 +1,5 @@
 using CairoMakie
+using ColorSchemes
 
 COLORMAPS = (
     ltmp_disturbances=:seaborn_bright6,
@@ -16,7 +17,7 @@ COLORS = (
     historic_band_color=("#D81B60", 0.3),
     NamedTuple(zip(
         Symbol.(ADRIA.functional_group_names()),
-        Makie.ColorSchemes.seaborn_colorblind6[1:5],
+        ColorSchemes.seaborn_colorblind6[1:5],
     )
     )...
 )
