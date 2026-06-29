@@ -1,0 +1,29 @@
+# Config for the initial_cover/ standalone calibration.
+# This calibration uses ReefModDomain or RMEDomain depending on the reefmod_domain flag
+# in common.jl. Set `reefmod_domain = false` in the Julia REPL before running to use
+# RMEDomain (rme_domain path). Set `reefmod_domain = true` to use ReefModDomain
+# (reefmod_domain path).
+#
+# Run scripts from within the initial_cover/ directory.
+
+[data_paths]
+# Path to a ReefModDomain dataset (used when reefmod_domain = true in common.jl)
+reefmod_domain = "C:/AIMS/Datasets/ADRIA DataPackages/rme_ml_2025_09_03"
+
+# Path to an RMEDomain dataset (used when reefmod_domain = false in common.jl)
+rme_domain = "C:/AIMS/Datasets/ADRIA DataPackages/rme_ml_2025_09_03"
+
+# LTMP regional shapefile — already present in initial_cover/data/
+ltmp_shp = "data/gbr_3Zone 2.shp"
+
+# Canonical GBR geopackage
+canonical_path = "C:/AIMS/Datasets/rrap_canonical_2025-07-15-T10-48-29.gpkg"
+
+# Location classification CSV — already present in initial_cover/data/
+classification_path = "data/location_classification_MPA.csv"
+
+# Manta tow class-aggregated observations (mean and std per class)
+manta_tow_path = "../datasets/ltmp_data/manta_tow_mean_std.nc"
+
+# Reef-level LTMP manta tow geopackage
+ltmp_reef_data = "../datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"
