@@ -17,6 +17,7 @@ docs/build/
 config.toml
 
 Outputs/*
+initial_cover/Outputs/
 
 src/statprof/
 src/gif
