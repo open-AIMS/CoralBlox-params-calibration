@@ -89,38 +89,38 @@ fig_spat_gps = plot_regional_comparison(
 save(joinpath(regional_analysis_save_dir, "regional__spatial_grouping__calibration.png"), fig_spat_gps)
 
 # * Sectors
-sectors_path = "C:/Users/pribeiro/AIMS/Datasets/AIMS_Sectors.csv"
-sectors_df = CSV.read(sectors_path, DataFrame)
+# sectors_path = "C:/Users/pribeiro/AIMS/Datasets/AIMS_Sectors.csv"
+# sectors_df = CSV.read(sectors_path, DataFrame)
 
-sector_names = collect(skipmissing(unique(sectors_df.aimssector)))
-n_sectors = length(sector_names)
-n_locations = size(canonical_reefs, 1)
-sector_masks = fill(falses(n_locations), n_sectors)
+# sector_names = collect(skipmissing(unique(sectors_df.aimssector)))
+# n_sectors = length(sector_names)
+# n_locations = size(canonical_reefs, 1)
+# sector_masks = fill(falses(n_locations), n_sectors)
 
-for (i, name) in enumerate(sector_names)
-    sector_ids = sectors_df.ReefID[BitVector(replace(sectors_df.aimssector .== name, missing => false))]
-    sector_masks[i] = canonical_reefs.GBRMPA_ID .∈ Ref(sector_ids)
-end
+# for (i, name) in enumerate(sector_names)
+#     sector_ids = sectors_df.ReefID[BitVector(replace(sectors_df.aimssector .== name, missing => false))]
+#     sector_masks[i] = canonical_reefs.GBRMPA_ID .∈ Ref(sector_ids)
+# end
 
-sectors_group_stats_validation = region_stats(Symbol.(sector_names), sector_masks; observations=VALIDATION_STORE)
-sectors_group_stats_calibration = region_stats(Symbol.(sector_names), sector_masks; observations=CALIBRATION_STORE)
+# sectors_group_stats_validation = region_stats(Symbol.(sector_names), sector_masks; observations=VALIDATION_STORE)
+# sectors_group_stats_calibration = region_stats(Symbol.(sector_names), sector_masks; observations=CALIBRATION_STORE)
 
-# Plot just valid. or calib.
-fig_sectors = plot_regional_comparison(
-    sectors_group_stats_validation,
-    keys(sectors_group_stats_validation);
-    opts=merge(base_opts, Dict{Symbol,Any}(:title => "Sectors (validation reefs)")),
-    fig_opts=Dict{Symbol,Any}(:size => (1000, 600))
-)
-save(joinpath(regional_analysis_save_dir, "regional__sectors__validation.png"), fig_sectors)
+# # Plot just valid. or calib.
+# fig_sectors = plot_regional_comparison(
+#     sectors_group_stats_validation,
+#     keys(sectors_group_stats_validation);
+#     opts=merge(base_opts, Dict{Symbol,Any}(:title => "Sectors (validation reefs)")),
+#     fig_opts=Dict{Symbol,Any}(:size => (1000, 600))
+# )
+# save(joinpath(regional_analysis_save_dir, "regional__sectors__validation.png"), fig_sectors)
 
-fig_sectors = plot_regional_comparison(
-    sectors_group_stats_calibration,
-    keys(sectors_group_stats_calibration);
-    opts=merge(base_opts, Dict{Symbol,Any}(:title => "Sectors (calibration reefs)", :invert_positions => true)),
-    fig_opts=Dict{Symbol,Any}(:size => (1000, 900))
-)
-save(joinpath(regional_analysis_save_dir, "regional__sectors__calibration.png"), fig_sectors)
+# fig_sectors = plot_regional_comparison(
+#     sectors_group_stats_calibration,
+#     keys(sectors_group_stats_calibration);
+#     opts=merge(base_opts, Dict{Symbol,Any}(:title => "Sectors (calibration reefs)", :invert_positions => true)),
+#     fig_opts=Dict{Symbol,Any}(:size => (1000, 900))
+# )
+# save(joinpath(regional_analysis_save_dir, "regional__sectors__calibration.png"), fig_sectors)
 
 # # TODO Bioregions
 # Should be almost identical to CB_CALIB_GROUPS
