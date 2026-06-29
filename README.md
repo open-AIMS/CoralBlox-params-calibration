@@ -33,8 +33,6 @@ Instantiate environment to install required packages.
 ]instantiate
 ```
 
-It is assumed that all scripts are run inside the `src` directory.
-
 Add the required version of ADRIA using:
 `add https://www.github.com/open-AIMS/ADRIA.jl#takuya/calib`
 
@@ -45,12 +43,17 @@ Copy `config.toml.template` to `config.toml` at the repo root and fill in your
 machine-specific paths. The template documents all fields inline, including which are
 required and what the relative-path defaults are for optional fields.
 
+This repo is also a Julia package (`CoralBloxCalib`). After instantiation you can load it
+directly in a REPL session:
+
+```julia-repl
+julia> using CoralBloxCalib          # types, helpers
+julia> import CoralBloxCalib.viz     # plotting submodule
+```
+
 ## Running scripts
 
-The scripts in the `src` directory should be executed in the order according to the file
-name numbering (excluding `2_calibration.jl`).
-
-#### Running calibration and analysis
+### Running calibration
 
 ```julia-repl
 julia> include("src/01_a_setup.jl")
@@ -58,19 +61,19 @@ julia> include("src/01_b_data_split.jl")
 julia> include("src/02_location_calibration.jl")
 ```
 
-#### Results analysis only.
+### Results analysis and plots
 
 The calibration parameters used for results analysis are read from the `result_filename`
-file in the output directory, `out_dir`, that were defined in the calibration configuration
-file. Any plots already existing in this directory that were created using the same scripts
-will be **overwritten**.
+file in the output directory, `out_dir`, defined in `config.toml`. Any plots already
+existing in that directory will be **overwritten**.
 
 ```julia-repl
-julia> include("src/01_a_setup.jl")
-julia> include("src/01_b_data_split.jl")
-julia> include("src/03_result_analysis.jl")
-julia> include("src/04_location_analysis.jl")
+julia> include("scripts/plot/03_result_analysis.jl")
 ```
+
+This single script inlines the domain setup and runs all plot-generation routines via
+`CoralBloxCalib.viz`. Outputs are organised into subdirectories under `out_dir`:
+`regional_analysis/`, `metrics/`, `calibration_locations/`, `validation_locations/`.
 
 ## Initial Coral Cover
 
@@ -113,17 +116,14 @@ scenarios and scale factors required to perform a model run.
 
 ## Useful Variables
 
-First execute `1_setup.jl`
+After running `src/01_a_setup.jl` and `src/01_b_data_split.jl`:
 
-- `dom` : ADRIA reefmod domain.
-- `rm_ltmp_taxa` : Observed taxa composition at target locations
-- `raw_ltmp_reef_data` : Observed coral cover levels at target locations
-- `TARGET_DOM_IDXS` : ADRIA domain row index for each target location
-- `NORTH MASK`, `CENTRAL MASK` and `SOUTH MASK` : LTMP Region mask for ADRIA domains
-- `ltmp_north`, `ltmp_central` and `ltmp_south` : Regional LTMP data
-- `ALL_LTMP_REEF` : All ltmp reef manta cover data
-- `ALL_LTMP_REEF_IDXS` : ADRIA domain row index for each ltmp location
-- `location_classification` : CSV containing location classification of GBR-wide locations
+- `dom` — ADRIA reefmod domain
+- `CALIBRATION_STORE`, `VALIDATION_STORE`, `COMBINED_STORE` — `LocationDataStore` instances
+  indexing LTMP reef data, coral composition data, and the domain geopackage
+- `NORTH_MASK`, `CENTRAL_MASK`, `SOUTH_MASK` — `BitVector` region masks for the ADRIA domain
+- `ltmp_north`, `ltmp_central`, `ltmp_south` — regional LTMP modelled cover `DataFrame`s
+- `location_classification` — CSV containing location classification of GBR-wide locations
 
 ## Error Functions
 
