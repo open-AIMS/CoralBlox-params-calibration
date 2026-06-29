@@ -1,9 +1,10 @@
 module viz
 
 using ADRIA
-using ADRIA: GDF
+using ADRIA: GDF, AG
 
 using CairoMakie
+using GeometryBasics: Polygon, Point2f
 using ColorSchemes
 using GeoMakie
 using DataFrames
@@ -29,6 +30,19 @@ const GBRMPA_MAINLAND_PATH = joinpath(
     "datasets", "spatial_data", "Great_Barrier_Reef_Features.geojson"
 )
 const GBRMPA_MAINLAND_GPKG = GDF.read(GBRMPA_MAINLAND_PATH)
+# Convert mainland geometries to pure Julia at load time while the GDAL layer is open.
+# ArchGDAL geometry ptrs from GDF.read are borrowed GDAL references that become stale
+# after the layer closes — preconversion avoids NULL ptr errors at render time.
+# Handles both wkbPolygon and wkbMultiPolygon features present in the GeoJSON.
+_gdal_ring_to_poly(ring) =
+    Polygon([Point2f(AG.getx(ring, j), AG.gety(ring, j)) for j in 0:AG.ngeom(ring)-1])
+const GBRMPA_MAINLAND_POLYS = mapreduce(vcat, GBRMPA_MAINLAND_GPKG.geometry) do g
+    if AG.getgeomtype(g) == AG.wkbMultiPolygon
+        [_gdal_ring_to_poly(AG.getgeom(AG.getgeom(g, i), 0)) for i in 0:AG.ngeom(g)-1]
+    else
+        [_gdal_ring_to_poly(AG.getgeom(g, 0))]
+    end
+end
 
 const inch = 96
 const pt = 4 / 3
