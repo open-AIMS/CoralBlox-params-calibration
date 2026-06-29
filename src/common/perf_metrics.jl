@@ -106,23 +106,22 @@ function constant_error_statistics(
     return err_csv
 end
 
-function _loc_cover(
-    raw_data;
-    loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom)
-)
+function _loc_cover(raw_data, dom)
+    loc_k_areas = ADRIA.site_k_area(dom)
+    loc_areas = ADRIA.loc_area(dom)
     dropdims(sum(raw_data, dims=(2, 3)), dims=(2, 3)) .* loc_k_areas' ./ loc_areas'
 end
 
 """
-    collect_error_stats(raw_data, ltmp_loc_idx; observations::LocationDataStore=CALIBRATION_STORE, loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom))
+    collect_error_stats(raw_data, dom; observations)
+    collect_error_stats(raw_data, ltmp_loc_idx, dom; observations)
 
-Error stats for a single location or for all locations.
+Error stats for all locations or a single location.
 """
 function collect_error_stats(
-    raw_data::Array{Float64,4};
-    observations::LocationDataStore=CALIBRATION_STORE,
-    loc_k_areas=ADRIA.site_k_area(dom),
-    loc_areas=ADRIA.loc_area(dom)
+    raw_data::Array{Float64,4},
+    dom;
+    observations::LocationDataStore,
 )::NamedTuple
     n_locations = size(observations.ltmp_coral_cover, 1)
 
@@ -131,13 +130,7 @@ function collect_error_stats(
         collect.(eachcol(repeat(zeros(Float64, n_locations), 1, n_locations)))
 
     for loc in 1:n_locations
-        error_stats = collect_error_stats(
-            raw_data,
-            loc;
-            observations=observations,
-            loc_k_areas=loc_k_areas,
-            loc_areas=loc_areas
-        )
+        error_stats = collect_error_stats(raw_data, loc, dom; observations=observations)
 
         rmse_model[loc] = error_stats.rmse_model
         rmse_benchmark[loc] = error_stats.rmse_benchmark
@@ -152,12 +145,11 @@ function collect_error_stats(
 end
 function collect_error_stats(
     raw_data::Array{Float64,4},
-    ltmp_loc_idx;
-    observations::LocationDataStore=CALIBRATION_STORE,
-    loc_k_areas=ADRIA.site_k_area(dom),
-    loc_areas=ADRIA.loc_area(dom)
+    ltmp_loc_idx,
+    dom;
+    observations::LocationDataStore,
 )
-    loc_cover = _loc_cover(raw_data; loc_k_areas=loc_k_areas, loc_areas=loc_areas)
+    loc_cover = _loc_cover(raw_data, dom)
 
     obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
@@ -311,14 +303,14 @@ function class_error(
     return err_series ./ err_counts
 end
 
-function rmse_diff(rs_raw::Array{Float64,4}, observations::LocationDataStore)::Vector{Float64}
+function rmse_diff(
+    rs_raw::Array{Float64,4}, observations::LocationDataStore, dom
+)::Vector{Float64}
     n_validation_locs = length(observations.ltmp_cover_to_domain)
     model_rmse = zeros(Float64, n_validation_locs)
     benchmark_rmse = zeros(Float64, n_validation_locs)
     for i in 1:n_validation_locs
-        error_stats = collect_error_stats(
-            rs_raw, i; observations=observations
-        )
+        error_stats = collect_error_stats(rs_raw, i, dom; observations=observations)
         model_rmse[i] = error_stats.rmse_model
         benchmark_rmse[i] = error_stats.rmse_benchmark
     end
@@ -327,17 +319,17 @@ end
 
 function location_correlation_coefficients(
     raw_data::Array{Float64,4},
-    observations::LocationDataStore;
+    observations::LocationDataStore,
+    dom;
     correlation_metric::Symbol=:spearman
 )
     n_locs = length(observations.ltmp_cover_to_domain)
     loc_cc = zeros(Float64, n_locs)
 
-    # obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     obs_loc_data = observations.ltmp_coral_cover
     not_missing_obs = (!).(ismissing.(obs_loc_data))
 
-    loc_cover = _loc_cover(raw_data)
+    loc_cover = _loc_cover(raw_data, dom)
     domain_idxs = ltmp_cover_idx_to_domain.(Ref(observations), 1:n_locs)
     sim_data = loc_cover[:, domain_idxs]
 

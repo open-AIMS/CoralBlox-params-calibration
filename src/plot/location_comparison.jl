@@ -23,9 +23,10 @@ function plot_location_comparison(
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
     disturbances;
+    dom,
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    observations::LocationDataStore=COMBINED_STORE,
+    observations::LocationDataStore,
 )::Figure where {T<:Real}
     ltmp_loc_index = findfirst(observations.ltmp_unique_ids .== reef_id)
     return plot_location_comparison(
@@ -34,6 +35,7 @@ function plot_location_comparison(
         dhw_scens,
         cyc_scens,
         disturbances;
+        dom=dom,
         opts=opts,
         fig_opts=fig_opts,
         observations=observations,
@@ -46,10 +48,11 @@ function plot_location_comparison!(
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
     disturbances;
+    dom,
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    observations::LocationDataStore=COMBINED_STORE,
+    observations::LocationDataStore,
 )::Nothing where {T<:Real}
     ltmp_loc_index = findfirst(observations.ltmp_unique_ids .== reef_id)
     plot_location_comparison!(
@@ -59,6 +62,7 @@ function plot_location_comparison!(
         dhw_scens,
         cyc_scens,
         disturbances;
+        dom=dom,
         opts=opts,
         axis_opts=axis_opts,
         fig_opts=fig_opts,
@@ -72,10 +76,11 @@ function plot_location_comparison(
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
     disturbances;
+    dom,
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    observations::LocationDataStore=COMBINED_STORE,
+    observations::LocationDataStore,
 )::Figure where {T<:Real}
     fig = Figure(; fig_opts...)
     g = fig[1, 1] = GridLayout()
@@ -86,6 +91,7 @@ function plot_location_comparison(
         dhw_scens,
         cyc_scens,
         disturbances;
+        dom=dom,
         opts=opts,
         axis_opts=axis_opts,
         fig_opts=fig_opts,
@@ -100,10 +106,11 @@ function plot_location_comparison!(
     dhw_scens::YAXArray{T},
     cyc_scens::YAXArray{Float64,3},
     disturbances;
+    dom,
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    observations::LocationDataStore=COMBINED_STORE,
+    observations::LocationDataStore,
 )::Nothing where {T<:Real}
     base_title = _location_err_title(raw_data, ltmp_loc_idx; opts, observations=observations)
     title_text = pop!(fig_opts, :title, base_title)
@@ -116,6 +123,7 @@ function plot_location_comparison!(
     _except_patterns = setdiff(subplot_keys, ["model_vs_obs"])
     plot_modelled_v_ltmp!(
         grid, current_row, raw_data, ltmp_loc_idx;
+        dom=dom,
         observations=observations,
         axis_opts=filter_opts(axis_opts, "model_vs_obs"; except_patterns=_except_patterns),
         opts=filter_opts(opts, "model_vs_obs"; except_patterns=_except_patterns)
@@ -164,7 +172,7 @@ function plot_location_comparison!(
 
     if get(opts, :show_benthic_composition, true)
         cb_loc_id = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
-        cover = rs_raw.raw[:, :, :, cb_loc_id]
+        cover = raw_data[:, :, :, cb_loc_id]
         _except_patterns = setdiff(subplot_keys, ["benthic"])
         plot_taxa_props!(
             grid[current_row, 1], cover;
@@ -191,8 +199,8 @@ function plot_modelled_v_ltmp!(
     ax_row::Int64,
     raw_data,
     ltmp_loc_idx;
-    observations::LocationDataStore=COMBINED_STORE,
-    dom=dom,
+    dom,
+    observations::LocationDataStore,
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )
@@ -205,14 +213,14 @@ function plot_modelled_v_ltmp!(
         axis_opts
     )
     ax = Axis(fig[ax_row, 1]; axis_opts...)
-    return plot_modelled_v_ltmp!(ax, raw_data, ltmp_loc_idx; observations=observations, opts=opts)
+    return plot_modelled_v_ltmp!(ax, raw_data, ltmp_loc_idx; dom=dom, observations=observations, opts=opts)
 end
 function plot_modelled_v_ltmp!(
     ax::Axis,
     raw_data,
     ltmp_loc_idx;
-    observations::LocationDataStore=COMBINED_STORE,
-    dom=dom,
+    dom,
+    observations::LocationDataStore,
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )
     domain_loc_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)

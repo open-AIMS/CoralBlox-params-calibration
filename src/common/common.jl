@@ -11,6 +11,13 @@ using ADRIA: GDF, AG, DimensionalData
 
 include("./constants.jl")
 
+# LocationDataStore and related helpers are defined once in CoralBloxCalib.
+# When a script does `using CoralBloxCalib` before including this file the type
+# is already in scope and we skip re-defining it to avoid two different types.
+if !@isdefined(LocationDataStore)
+    include("./types.jl")
+end
+
 src_path = dirname(@__DIR__)
 root_path = dirname(src_path)
 datasets_path = joinpath(dirname(src_path), "datasets")
