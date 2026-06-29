@@ -112,7 +112,7 @@ function plot_location_comparison!(
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore,
 )::Nothing where {T<:Real}
-    base_title = _location_err_title(raw_data, ltmp_loc_idx; opts, observations=observations)
+    base_title = _location_err_title(raw_data, ltmp_loc_idx; dom=dom, opts, observations=observations)
     title_text = pop!(fig_opts, :title, base_title)
     show_legends = get(opts, :show_legends, true)
     current_row = 1

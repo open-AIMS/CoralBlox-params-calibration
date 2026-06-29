@@ -18,6 +18,7 @@ statistics for the location.
 function _location_err_title(
     raw_data,
     ltmp_loc_idx;
+    dom,
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     observations::LocationDataStore=COMBINED_STORE,
 )
@@ -30,7 +31,7 @@ function _location_err_title(
     reef_id::String = get_ltmp_loc_unique_id(observations, ltmp_loc_idx)
 
     error_stats = collect_error_stats(
-        raw_data, ltmp_loc_idx; observations=observations
+        raw_data, ltmp_loc_idx, dom; observations=observations
     )
 
     rmse_model, rmse_benchmark, pcc, maee, bias, srcc = trunc.(
