@@ -1,6 +1,6 @@
 # AIMS HPC job submission guide
 
-Submit jobs like:
+See setup instructions in the README.md. Submit jobs like:
 
 ```bash
 cd scripts
