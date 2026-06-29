@@ -66,11 +66,7 @@ global GBRMPA_MAINLAND_PATH = joinpath(datasets_path, "spatial_data/Great_Barrie
 
 # Calibration Target / Observational Data
 global TARGET_CONFIG = get(CONFIG["calibration"], "observations", Dict())
-global LOC_CLASS_TARGET_PATH = get(
-    TARGET_CONFIG,
-    "manta_tow_path",
-    joinpath(datasets_path, "ltmp_data/manta_tow_mean_std.nc")
-)
+
 global LTMP_REEF_DATA_PATH = get(
     TARGET_CONFIG,
     "ltmp_reef_data",
@@ -182,3 +178,5 @@ function get_composition_loc_unique_id(
 end
 
 include("./perf_metrics.jl")
+
+
