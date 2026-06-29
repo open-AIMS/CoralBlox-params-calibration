@@ -153,6 +153,36 @@ spread of ltmp locations for a given year with a set of locations (class).
 
 Expects total cover of shape `[timesteps x location]`
 
+## Parameter Extraction
+
+After calibration is complete, `src/common/params_extraction.jl` unpacks the flat
+calibrated-parameter vector into labelled NetCDF files suitable for use in ADRIA.
+
+**Prerequisites** — the following must be defined (run `01_a_setup.jl` first) and a
+completed calibration result must exist at `joinpath(OUT_DIR, RESULT_FN)`:
+
+- `dom` — ADRIA domain
+- `OUT_DIR`, `RESULT_FN` — output directory and result filename (from `config.toml`)
+- `INIT_COVER_PATH` — path to the serialised initial-cover sample
+
+```julia-repl
+julia> include("src/01_a_setup.jl")
+julia> include("src/common/params_extraction.jl")
+```
+
+This writes two files to `{out_dir}/params/`:
+
+- **`calibrated_params.nc`** — Calibrated coral parameters as a YAXArray `Dataset` with
+  labelled `functional_group`, `size_class`, `cb_calib_group`, and `accel_param` axes.
+  Variables: `linear_extension`, `mb_rate`, `dist_mean`, `linear_extension_scale`,
+  `mb_rate_scale`, `growth_acceleration`.
+- **`historic_init_cover.nc`** — GBR-wide historical initial coral cover with
+  observation-based overrides applied at LTMP and photogrammetry sites
+  (see [Initial Coral Cover](#initial-coral-cover)).
+
+> **Note:** The `params/` subdirectory is created automatically if it does not exist.
+> Existing files are overwritten without warning.
+
 ## Historical DHW
 
 The script `src/historical_dhw_data_gen/01_generate_historical_dhw_data.jl` takes a file
