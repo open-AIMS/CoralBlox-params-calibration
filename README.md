@@ -53,9 +53,9 @@ name numbering (excluding `2_calibration.jl`).
 #### Running calibration and analysis
 
 ```julia-repl
-julia> include("01_a_setup.jl")
-julia> include("01_b_data_split.jl")
-julia> include("02_location_calibration.jl")
+julia> include("src/01_a_setup.jl")
+julia> include("src/01_b_data_split.jl")
+julia> include("src/02_location_calibration.jl")
 ```
 
 #### Results analysis only.
@@ -66,10 +66,10 @@ file. Any plots already existing in this directory that were created using the s
 will be **overwritten**.
 
 ```julia-repl
-julia> include("01_a_setup.jl")
-julia> include("01_b_data_split.jl")
-julia> include("03_result_analysis.jl")
-julia> include("04_location_analysis.jl")
+julia> include("src/01_a_setup.jl")
+julia> include("src/01_b_data_split.jl")
+julia> include("src/03_result_analysis.jl")
+julia> include("src/04_location_analysis.jl")
 ```
 
 ## Initial Coral Cover
