@@ -1,4 +1,4 @@
-module Plotting
+module viz
 
 using ADRIA
 using ADRIA: GDF

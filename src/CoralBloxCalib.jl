@@ -6,7 +6,7 @@ using DataFrames
 include("common/constants.jl")
 include("common/types.jl")
 
-include("plot/plotting.jl")
+include("plot/viz.jl")
 
 export LocationDataStore,
        ltmp_cover_idx_to_domain,
