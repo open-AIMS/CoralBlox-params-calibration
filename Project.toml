@@ -1,3 +1,6 @@
+name = "CoralBloxCalib"
+uuid = "1b083494-4cef-49eb-9786-fb478ff29e4a"
+
 [deps]
 ADRIA = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
