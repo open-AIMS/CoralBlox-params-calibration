@@ -313,17 +313,7 @@ global GROWTH_ACCEL_NAMES = accel_params_array_to_vec(
 # Utility functions for domain and parameter calibration setup
 
 """
-Reshape the growth acceleration parameters from a vector a matrix of shape [n_parameters ⋅ n_locs]
-"""
-function reshape_growth_accel_parameters(
-    params::Vector{Float64};
-    n_locs=length(TARGET_DOM_IDXS)
-)::Matrix{Float64}
-    return reshape(params, (3, n_locs))
-end
-
-"""
-    insert_init_loc_cover!(dom, lambdas; raw_ltmp_reef_data=raw_ltmp_reef_data, rm_ltmp_taxa=rm_ltmp_taxa, target_dom_idxs=TARGET_DOM_IDXS )::Nothing
+    insert_init_loc_cover!(dom, lambdas; observations=COMBINED_STORE, biogroup_ord=BIOGROUPS_ORDERING)::Nothing
 
 Recalculate initial cover of target locations to match photogrammetry coral composition and
 manta tow total cover. Use the given lambda calculation
