@@ -1,6 +1,6 @@
 using CairoMakie, ADRIA.GeoMakie, GraphMakie
 
-include("./plot/plot.jl")
+using CoralBloxCalib.viz
 include("1_setup.jl")
 
 corals = ADRIA.to_coral_spec(scen[1, :])
