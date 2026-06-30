@@ -27,7 +27,7 @@ global CONFIG = TOML.parsefile(joinpath(dirname(src_path), "config.toml"))
 # Configuration sections
 global DOMAIN_CONFIG = CONFIG["calibration"]["domains"]
 global GEOSPATIAL_CONFIG = CONFIG["calibration"]["geospatial"]
-global INITIALISATION_CONFIG = CONFIG["calibration"]["initialisation"]
+global INITIALISATION_CONFIG = get(CONFIG["calibration"], "initialisation", Dict())
 global OUTPUT_CONFIG = CONFIG["calibration"]["outputs"]
 
 # Single source of truth for the run seed, shared by ADRIA and BlackBoxOptim (passed
