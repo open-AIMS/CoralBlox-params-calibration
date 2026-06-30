@@ -10,12 +10,12 @@ Immutable struct providing a consistent interface for indexing between the array
 that refer to the same locations across different data sources.
 """
 struct LocationDataStore
-    domain_gpkg::DataFrame
-    ltmp_unique_ids::Vector{String}
-    ltmp_coral_cover::Array{Union{Missing,Float64},2}
-    coral_composition::Array{Union{Missing,Float64},3}
-    ltmp_cover_to_domain::Vector{Int64}
-    composition_to_domain::Vector{Int64}
+    domain_gpkg::DataFrame                          # ADRIA domain location table (one row per reef site)
+    ltmp_unique_ids::Vector{String}                 # RME_UNIQUE_ID for each LTMP survey site in this store
+    ltmp_coral_cover::Array{Union{Missing,Float64},2}  # observed total coral cover [location × timestep]
+    coral_composition::Array{Union{Missing,Float64},3} # observed species-group cover [timestep × group × location]
+    ltmp_cover_to_domain::Vector{Int64}             # maps each LTMP cover location index → domain row index
+    composition_to_domain::Vector{Int64}            # maps each composition location index → domain row index
 end
 
 function ltmp_cover_idx_to_domain(loc_data_store::LocationDataStore, ltmp_cover_idx::Int64)
