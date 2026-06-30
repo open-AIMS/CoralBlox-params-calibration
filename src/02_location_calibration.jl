@@ -44,7 +44,7 @@ function validate_linear_extension_coefficients(
 
     for j in 1:n_locs
         tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins
-        tmp[tmp.<0] .= 0.0
+        tmp[tmp .< 0] .= 0.0
         dist_from_valid += sum(tmp)
     end
 
@@ -154,12 +154,13 @@ function obj_func(
     n_ltmp_locs::Int64 = length(observations.ltmp_cover_to_domain)
 
     # Mean Absolute Error for peaks and troughs
-    peaks = argmax_missing.(eachrow(observations.ltmp_coral_cover))
-    troughs = argmin_missing.(eachrow(observations.ltmp_coral_cover))
-    obs_peaks = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, peaks)]
-    obs_troughs = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, troughs)]
-    modelled_peaks = loc_cover[CartesianIndex.(peaks, observations.ltmp_cover_to_domain)]
-    modelled_troughs = loc_cover[CartesianIndex.(troughs, observations.ltmp_cover_to_domain)]
+    each_obs_reef = eachrow(observations.ltmp_coral_cover)
+    obs_peak_idx = argmax_missing.(each_obs_reef)
+    obs_trough_idx = argmin_missing.(each_obs_reef)
+    obs_peaks = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, obs_peak_idx)]
+    obs_troughs = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, obs_trough_idx)]
+    modelled_peaks = loc_cover[CartesianIndex.(obs_peak_idx, observations.ltmp_cover_to_domain)]
+    modelled_troughs = loc_cover[CartesianIndex.(obs_trough_idx, observations.ltmp_cover_to_domain)]
 
     peaks_score = mean(abs.(modelled_peaks .- obs_peaks)) * 2.0
     troughs_score = mean(abs.(modelled_troughs .- obs_troughs)) * 2.0

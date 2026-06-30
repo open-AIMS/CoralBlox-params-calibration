@@ -227,10 +227,18 @@ function reef_taxa_error(
 end
 
 """
-    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
+    reef_error(cover; observations=CALIBRATION_STORE)::Vector{Float64}
 
-Calculate the error between ltmp observations and the given cover array. Defaults to the
-calibration data store.
+Mean reef-level MAEE per year, averaged across all LTMP reefs with observations in that year.
+
+For each LTMP reef location, computes the element-wise MAEE between simulated `cover`
+and observed coral cover at each observed timestep, then accumulates into a `n_years`
+error series. The peak and trough years of each reef's observed time series are weighted
+2× to penalise errors at extremes of the dynamic range more heavily. Missing observations
+are excluded from both the error sum and the per-year reef count, so each element of the
+returned vector is the unweighted mean over whichever reefs had valid data that year.
+
+Returns a `Vector{Float64}` of length `n_years` (one entry per modelled timestep).
 """
 function reef_error(
     cover;
@@ -243,25 +251,26 @@ function reef_error(
     not_missing::BitVector = BitVector(fill(true, n_years))
 
     domain_idx::Int64 = -1
-    for (row_idx, loc_obs) in enumerate(eachrow(observations.ltmp_coral_cover))
+    each_obs_ltmp_cover_series = eachrow(observations.ltmp_coral_cover)
+    for (row_idx, loc_obs) in enumerate(each_obs_ltmp_cover_series)
         domain_idx = ltmp_cover_idx_to_domain(observations, row_idx)
 
         not_missing .= (!).(ismissing.(loc_obs))
-        min_arg = argmin(loc_obs[not_missing])
-        max_arg = argmax(loc_obs[not_missing])
+        trough_idx = argmin(loc_obs[not_missing])
+        peak_idx = argmax(loc_obs[not_missing])
         tmp_err[not_missing] .= MAEE_series(
             cover[not_missing, domain_idx], loc_obs[not_missing]
         )
 
         # Apply double the weight on the peak/trough of the time series
-        tmp_err[not_missing][[min_arg, max_arg]] .*= 2.0
+        tmp_err[not_missing][[trough_idx, peak_idx]] .*= 2.0
         err_series[not_missing] .+= tmp_err[not_missing]
         err_counts[not_missing] .+= 1.0
     end
 
     if any(err_counts .== 0)
         @debug "No reef level observation data for some years."
-        err_counts[err_counts.==0] .= 1
+        err_counts[err_counts .== 0] .= 1
     end
 
     return err_series ./ err_counts
