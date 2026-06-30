@@ -186,8 +186,8 @@ function obj_func(
     modelled_peaks = loc_cover[CartesianIndex.(obs_peak_col, valid_domain_rows)]
     modelled_troughs = loc_cover[CartesianIndex.(obs_trough_col, valid_domain_rows)]
 
-    peaks_score = mean(abs.(modelled_peaks .- obs_peaks)) * 2.0
-    troughs_score = mean(abs.(modelled_troughs .- obs_troughs)) * 2.0
+    peaks_score = mean(abs.(modelled_peaks .- obs_peaks)) * 0.5
+    troughs_score = mean(abs.(modelled_troughs .- obs_troughs)) * 0.5
 
     score = (
         reef_perf +
