@@ -1,7 +1,7 @@
 using ADRIA: GDF.GeoInterface as GI
+using CoralBloxCalib.common
 
-include("./common/common.jl")
-include("./common/cover_construction.jl")
+include("./common/setup.jl")
 
 if !@isdefined(canonical_gpkg)
     @info "Loading Canonical gpkg"

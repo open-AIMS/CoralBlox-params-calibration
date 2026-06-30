@@ -1,114 +1,73 @@
-using Revise, Infiltrator
-using Serialization
-
-using TOML
-using Dates
-using CSV, DataFrames, YAXArrays
-using StatsBase, Statistics
+module common
 
 using ADRIA
-using ADRIA: GDF, AG, DimensionalData
+using DataFrames
+using StatsBase
+using Statistics
+using DataStructures
+using CSV
 
-include("./constants.jl")
+import ..CoralBloxCalib:
+    LocationDataStore,
+    ltmp_cover_idx_to_domain,
+    composition_idx_to_domain,
+    get_ltmp_loc_unique_id,
+    extract_param_group_idx,
+    extract_param_group
 
-# LocationDataStore and related helpers are defined once in CoralBloxCalib.
-# When a script does `using CoralBloxCalib` before including this file the type
-# is already in scope and we skip re-defining it to avoid two different types.
-if !@isdefined(LocationDataStore)
-    include("./types.jl")
+include("constants.jl")
+include("cover_construction.jl")
+include("perf_metrics.jl")
+
+export LocationDataStore,
+       ltmp_cover_idx_to_domain,
+       composition_idx_to_domain,
+       get_ltmp_loc_unique_id,
+       extract_param_group_idx,
+       extract_param_group,
+       squared_expo_cdf,
+       size_class_proportion,
+       size_class_distribution,
+       construct_location_cover!,
+       compute_cover,
+       construct_cover!,
+       temporal_correlation,
+       temporal_correlation_penalty,
+       rmse,
+       bias,
+       MAE,
+       MAEE,
+       MAEE_series,
+       temporal_variability,
+       calib_func,
+       collect_error_stats,
+       rmse_diff,
+       location_correlation_coefficients,
+       average_cc,
+       reef_taxa_error,
+       reef_error,
+       average_class_cover,
+       START_YEAR,
+       END_YEAR,
+       N_TAXA,
+       N_SIZE_CLASSES,
+       N_LOCATIONS,
+       N_TIMESTEPS,
+       N_PARAMS,
+       STRIDE,
+       N_GROWTH_ACCEL_PARAMS,
+       LIN_EXT_LB_FACTOR,
+       LIN_EXT_UB_FACTOR,
+       MB_RATE_LB_FACTOR,
+       MB_RATE_UB_FACTOR,
+       LIN_EXT_SCALE_LB,
+       LIN_EXT_SCALE_UB,
+       MB_RATE_SCALE_LB,
+       MB_RATE_SCALE_UB,
+       GROWTH_ACCEL_STEEPNESS_BOUNDS,
+       GROWTH_ACCEL_HEIGHT_BOUNDS,
+       GROWTH_ACCEL_MIDPOINT_BOUNDS,
+       SC_DIST_LB,
+       SC_DIST_UB
+
 end
-
-src_path = dirname(@__DIR__)
-root_path = dirname(src_path)
-datasets_path = joinpath(dirname(src_path), "datasets")
-
-global CONFIG = TOML.parsefile(joinpath(dirname(src_path), "config.toml"))
-
-# Configuration sections
-global DOMAIN_CONFIG = CONFIG["calibration"]["domains"]
-global GEOSPATIAL_CONFIG = CONFIG["calibration"]["geospatial"]
-global INITIALISATION_CONFIG = get(CONFIG["calibration"], "initialisation", Dict())
-global OUTPUT_CONFIG = CONFIG["calibration"]["outputs"]
-
-# Single source of truth for the run seed, shared by ADRIA and BlackBoxOptim (passed
-# explicitly as RngSeed). We set ENV["ADRIA_RNG_SEED"] ourselves here rather than relying
-# on ADRIA.setup() to wire it up: ADRIA.setup() resolves config.toml via
-# joinpath(pwd(), "config.toml"), which fails silently (falls back to defaults) whenever
-# pwd() isn't the repo root — e.g. when scripts are run from inside src/, per this repo's
-# README. Setting the env var explicitly here makes ADRIA's RNG seeding correct
-# regardless of pwd() or whether ADRIA.setup()'s own file lookup succeeds.
-global RNG_SEED = CONFIG["operation"]["rng_seed"]
-ENV["ADRIA_RNG_SEED"] = string(RNG_SEED)
-
-# ADRIA Domain paths
-global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
-global HISTORICAL_DHW_PATH = joinpath(
-    src_path,
-    "historical_dhw_data_gen",
-    "data",
-    "historical_dhw.nc"
-)
-global HISTORICAL_CYCLONE_MORTALITY_PATH = joinpath(
-    src_path,
-    "historical_disturbance_mortality_data_gen/",
-    "data/",
-    "historical_disturbance_mortality_rates/",
-    "historical_disturbance_mortality_rates.nc"
-)
-
-# Geospatial filepaths
-global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"]
-global LTMP_SHP_PATH = get(
-    GEOSPATIAL_CONFIG,
-    "ltmp_shp",
-    joinpath(datasets_path, "spatial_data/gbr_3Zone 2.shp")
-)
-global LOC_CLASS_PATH = get(
-    GEOSPATIAL_CONFIG,
-    "classification_path",
-    joinpath(datasets_path, "spatial_data/location_classification_MPA.csv")
-)
-
-global GBRMPA_MAINLAND_PATH = joinpath(datasets_path, "spatial_data/Great_Barrier_Reef_Features.geojson")
-
-# Calibration Target / Observational Data
-global TARGET_CONFIG = get(CONFIG["calibration"], "observations", Dict())
-
-global LTMP_REEF_DATA_PATH = get(
-    TARGET_CONFIG,
-    "ltmp_reef_data",
-    joinpath(datasets_path, "ltmp_data/manta_tow_data_reef_lvl.gpkg")
-)
-global COMPOSITION_PATH = get(
-    TARGET_CONFIG,
-    "composition_netcdf",
-    joinpath(datasets_path, "ltmp_data/coral_composition.nc")
-)
-global LTMP_MODELLED_OBS_PATH = get(
-    TARGET_CONFIG,
-    "ltmp_modelled_obs",
-    joinpath(datasets_path, "ltmp_data/modelled_brms.beta.ry.disp.csv")
-)
-
-# Initialisation filepaths
-global INIT_COVER_PATH = get(
-    INITIALISATION_CONFIG,
-    "init_cover_filepath",
-    joinpath(datasets_path, "spatial_data/init_cover.dat")
-)
-global INIT_GUESS_PATH = get(INITIALISATION_CONFIG, "init_guess_filepath", "")
-
-# Output filepaths
-global OUT_DIR = OUTPUT_CONFIG["out_dir"]
-global RESULT_FN = get(OUTPUT_CONFIG, "result_filename", "results.dat")
-
-if !@isdefined(OPTIONS)
-    global reload_domain = false
-
-    # define OPTIONS to prevent reinitialise on every include
-    global OPTIONS = true
-end
-
-include("./perf_metrics.jl")
-
-
