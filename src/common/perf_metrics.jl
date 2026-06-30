@@ -279,8 +279,6 @@ function reef_error(
             cover[not_missing, domain_idx], loc_obs[not_missing]
         )
 
-        # Apply double the weight on the peak/trough of the time series
-        tmp_err[not_missing][[trough_idx, peak_idx]] .*= 2.0
         err_series[not_missing] .+= tmp_err[not_missing]
         err_counts[not_missing] .+= 1.0
     end
