@@ -34,10 +34,10 @@ Instantiate environment to install required packages.
 ```
 
 Add the required version of ADRIA using:
-`add https://www.github.com/open-AIMS/ADRIA.jl#takuya/calib`
+`add https://www.github.com/open-AIMS/ADRIA.jl`
 
 The latest version of CoralBlox is also required:
-`add https://www.github.com/open-AIMS/CoralBlox.jl#main`
+`add https://www.github.com/open-AIMS/CoralBlox.jl`
 
 Copy `config.toml.template` to `config.toml` at the repo root and fill in your
 machine-specific paths. The template documents all fields inline, including which are
