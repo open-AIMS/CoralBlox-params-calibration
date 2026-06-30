@@ -88,7 +88,6 @@ function obj_func(
     loc_areas = ADRIA.loc_area(dom)
 
     linear_ext::Matrix{Float64} = _to_group_size(corals.linear_extension)
-    survival_r::Matrix{Float64} = _to_group_size(corals.mb_rate)
 
     # If either the linear_extension or mortality are not valid return a proportionally
     # big error value
