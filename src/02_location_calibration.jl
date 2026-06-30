@@ -61,6 +61,15 @@ argmin_missing(x) = argmin(ifelse.(ismissing.(x), Inf, x))
 # For finding maximum index
 argmax_missing(x) = argmax(ifelse.(ismissing.(x), -Inf, x))
 
+# Relative deviation of `calibrated` from `default`, mapped to [0, 1) via a sigmoid.
+# Zero when calibrated == default; approaches 1 as |calibrated - default| / |default| grows.
+# When default is 0 the denominator is set to 1 to avoid divide-by-zero.
+function _relative_deviation_penalty(calibrated::Float64, default::Float64)::Float64
+    denom = default == 0.0 ? 1.0 : abs(default)
+    rel_dev = abs(calibrated - default) / denom
+    return 2.0 / (1.0 + exp(-rel_dev)) - 1.0
+end
+
 """
 Model simulations end at 2022, so north/central/south obs argument ignores the last entry
 which is for 2023.
@@ -97,42 +106,51 @@ function obj_func(
     lin_ext_validity = validate_linear_extension_coefficients(
         linear_ext, scale_factors[:, 1, :]
     )
-    if lin_ext_validity + gbr_wide_scalar_validity != 0.0
-        return 1e6 + (
-            2e6 * (lin_ext_validity + gbr_wide_scalar_validity)
-        )
+    validity_violation = lin_ext_validity + gbr_wide_scalar_validity
+    if validity_violation > 0.0
+        # Cannot run the model with invalid parameters; return early with a penalty that
+        # scales linearly with the violation magnitude. A flat constant (ignoring magnitude)
+        # would make all infeasible candidates look equally bad to the optimizer, blocking
+        # directional search toward the feasibility boundary. The floor of 1e4 sits well
+        # above any plausible valid score (~25 worst-case) so infeasible candidates always
+        # lose to feasible ones in the minimizer.
+        return 1e4 + 1e4 * validity_violation
     end
 
     res = nothing
     try
         res = ADRIA.run_model(dom, scen[1, :])
     catch err
-        if !(err isa AssertionError)
-            rethrow(err)
-        elseif contains(sprint(showerror, err), "no method matching")
-            # Catch errors unrelated to perturbed parameter values
+        # Only swallow AssertionErrors known to be triggered by biologically impossible
+        # parameter values: (1) recruits_scale_factor <= 0 when linear extension pushes
+        # cover past the threshold cap (growth.jl), and (2) survival rate > 1 from extreme
+        # mortality parameters (scenario.jl). All other AssertionErrors must propagate —
+        # silently converting infrastructure failures to a finite score (~5e5) lets the
+        # optimizer treat crash-inducing regions as merely "moderately bad" candidates.
+        _param_assert_patterns = (
+            "!any(recruits_scale_factor .<= 0)",
+            "Survival rate should be <= 1",
+        )
+        err_msg = sprint(showerror, err)
+        is_param_assert = err isa AssertionError &&
+            any(contains(err_msg, p) for p in _param_assert_patterns)
+        if !is_param_assert
             rethrow(err)
         end
 
-        # Symmetric error function, where result is 0 if x == y
-        # but as y moves further away from x in either positive or negative direction, then
-        # the value approaches 1.0 (result is ≈1.0 if the distance between x and y is 10)
-        err_func(x, y) = 2.0 / (1.0 + exp(-abs(((x - y) / x) - (y / x)))) - 1.0
-
-        # Determine how far away from the "default" values these are
         comp_params = ADRIA.component_params(dom.model, :Coral)
         coral_fn = comp_params[:, :fieldname]
         lin_ext_idx = contains.(string.(coral_fn), "linear_ext")
         mbrate_idx = contains.(string.(coral_fn), "mb_rate")
 
-        linext_overage =
-            err_func.(
-                corals.linear_extension, replace(comp_params[lin_ext_idx, :val], 0.0 => 1.0)
-            )
-        mbrate_overage =
-            err_func.(corals.mb_rate, replace(comp_params[mbrate_idx, :val], 0.0 => 1.0))
+        lin_ext_overage = _relative_deviation_penalty.(
+            corals.linear_extension, comp_params[lin_ext_idx, :val]
+        )
+        mb_rate_overage = _relative_deviation_penalty.(
+            corals.mb_rate, comp_params[mbrate_idx, :val]
+        )
 
-        return 5e5 + (sum(linext_overage) + sum(mbrate_overage) + sum(scale_factors .> 1.0))
+        return 5e5 + (sum(lin_ext_overage) + sum(mb_rate_overage) + sum(scale_factors .> 1.0))
     end
 
     loc_cover = dropdims(sum(res.raw; dims=(2, 3)); dims=(2, 3)) .* loc_k_areas' ./ loc_areas'
@@ -151,16 +169,22 @@ function obj_func(
     first_non_zero = findfirst(x -> x != 0, reef_error_series)
     last_non_zero = findlast(x -> x != 0, reef_error_series)
 
-    n_ltmp_locs::Int64 = length(observations.ltmp_cover_to_domain)
+    # Restrict to survey locations with at least one valid observation. An all-missing row
+    # causes argmax_missing to return an arbitrary index whose stored value is still Missing,
+    # which would silently propagate Missing through to the score.
+    has_obs = vec(any(.!ismissing.(observations.ltmp_coral_cover), dims=2))
+    valid_survey_rows = findall(has_obs)
+    valid_domain_rows = observations.ltmp_cover_to_domain[valid_survey_rows]
 
-    # Mean Absolute Error for peaks and troughs
-    each_obs_reef = eachrow(observations.ltmp_coral_cover)
-    obs_peak_idx = argmax_missing.(each_obs_reef)
-    obs_trough_idx = argmin_missing.(each_obs_reef)
-    obs_peaks = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, obs_peak_idx)]
-    obs_troughs = observations.ltmp_coral_cover[CartesianIndex.(1:n_ltmp_locs, obs_trough_idx)]
-    modelled_peaks = loc_cover[CartesianIndex.(obs_peak_idx, observations.ltmp_cover_to_domain)]
-    modelled_troughs = loc_cover[CartesianIndex.(obs_trough_idx, observations.ltmp_cover_to_domain)]
+    # argmax/argmin_missing return column (year) indices into the cover array, which equal
+    # row indices into loc_cover — both share the same [1, n_years] time axis.
+    each_obs_reef = eachrow(observations.ltmp_coral_cover[valid_survey_rows, :])
+    obs_peak_col = argmax_missing.(each_obs_reef)
+    obs_trough_col = argmin_missing.(each_obs_reef)
+    obs_peaks = Float64.(observations.ltmp_coral_cover[CartesianIndex.(valid_survey_rows, obs_peak_col)])
+    obs_troughs = Float64.(observations.ltmp_coral_cover[CartesianIndex.(valid_survey_rows, obs_trough_col)])
+    modelled_peaks = loc_cover[CartesianIndex.(obs_peak_col, valid_domain_rows)]
+    modelled_troughs = loc_cover[CartesianIndex.(obs_trough_col, valid_domain_rows)]
 
     peaks_score = mean(abs.(modelled_peaks .- obs_peaks)) * 2.0
     troughs_score = mean(abs.(modelled_troughs .- obs_troughs)) * 2.0
