@@ -201,29 +201,46 @@ function average_class_cover(
 end
 
 """
-Calculate the functional group correlation and temporal correlation between aggregated ltmp
-data created for reefmod.
+    reef_taxa_error(cover; observations=CALIBRATION_STORE)::Float64
 
-Uses the complement of the absolute pearson correlation coefficient such that 0 indicates
-a perfect fit, and > 0 indicates no or negative correlation.
+Mean compositional mismatch between simulated and observed functional group cover across
+LTMP reefs and years. Returns a value in [0, 1] where 0 is a perfect match.
 
-The score indicates the mean correlation.
+At each (reef, timestep) pair with observations, the Pearson correlation across functional
+groups is computed and rescaled from [-1, 1] to [0, 1] via `(1 + r) / 2`, so that:
+- r = +1 (perfect match) → 1.0
+- r =  0 (no signal)     → 0.5
+- r = -1 (inversion)     → 0.0 (worst case, penalised harder than zero correlation)
+
+Per-reef scores are obtained by Fisher z-averaging the per-timestep r values before
+rescaling, then the objective is 1 minus the mean score across reefs.
 """
 function reef_taxa_error(
     cover;
     observations::LocationDataStore=CALIBRATION_STORE
 )
-    fg_corr::Float64 = 0.0
+    n_locs = length(observations.composition_to_domain)
+    loc_scores = Vector{Float64}(undef, n_locs)
+
     for (j, idx) in enumerate(observations.composition_to_domain)
-        non_missing_mask = (!).(ismissing.(observations.coral_composition[:, 1, j]))
-        for id in eachindex(2008:2022)[non_missing_mask]
-            fg_corr += cor(
-                cover[id, :, idx], observations.coral_composition[id, :, j]
-            ) ./ count(non_missing_mask)
+        non_missing_mask = vec(all(.!ismissing.(observations.coral_composition[:, :, j]); dims=2))
+        observed_ids = eachindex(2008:2022)[non_missing_mask]
+
+        if isempty(observed_ids)
+            loc_scores[j] = 0.5
+            continue
         end
+
+        r_vals = [
+            cor(cover[id, :, idx], Float64.(observations.coral_composition[id, :, j]))
+            for id in observed_ids
+        ]
+
+        r_mean = tanh(mean(atanh.(r_vals)))
+        loc_scores[j] = (1.0 + r_mean) / 2.0
     end
 
-    return 1.0 - (fg_corr ./ length(observations.composition_to_domain))
+    return 1.0 - mean(loc_scores)
 end
 
 """
@@ -307,7 +324,7 @@ function class_error(
             )
         err_counts[not_missing] .+= 1
     end
-    err_counts[err_counts.==0] .= 1
+    err_counts[err_counts .== 0] .= 1
 
     return err_series ./ err_counts
 end
