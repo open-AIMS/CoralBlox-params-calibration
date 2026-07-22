@@ -2,7 +2,7 @@ using StatsBase
 using YAXArrays, DataFrames, NetCDF
 using ADRIA: GDF
 
-include("../common/perf_metrics.jl")
+using CoralBloxCalib.common
 
 """
     rmse_scores(ltmp_data_path, rme_benchmark_path, canonical_path)

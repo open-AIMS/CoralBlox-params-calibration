@@ -1,0 +1,262 @@
+_to_group_size(flat_vec::Vector{Float64})::Matrix{Float64} =
+    permutedims(reshape(flat_vec, (N_SIZE_CLASSES, N_TAXA)), (2, 1))
+
+argmin_missing(x) = argmin(ifelse.(ismissing.(x), Inf, x))
+argmax_missing(x) = argmax(ifelse.(ismissing.(x), -Inf, x))
+
+function _relative_deviation_penalty(calibrated::Float64, default::Float64)::Float64
+    denom = default == 0.0 ? 1.0 : abs(default)
+    rel_dev = abs(calibrated - default) / denom
+    return 2.0 / (1.0 + exp(-rel_dev)) - 1.0
+end
+
+"""
+    validate_gbr_wide_scalar_mean(linear_ext_scalar, survival_scalar)::Float64
+
+Penalise mean scalar values outside [0.95, 1.05] for linear extension and [-0.05, 0.05]
+for background mortality. Returns 0.0 when all scalars are valid.
+"""
+function validate_gbr_wide_scalar_mean(
+    linear_ext_scalar::Matrix{Float64},
+    survival_scalar::Matrix{Float64}
+)::Float64
+    mean_lin_ext_scalar = dropdims(mean(linear_ext_scalar, dims=2), dims=2)
+    mean_survival_scalar = dropdims(mean(survival_scalar, dims=2), dims=2)
+    lin_ext_outside = (!).(0.95 .<= mean_lin_ext_scalar .<= 1.05)
+    survival_outside = (!).(-0.05 .<= mean_survival_scalar .<= 0.05)
+    return sum(abs.(mean_lin_ext_scalar .- 1.0)[lin_ext_outside]) +
+           sum(abs.(mean_survival_scalar)[survival_outside])
+end
+
+"""
+    validate_linear_extension_coefficients(linear_ext_vals, linear_ext_coefs)::Float64
+
+Return total excess above size-class bin widths across all locations. Returns 0.0 when valid.
+"""
+function validate_linear_extension_coefficients(
+    linear_ext_vals::Matrix{Float64},
+    linear_ext_coefs::Matrix{Float64}
+)::Float64
+    size_class_bins = ADRIA.bin_widths()
+    dist_from_valid = 0.0
+    for j in 1:size(linear_ext_coefs, 2)
+        tmp = (linear_ext_vals .* linear_ext_coefs[:, j]) .- size_class_bins
+        tmp[tmp .< 0] .= 0.0
+        dist_from_valid += sum(tmp)
+    end
+    return dist_from_valid
+end
+
+function _obj_func(
+    init_values::Vector{Float64},
+    dom,
+    cfg::CalibConfig,
+    observations::LocationDataStore,
+    location_classification::AbstractVector{Int64}
+)::Float64
+    local_dom, scen = setup_run(
+        dom, init_values;
+        param_names=cfg.coral_param_names,
+        growth_accel_names=cfg.growth_accel_names,
+        param_idxs=cfg.param_idxs,
+        observations=observations,
+        biogroup_ord=cfg.biogroups_ordering,
+    )
+
+    scale_factors = get_scale_factors(local_dom, scen)
+    corals = ADRIA.to_coral_spec(scen[1, :])
+    loc_k_areas = ADRIA.site_k_area(local_dom)
+    loc_areas = ADRIA.loc_area(local_dom)
+    linear_ext = _to_group_size(corals.linear_extension)
+
+    validity_violation = validate_linear_extension_coefficients(linear_ext, scale_factors[:, 1, :]) +
+                         validate_gbr_wide_scalar_mean(scale_factors[:, 1, :], scale_factors[:, 2, :])
+    if validity_violation > 0.0
+        return 1e4 + 1e4 * validity_violation
+    end
+
+    res = nothing
+    try
+        res = ADRIA.run_model(local_dom, scen[1, :])
+    catch err
+        _param_assert_patterns = (
+            "!any(recruits_scale_factor .<= 0)",
+            "Survival rate should be <= 1",
+        )
+        err_msg = sprint(showerror, err)
+        is_param_assert = err isa AssertionError &&
+            any(contains(err_msg, p) for p in _param_assert_patterns)
+        is_param_assert || rethrow(err)
+
+        comp_params = ADRIA.component_params(local_dom.model, :Coral)
+        coral_fn = comp_params[:, :fieldname]
+        lin_ext_overage = _relative_deviation_penalty.(
+            corals.linear_extension, comp_params[contains.(string.(coral_fn), "linear_ext"), :val]
+        )
+        mb_rate_overage = _relative_deviation_penalty.(
+            corals.mb_rate, comp_params[contains.(string.(coral_fn), "mb_rate"), :val]
+        )
+        return 5e5 + sum(lin_ext_overage) + sum(mb_rate_overage) + sum(scale_factors .> 1.0)
+    end
+
+    loc_cover = dropdims(sum(res.raw; dims=(2, 3)); dims=(2, 3)) .* loc_k_areas' ./ loc_areas'
+    reef_error_series = reef_error(loc_cover; observations=observations)
+    reef_perf = temporal_variability(reef_error_series)
+    taxa_cover = dropdims(sum(res.raw; dims=3); dims=3)
+    fg_corr = reef_taxa_error(taxa_cover; observations=observations)
+
+    first_non_zero = findfirst(x -> x != 0, reef_error_series)
+    last_non_zero = findlast(x -> x != 0, reef_error_series)
+
+    has_obs = vec(any(.!ismissing.(observations.ltmp_coral_cover), dims=2))
+    valid_survey_rows = findall(has_obs)
+    valid_domain_rows = observations.ltmp_cover_to_domain[valid_survey_rows]
+
+    each_obs_reef = eachrow(observations.ltmp_coral_cover[valid_survey_rows, :])
+    obs_peak_col = argmax_missing.(each_obs_reef)
+    obs_trough_col = argmin_missing.(each_obs_reef)
+    obs_peaks = Float64.(observations.ltmp_coral_cover[CartesianIndex.(valid_survey_rows, obs_peak_col)])
+    obs_troughs = Float64.(observations.ltmp_coral_cover[CartesianIndex.(valid_survey_rows, obs_trough_col)])
+    modelled_peaks = loc_cover[CartesianIndex.(obs_peak_col, valid_domain_rows)]
+    modelled_troughs = loc_cover[CartesianIndex.(obs_trough_col, valid_domain_rows)]
+
+    return reef_perf +
+            reef_error_series[first_non_zero] +
+            reef_error_series[last_non_zero] +
+            mean(abs.(modelled_peaks .- obs_peaks)) * 0.5 +
+            mean(abs.(modelled_troughs .- obs_troughs)) * 0.5 +
+            fg_corr * 2.0
+end
+
+function _save_results_callback(
+    oc,
+    dom,
+    cfg::CalibConfig,
+    observations::LocationDataStore,
+    out_dir::String,
+    result_fn::String,
+    last_save::Ref{Float64};
+    time_interv::Real=1800.0,
+    step_interv::Int=1000
+)::Nothing
+    start_time = replace(string(unix2datetime(oc.start_time)), "T" => "_", ":" => "")
+    elapsed = round(oc.last_report_time - oc.start_time; digits=2)
+
+    if last_save[] == 0.0
+        is_save_point = true
+    else
+        is_save_point = oc.num_steps % step_interv == 0
+        if !is_save_point && (oc.last_report_time - last_save[]) > time_interv
+            is_save_point = true
+        end
+    end
+
+    is_save_point || return nothing
+
+    last_save[] = datetime2unix(now(UTC))
+    best_state = best_candidate(oc)
+    serialize(joinpath(out_dir, result_fn), best_state)
+
+    interim_res = progress_run(
+        best_state, dom,
+        cfg.coral_param_names, cfg.growth_accel_names, cfg.param_idxs,
+        observations, cfg.biogroups_ordering
+    )
+    CairoMakie.save(
+        joinpath(out_dir, "taxa_cover", "calib_progress_taxa_cover_$(start_time)_$(elapsed).png"),
+        taxa_cover_proportions(interim_res.raw)
+    )
+    CairoMakie.save(
+        joinpath(out_dir, "taxa_pop", "calib_progress_pop_cover_$(start_time)_$(elapsed).png"),
+        taxa_population_proportions(interim_res.raw)
+    )
+    @info "Saved intermediate progress"
+
+    return nothing
+end
+
+"""
+    run_calibration(dom, cfg, calib_data, location_classification; kwargs...)
+
+Run BlackBoxOptim to calibrate coral parameters. Calls `construct_cover!` on `dom` in place.
+
+# Keyword arguments
+- `init_cover_path` : path to the serialised initial-cover vector
+- `out_dir` : directory for result and progress files
+- `init_guess_path` : filename (relative to `out_dir`) for a warm-start vector; `""` disables
+- `result_fn` : filename for the final serialised result
+- `config` : optional `CalibrationConfig`; when given, defaults `rng_seed` to `config.rng_seed`
+  so it can't silently drift from `config.toml`'s `operation.rng_seed`
+- `rng_seed` : RNG seed passed to BlackBoxOptim
+- `max_steps` : optimiser step budget
+- `n_threads` : worker threads (`Threads.nthreads()` by default)
+- `time_interv` : minimum seconds between progress saves
+- `step_interv` : minimum steps between progress saves
+"""
+function run_calibration(
+    dom,
+    cfg::CalibConfig,
+    calib_data::CalibrationData,
+    location_classification::AbstractVector{Int64};
+    init_cover_path::String,
+    out_dir::String,
+    init_guess_path::String="",
+    result_fn::String="results.dat",
+    config::Union{CalibrationConfig,Nothing}=nothing,
+    rng_seed::Int=isnothing(config) ? 42 : config.rng_seed,
+    max_steps::Int=1_000_000,
+    n_threads::Union{Int,Nothing}=nothing,
+    time_interv::Real=1800.0,
+    step_interv::Int=1000
+)
+    init_cover = deserialize(init_cover_path)
+    construct_cover!(dom, init_cover, location_classification)
+
+    best_score_file = isempty(init_guess_path) ? "" : joinpath(out_dir, init_guess_path)
+    best_init_state = if !isempty(best_score_file) && isfile(best_score_file)
+        state = deserialize(best_score_file)
+        @assert all(first.(cfg.sample_bounds) .<= state .<= last.(cfg.sample_bounds)) "Initial state is out of bounds"
+        state
+    else
+        nothing
+    end
+
+    available_threads = something(n_threads, Threads.nthreads())
+    threads_display = available_threads == 1 ? available_threads : available_threads - 1
+    @info "Using $(threads_display) threads."
+    @info "Using RNG seed $(rng_seed) for this calibration run (config.toml: operation.rng_seed)."
+
+    last_save = Ref(0.0)
+    obj = (init_values) -> _obj_func(
+        init_values, dom, cfg, calib_data.calibration_store, location_classification
+    )
+    callback = (oc) -> _save_results_callback(
+        oc, dom, cfg, calib_data.calibration_store, out_dir, result_fn, last_save;
+        time_interv=time_interv, step_interv=step_interv
+    )
+
+    mkpath(joinpath(out_dir, "taxa_cover"))
+    mkpath(joinpath(out_dir, "taxa_pop"))
+
+    opts = (
+        SearchRange=cfg.sample_bounds,
+        MaxSteps=max_steps,
+        NThreads=available_threads - 1,
+        CallbackFunction=callback,
+        CallbackInterval=0,
+        RngSeed=rng_seed,
+        RandomizeRngSeed=false
+    )
+
+    res = if isnothing(best_init_state)
+        bboptimize(obj; opts...)
+    else
+        @info "Using initial guess."
+        bboptimize(obj, best_init_state; opts...)
+    end
+
+    @info "Best fitness: $(best_fitness(res))"
+    serialize(joinpath(out_dir, result_fn), best_candidate(res))
+
+    return res
+end

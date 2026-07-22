@@ -1,174 +1,99 @@
-using Revise, Infiltrator
-using Serialization
-
-using TOML
-using Dates
-using CSV, DataFrames, YAXArrays
-using StatsBase, Statistics
+module common
 
 using ADRIA
-using ADRIA: GDF, AG, DimensionalData
+using ADRIA: RMEDomain
+using DataFrames
+using StatsBase
+using Statistics
+using CSV
+using TOML
+using YAXArrays
 
-src_path = dirname(@__DIR__)
-datasets_path = joinpath(dirname(src_path), "datasets")
+import Base: copy
 
-global CONFIG = TOML.parsefile(joinpath(src_path, "calib_config.toml"))
+import ..CoralBloxCalib:
+    LocationDataStore,
+    ltmp_cover_idx_to_domain,
+    composition_idx_to_domain,
+    get_ltmp_loc_unique_id,
+    extract_param_group_idx,
+    extract_param_group
 
-# Configuration sections
-global DOMAIN_CONFIG = CONFIG["Domains"]
-global GEOSPATIAL_CONFIG = CONFIG["Geospatial"]
-global INITIALISATION_CONFIG = CONFIG["Initialisation"]
-global OUTPUT_CONFIG = CONFIG["Outputs"]
+include("constants.jl")
+include("calib_setup.jl")
+include("cover_construction.jl")
+include("perf_metrics.jl")
+include("param_bounds.jl")
+include("params_extraction.jl")
 
-# ADRIA Domain paths
-global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme_domain"]
-global HISTORICAL_DHW_PATH = joinpath(
-    src_path,
-    "historical_dhw_data_gen",
-    "data",
-    "historical_dhw.nc"
-)
-global HISTORICAL_CYCLONE_MORTALITY_PATH = joinpath(
-    src_path,
-    "historical_disturbance_mortality_data_gen/",
-    "data/",
-    "historical_disturbance_mortality_rates/",
-    "historical_disturbance_mortality_rates.nc"
-)
+export LocationDataStore,
+       ltmp_cover_idx_to_domain,
+       composition_idx_to_domain,
+       get_ltmp_loc_unique_id,
+       extract_param_group_idx,
+       extract_param_group,
+       squared_expo_cdf,
+       size_class_proportion,
+       size_class_distribution,
+       construct_location_cover!,
+       compute_cover,
+       construct_cover!,
+       temporal_correlation,
+       temporal_correlation_penalty,
+       rmse,
+       bias,
+       MAE,
+       MAEE,
+       MAEE_series,
+       temporal_variability,
+       calib_func,
+       collect_error_stats,
+       rmse_diff,
+       location_correlation_coefficients,
+       average_cc,
+       reef_taxa_error,
+       reef_error,
+       average_class_cover,
+       START_YEAR,
+       END_YEAR,
+       N_TAXA,
+       N_SIZE_CLASSES,
+       N_LOCATIONS,
+       N_TIMESTEPS,
+       N_PARAMS,
+       STRIDE,
+       N_GROWTH_ACCEL_PARAMS,
+       LIN_EXT_LB_FACTOR,
+       LIN_EXT_UB_FACTOR,
+       MB_RATE_LB_FACTOR,
+       MB_RATE_UB_FACTOR,
+       LIN_EXT_SCALE_LB,
+       LIN_EXT_SCALE_UB,
+       MB_RATE_SCALE_LB,
+       MB_RATE_SCALE_UB,
+       GROWTH_ACCEL_STEEPNESS_BOUNDS,
+       GROWTH_ACCEL_HEIGHT_BOUNDS,
+       GROWTH_ACCEL_MIDPOINT_BOUNDS,
+       SC_DIST_LB,
+       SC_DIST_UB,
+       scale_factor_vec_to_array,
+       scale_factor_array_to_vec,
+       generate_scale_factor_names,
+       accel_params_array_to_vec,
+       accel_params_vec_to_array,
+       generate_growth_accel_names,
+       target_param_names,
+       sc_fg_param_idxs,
+       set_bounds!,
+       flatten_group_size,
+       insert_init_loc_cover!,
+       get_scale_factors,
+       setup_run,
+       build_params_dataset,
+       build_init_cover_dataset,
+       CalibrationConfig,
+       load_config,
+       load_domain,
+       load_location_classification
 
-# Geospatial filepaths
-global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"]
-global LTMP_SHP_PATH = get(
-    GEOSPATIAL_CONFIG,
-    "ltmp_shp",
-    joinpath(datasets_path, "spatial_data/gbr_3Zone 2.shp")
-)
-global LOC_CLASS_PATH = get(
-    GEOSPATIAL_CONFIG,
-    "classification_path",
-    joinpath(datasets_path, "spatial_data/location_classification_MPA.csv")
-)
-
-global GBRMPA_MAINLAND_PATH = joinpath(datasets_path, "spatial_data/Great_Barrier_Reef_Features.geojson")
-
-# Calibration Target / Observational Data
-global TARGET_CONFIG = get(CONFIG, "Observations", Dict())
-global LOC_CLASS_TARGET_PATH = get(
-    TARGET_CONFIG,
-    "manta_tow_path",
-    joinpath(datasets_path, "ltmp_data/manta_tow_mean_std.nc")
-)
-global LTMP_REEF_DATA_PATH = get(
-    TARGET_CONFIG,
-    "ltmp_reef_data",
-    joinpath(datasets_path, "ltmp_data/manta_tow_data_reef_lvl.gpkg")
-)
-global COMPOSITION_PATH = get(
-    TARGET_CONFIG,
-    "composition_netcdf",
-    joinpath(datasets_path, "ltmp_data/coral_composition.nc")
-)
-global LTMP_MODELLED_OBS_PATH = get(
-    TARGET_CONFIG,
-    "ltmp_modelled_obs",
-    joinpath(datasets_path, "ltmp_data/modelled_brms.beta.ry.disp.csv")
-)
-
-# Initialisation filepaths
-global INIT_COVER_PATH = get(
-    INITIALISATION_CONFIG,
-    "init_cover_filepath",
-    joinpath(datasets_path, "spatial_data/init_cover.dat")
-)
-global INIT_GUESS_PATH = get(INITIALISATION_CONFIG, "init_guess_filepath", "")
-
-# Output filepaths
-global OUT_DIR = OUTPUT_CONFIG["out_dir"]
-global RESULT_FN = get(OUTPUT_CONFIG, "result_filename", "results.dat")
-
-const START_YEAR = 2008
-const END_YEAR = 2022
-
-if !@isdefined(OPTIONS)
-    global reload_domain = false
-
-    # define OPTIONS to prevent reinitialise on every include
-    global OPTIONS = true
 end
-
-# julia> include("path to gist.jl")
-# julia> create_compare_plot("plot file name.png")
-# julia> create_error_statistics("error statistics filename.csv")
-# julia> plot_residuals("residual plot.png")
-
-# Convenience functions to retrieve parameters from an ADRIA model specification
-function extract_param_group_idx(model_spec::DataFrame, needle::String)::Vector{Int64}
-    needle_pos = contains.(string.(model_spec.fieldname), needle)
-    return findall(needle_pos)
-end
-function extract_param_group_idx(
-    model::ADRIA.Model, component, needle::String
-)::Vector{Int64}
-    comp_params = ADRIA.component_params(model, component)
-    return extract_param_group_idx(comp_params, needle)
-end
-
-function extract_param_group(model::ADRIA.Model, component, needle::String)::DataFrame
-    group_pos = extract_param_group_idx(model, component, needle)
-    comp_params = ADRIA.component_params(model, component)
-    return comp_params[group_pos, :]
-end
-function extract_param_group(model_spec::DataFrame, needle::String)::DataFrame
-    group_pos = extract_param_group_idx(model_spec, needle)
-    return model_spec[group_pos, :]
-end
-
-"""
-To minimize the number of index vectors being passed around and copies being created, define
-an immutable struct to provide an interface to move between indexing between different
-arrays the refer to the same locations.
-"""
-struct LocationDataStore
-    # Data fields
-    domain_gpkg::DataFrame
-    ltmp_unique_ids::Vector{String}
-    ltmp_coral_cover::Array{Union{Missing,Float64},2}
-    coral_composition::Array{Union{Missing,Float64},3}
-    # Index Fields
-    ltmp_cover_to_domain::Vector{Int64}
-    composition_to_domain::Vector{Int64}
-end
-
-"""
-    ltmp_cover_idx_to_domain(loc_data_store::LocationDataStore, ltmp_cover_idx::Int64)
-
-Given an index of a location in the ltmp reef coral cover dataframe, return the index of the
-same location in the domain geopackage.
-"""
-function ltmp_cover_idx_to_domain(loc_data_store::LocationDataStore, ltmp_cover_idx::Int64)
-    return loc_data_store.ltmp_cover_to_domain[ltmp_cover_idx]
-end
-
-"""
-    composition_idx_to_domain(loc_data_store::LocationDataStore, composition_idx::Int64)
-
-Given an index of a location in the coral composition yaxarray, return the index of the
-same location in the domain geopackage.
-"""
-function composition_idx_to_domain(
-    loc_data_store::LocationDataStore, composition_idx::Int64
-)
-    return loc_data_store.composition_to_domain[composition_idx]
-end
-
-function get_ltmp_loc_unique_id(loc_data_store::LocationDataStore, ltmp_idx::Int64)::String
-    return loc_data_store.ltmp_unique_ids[ltmp_idx]
-end
-
-function get_composition_loc_unique_id(
-    loc_data_store::LocationDataStore, composition_idx::Int64
-)::String
-    return loc_data_store.coral_composition.location[composition_idx]
-end
-
-include("./perf_metrics.jl")

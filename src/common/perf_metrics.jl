@@ -53,87 +53,22 @@ function calib_func(sim, obs)
     return temporal_variability(MAEE_series(sim, obs))
 end
 
-function constant_error_statistics(
-    filename,
-    stat_func=mean
-)::DataFrame
-    north_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_north.Year)
-    central_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_central.Year)
-    south_ind::Int64 = findfirst(x -> x >= START_YEAR, ltmp_south.Year)
-
-    north_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_north.Year) - 1
-    central_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_central.Year) - 1
-    south_end::Int64 = findfirst(x -> x >= END_YEAR, ltmp_south.Year) - 1
-
-    north_xs = ltmp_north.Year[north_ind:north_end]
-    central_xs = ltmp_central.Year[central_ind:central_end]
-    south_xs = ltmp_south.Year[south_ind:south_end]
-
-    north_resp = ltmp_north.response[north_ind:north_end]
-    central_resp = ltmp_central.response[central_ind:central_end]
-    south_resp = ltmp_south.response[south_ind:south_end]
-
-    north_stat = repeat([stat_func(north_resp)], length(north_xs))
-    central_stat = repeat([stat_func(central_resp)], length(central_xs))
-    south_stat = repeat([stat_func(south_resp)], length(south_xs))
-
-    rmse_north::Float64 = rmse(north_stat, north_resp)
-    rmse_central::Float64 = rmse(central_stat, central_resp)
-    rmse_south::Float64 = rmse(south_stat, south_resp)
-
-    @info "RMSE North: $(rmse_north), Central: $(rmse_central), South: $(rmse_south)"
-
-    # Coefficient of Determination
-    cc_north::Float64 = cor(north_stat, north_resp)
-    cc_central::Float64 = cor(central_stat, central_resp)
-    cc_south::Float64 = cor(south_stat, south_resp)
-
-    @info "Correlation Coefficient North: $(cc_north), Central: $(cc_central), South: $(cc_south)"
-
-    # MAEE
-    maee_north::Float64 = MAEE(north_stat, north_resp)
-    maee_central::Float64 = MAEE(central_stat, central_resp)
-    maee_south::Float64 = MAEE(south_stat, south_resp)
-
-    @info "Mean Absolute Exponential Error North: $(maee_north), Central: $(maee_central), South: $(maee_south)"
-
-    # bias
-    bias_north::Float64 = bias(north_stat, north_resp)
-    bias_central::Float64 = bias(central_stat, central_resp)
-    bias_south::Float64 = bias(south_stat, south_resp)
-
-    @info "Bias North: $(bias_north), Central: $(bias_central), South: $(bias_south)"
-
-    err_csv = DataFrame(
-        Regions=["North", "Central", "South"],
-        RMSE=[rmse_north, rmse_central, rmse_south],
-        R=[cc_north, cc_central, cc_south],
-        MAEE=[maee_north, maee_central, maee_south],
-        BIAS=[bias_north, bias_central, bias_south]
-    )
-
-    CSV.write(filename, err_csv, writeheader=true)
-
-    return err_csv
-end
-
-function _loc_cover(
-    raw_data;
-    loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom)
-)
+function _loc_cover(raw_data, dom)
+    loc_k_areas = ADRIA.site_k_area(dom)
+    loc_areas = ADRIA.loc_area(dom)
     dropdims(sum(raw_data, dims=(2, 3)), dims=(2, 3)) .* loc_k_areas' ./ loc_areas'
 end
 
 """
-    collect_error_stats(raw_data, ltmp_loc_idx; observations::LocationDataStore=CALIBRATION_STORE, loc_k_areas=ADRIA.site_k_area(dom), loc_areas=ADRIA.loc_area(dom))
+    collect_error_stats(raw_data, dom; observations)
+    collect_error_stats(raw_data, ltmp_loc_idx, dom; observations)
 
-Error stats for a single location or for all locations.
+Error stats for all locations or a single location.
 """
 function collect_error_stats(
-    raw_data::Array{Float64,4};
-    observations::LocationDataStore=CALIBRATION_STORE,
-    loc_k_areas=ADRIA.site_k_area(dom),
-    loc_areas=ADRIA.loc_area(dom)
+    raw_data::Array{Float64,4},
+    dom;
+    observations::LocationDataStore,
 )::NamedTuple
     n_locations = size(observations.ltmp_coral_cover, 1)
 
@@ -142,13 +77,7 @@ function collect_error_stats(
         collect.(eachcol(repeat(zeros(Float64, n_locations), 1, n_locations)))
 
     for loc in 1:n_locations
-        error_stats = collect_error_stats(
-            raw_data,
-            loc;
-            observations=observations,
-            loc_k_areas=loc_k_areas,
-            loc_areas=loc_areas
-        )
+        error_stats = collect_error_stats(raw_data, loc, dom; observations=observations)
 
         rmse_model[loc] = error_stats.rmse_model
         rmse_benchmark[loc] = error_stats.rmse_benchmark
@@ -163,12 +92,11 @@ function collect_error_stats(
 end
 function collect_error_stats(
     raw_data::Array{Float64,4},
-    ltmp_loc_idx;
-    observations::LocationDataStore=CALIBRATION_STORE,
-    loc_k_areas=ADRIA.site_k_area(dom),
-    loc_areas=ADRIA.loc_area(dom)
+    ltmp_loc_idx,
+    dom;
+    observations::LocationDataStore,
 )
-    loc_cover = _loc_cover(raw_data; loc_k_areas=loc_k_areas, loc_areas=loc_areas)
+    loc_cover = _loc_cover(raw_data, dom)
 
     obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     not_missing_obs = (!).(ismissing.(obs_loc_data))
@@ -220,40 +148,65 @@ function average_class_cover(
 end
 
 """
-Calculate the functional group correlation and temporal correlation between aggregated ltmp
-data created for reefmod.
+    reef_taxa_error(cover; observations)::Float64
 
-Uses the complement of the absolute pearson correlation coefficient such that 0 indicates
-a perfect fit, and >= 0 indicates no or negative correlation.
+Mean compositional mismatch between simulated and observed functional group cover across
+LTMP reefs and years. Returns a value in [0, 1] where 0 is a perfect match.
 
-The score indicates the mean correlation.
+At each (reef, timestep) pair with observations, the Pearson correlation across functional
+groups is computed and rescaled from [-1, 1] to [0, 1] via `(1 + r) / 2`, so that:
+- r = +1 (perfect match) → 1.0
+- r =  0 (no signal)     → 0.5
+- r = -1 (inversion)     → 0.0 (worst case, penalised harder than zero correlation)
+
+Per-reef scores are obtained by Fisher z-averaging the per-timestep r values before
+rescaling, then the objective is 1 minus the mean score across reefs.
 """
 function reef_taxa_error(
     cover;
-    observations::LocationDataStore=CALIBRATION_STORE
+    observations::LocationDataStore
 )
-    fg_corr::Float64 = 0.0
+    n_locs = length(observations.composition_to_domain)
+    loc_scores = Vector{Float64}(undef, n_locs)
+
     for (j, idx) in enumerate(observations.composition_to_domain)
-        non_missing_mask = (!).(ismissing.(observations.coral_composition[:, 1, j]))
-        for id in eachindex(2008:2022)[non_missing_mask]
-            fg_corr += cor(
-                cover[id, :, idx], observations.coral_composition[id, :, j]
-            ) ./ count(non_missing_mask)
+        non_missing_mask = vec(all(.!ismissing.(observations.coral_composition[:, :, j]); dims=2))
+        observed_ids = eachindex(2008:2022)[non_missing_mask]
+
+        if isempty(observed_ids)
+            loc_scores[j] = 0.5
+            continue
         end
+
+        r_vals = [
+            cor(cover[id, :, idx], Float64.(observations.coral_composition[id, :, j]))
+            for id in observed_ids
+        ]
+
+        r_mean = tanh(mean(atanh.(r_vals)))
+        loc_scores[j] = (1.0 + r_mean) / 2.0
     end
 
-    return 1.0 - (fg_corr ./ length(observations.composition_to_domain))
+    return 1.0 - mean(loc_scores)
 end
 
 """
-    reef_error(cover; ltmp_reef_data=ltmp_reef_data)::Vector{Float64}
+    reef_error(cover; observations)::Vector{Float64}
 
-Calculate the error between ltmp observations and the given cover array. Defaults to the
-calibration data store.
+Mean reef-level MAEE per year, averaged across all LTMP reefs with observations in that year.
+
+For each LTMP reef location, computes the element-wise MAEE between simulated `cover`
+and observed coral cover at each observed timestep, then accumulates into a `n_years`
+error series. The peak and trough years of each reef's observed time series are weighted
+2× to penalise errors at extremes of the dynamic range more heavily. Missing observations
+are excluded from both the error sum and the per-year reef count, so each element of the
+returned vector is the unweighted mean over whichever reefs had valid data that year.
+
+Returns a `Vector{Float64}` of length `n_years` (one entry per modelled timestep).
 """
 function reef_error(
     cover;
-    observations::LocationDataStore=CALIBRATION_STORE,
+    observations::LocationDataStore,
 )::Vector{Float64}
     n_years::Int64 = size(cover, 1)
     err_series::Vector{Float64} = zeros(Float64, n_years)
@@ -262,25 +215,24 @@ function reef_error(
     not_missing::BitVector = BitVector(fill(true, n_years))
 
     domain_idx::Int64 = -1
-    for (row_idx, loc_obs) in enumerate(eachrow(observations.ltmp_coral_cover))
+    each_obs_ltmp_cover_series = eachrow(observations.ltmp_coral_cover)
+    for (row_idx, loc_obs) in enumerate(each_obs_ltmp_cover_series)
         domain_idx = ltmp_cover_idx_to_domain(observations, row_idx)
 
         not_missing .= (!).(ismissing.(loc_obs))
-        min_arg = argmin(loc_obs[not_missing])
-        max_arg = argmax(loc_obs[not_missing])
+        trough_idx = argmin(loc_obs[not_missing])
+        peak_idx = argmax(loc_obs[not_missing])
         tmp_err[not_missing] .= MAEE_series(
             cover[not_missing, domain_idx], loc_obs[not_missing]
         )
 
-        # Apply double the weight on the peak/trough of the time series
-        tmp_err[not_missing][[min_arg, max_arg]] .*= 2.0
         err_series[not_missing] .+= tmp_err[not_missing]
         err_counts[not_missing] .+= 1.0
     end
 
     if any(err_counts .== 0)
         @debug "No reef level observation data for some years."
-        err_counts[err_counts.==0] .= 1
+        err_counts[err_counts .== 0] .= 1
     end
 
     return err_series ./ err_counts
@@ -317,19 +269,19 @@ function class_error(
             )
         err_counts[not_missing] .+= 1
     end
-    err_counts[err_counts.==0] .= 1
+    err_counts[err_counts .== 0] .= 1
 
     return err_series ./ err_counts
 end
 
-function rmse_diff(rs_raw::Array{Float64,4}, observations::LocationDataStore)::Vector{Float64}
+function rmse_diff(
+    rs_raw::Array{Float64,4}, observations::LocationDataStore, dom
+)::Vector{Float64}
     n_validation_locs = length(observations.ltmp_cover_to_domain)
     model_rmse = zeros(Float64, n_validation_locs)
     benchmark_rmse = zeros(Float64, n_validation_locs)
     for i in 1:n_validation_locs
-        error_stats = collect_error_stats(
-            rs_raw, i; observations=observations
-        )
+        error_stats = collect_error_stats(rs_raw, i, dom; observations=observations)
         model_rmse[i] = error_stats.rmse_model
         benchmark_rmse[i] = error_stats.rmse_benchmark
     end
@@ -338,17 +290,17 @@ end
 
 function location_correlation_coefficients(
     raw_data::Array{Float64,4},
-    observations::LocationDataStore;
+    observations::LocationDataStore,
+    dom;
     correlation_metric::Symbol=:spearman
 )
     n_locs = length(observations.ltmp_cover_to_domain)
     loc_cc = zeros(Float64, n_locs)
 
-    # obs_loc_data = observations.ltmp_coral_cover[ltmp_loc_idx, :]
     obs_loc_data = observations.ltmp_coral_cover
     not_missing_obs = (!).(ismissing.(obs_loc_data))
 
-    loc_cover = _loc_cover(raw_data)
+    loc_cover = _loc_cover(raw_data, dom)
     domain_idxs = ltmp_cover_idx_to_domain.(Ref(observations), 1:n_locs)
     sim_data = loc_cover[:, domain_idxs]
 

@@ -1,0 +1,67 @@
+# Copy this file to config.toml at the repo root and fill in your machine-specific paths.
+# config.toml is gitignored — this template is the versioned reference.
+#
+# Fields marked REQUIRED must be set; TOML.parsefile does not expand $VAR or ~/ so all
+# paths must be fully resolved absolute paths on your machine.
+
+# ADRIA.jl specific configs
+[operation]
+# Fixed seed shared by ADRIA's internal RNG and BlackBoxOptim. (REQUIRED)
+rng_seed = 1
+
+# Result values below this threshold are set to 0.0.
+threshold = 1e-6
+
+# ADRIA calibration specific
+[calibration.domains]
+# Path to the ReefModEngine dataset directory. (REQUIRED)
+# Unix example:
+#   rme_domain = "/data/ADRIA_DataPackages/rme_ml_2025_09_03"
+# Windows example:
+#   rme_domain = "C:\\data\\ADRIA_DataPackages\\rme_ml_2025_09_03"
+rme_domain = "/absolute/path/to/rme_ml_2025_09_03"
+
+[calibration.geospatial]
+# Path to the canonical GBR geopackage (.gpkg). (REQUIRED)
+# Unix example:
+#   canonical_path = "/data/rrap_canonical_2025-07-15-T10-48-29.gpkg"
+# Windows example:
+#   canonical_path = "C:\\data\\rrap_canonical_2025-07-15-T10-48-29.gpkg"
+canonical_path = "/absolute/path/to/canonical.gpkg"
+
+# Path to LTMP regional shapefile. (OPTIONAL — defaults to datasets/spatial_data/gbr_3Zone 2.shp)
+# ltmp_shp = "../datasets/spatial_data/gbr_3Zone 2.shp"
+
+# CSV file with location classes in the same order as the ADRIA domain. (OPTIONAL)
+# classification_path = "../datasets/spatial_data/location_classification_MPA.csv"
+
+[calibration.observations]
+# NetCDF with target mean and standard deviation aggregated by location class. (OPTIONAL)
+# manta_tow_path = "../datasets/ltmp_data/manta_tow_mean_std.nc"
+
+# Geopackage with target coral cover data at individual reef locations. (OPTIONAL)
+# ltmp_reef_data = "../datasets/ltmp_data/manta_tow_data_reef_lvl.gpkg"
+
+# NetCDF with coral composition per ADRIA functional group at LTMP photogrammetry sites. (OPTIONAL)
+# composition_netcdf = "../datasets/ltmp_data/coral_composition.nc"
+
+# Modelled regional coral cover derived from LTMP observations (Logan & Emslie). (OPTIONAL)
+# ltmp_modelled_obs = "../datasets/ltmp_data/modelled_brms.beta.ry.disp.csv"
+
+[calibration.initialisation]
+# Serialised initial cover array produced by a previous calibration run. (OPTIONAL)
+# init_cover_filepath = "../datasets/spatial_data/init_cover.dat"
+
+# Path to a .dat file used as the initial parameter guess for BlackBoxOptim. (OPTIONAL — leave empty to start from scratch)
+# init_guess_filepath = ""
+
+[calibration.outputs]
+# Directory for result plots, progress reports, and final calibration output. (REQUIRED)
+# Unix example:
+#   out_dir = "/results/calib_run_20260617"
+# Windows example:
+#   out_dir = "C:\\results\\calib_run_20260617"
+out_dir = "/absolute/path/to/output_directory"
+
+# Filename for serialised calibration results, relative to out_dir. (OPTIONAL)
+# result_filename = "results.dat"

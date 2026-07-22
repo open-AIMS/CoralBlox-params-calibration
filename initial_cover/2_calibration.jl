@@ -34,6 +34,13 @@ function class_error(
     manta_tow_mean=manta_tow_mean,
     manta_tow_std=manta_tow_std
 )::Vector{Float64}
+    # YAXArray BitVector indexing triggers estimate_chunksize with chunksize=0 on small
+    # slices (DiskArrays bug: clamp result computed but unclamped value passed to GridChunks).
+    # Convert to plain arrays once up front so all subsequent indexing is native Julia.
+    mtm_data = Array(manta_tow_mean)
+    mts_data = Array(manta_tow_std)
+    mtm_classes = manta_tow_mean.class
+
     # Preallocations
     err_series::Vector{Float64} = zeros(Float64, 15)
     err_counts::Vector{Int64} = zeros(Int64, 15)
@@ -42,17 +49,17 @@ function class_error(
     # Dims ~ [timesteps ⋅ classes]
     class_cover::Matrix{Float64} = average_class_cover(cover)
 
-    for (idx, class) in enumerate(manta_tow_mean.class)
+    for (idx, class) in enumerate(mtm_classes)
         if class == -1
             continue
         end
-        not_missing .= (!).(ismissing.(manta_tow_mean[idx, :]))
+        not_missing .= (!).(ismissing.(mtm_data[idx, :]))
         err_series[not_missing] .+= abs.((
-            manta_tow_mean[idx, not_missing] .- class_cover[not_missing, class]
-        ) ./ manta_tow_std[idx, not_missing])
+            mtm_data[idx, not_missing] .- class_cover[not_missing, class]
+        ) ./ mts_data[idx, not_missing])
         err_counts[not_missing] .+= 1
     end
-    err_counts[err_counts .== 0] .= 1
+    err_counts[err_counts.==0] .= 1
 
     return err_series ./ err_counts
 end
@@ -82,7 +89,7 @@ function reef_error(
     end
     if any(err_counts .== 0)
         @warn "No reef level observation data for some years."
-        err_counts[err_counts .== 0] .= 1
+        err_counts[err_counts.==0] .= 1
     end
 
     return err_series ./ err_counts
@@ -99,16 +106,13 @@ function obj_func(
     central_cover=ltmp_central[ltmp_central_period, [:lower, :response, :upper]],
     south_cover=ltmp_south[ltmp_south_period, [:lower, :response, :upper]],
     location_classification=location_classification.consecutive_classification,
-    n_loc_clusteres=n_classifications,
     start_year=start_year,
     end_year=end_year,
 )
-    n_cover_start = 11 * n_loc_clusteres
-    construct_cover!(dom, init_values, location_classification)
-    gen_init_cover = dom.init_coral_cover.data
+    gen_init_cover = compute_cover(init_values, location_classification, ADRIA.n_locations(dom))
 
-    loc_k_areas = site_k_area(dom)
-    loc_areas = site_area(dom)
+    loc_k_areas = ADRIA.loc_k_area(dom)
+    loc_areas = ADRIA.loc_area(dom)
 
     # Check constraints
     total_cover_gen = vec(sum(gen_init_cover, dims=1))
@@ -145,15 +149,14 @@ function obj_func(
     end
 
     # If initial cover pass constraint rules, assign them and run
-    dom2 = deepcopy(dom)
-    dom2.init_coral_cover.data .= gen_init_cover
-
-    scen = ADRIA.param_table(dom2)
-
     res = nothing
     try
+        dom2 = deepcopy(dom)
+        dom2.init_coral_cover .= gen_init_cover
+        scen = ADRIA.param_table(dom2)
         res = ADRIA.run_model(dom2, scen[1, :])
     catch err
+        @error "obj_func failed" exception = (err, catch_backtrace())
         return sum(start_score) + 5e5
     end
 
@@ -164,12 +167,12 @@ function obj_func(
     # Hacky manual specification of observation years to use to compare against LTMP data
     # which misses some years (ignoring 2023, the last entry)
     ref_years = start_year:end_year
-    comp_years_north = (ref_years .∈ [ltmp_north[ltmp_north.Year .>= start_year, :Year]])
-    comp_years_center = (ref_years .∈ [ltmp_central[ltmp_central.Year .>= start_year, :Year]])
-    comp_years_south = (ref_years .∈ [ltmp_south[ltmp_south.Year .>= start_year, :Year]])
+    comp_years_north = (ref_years .∈ [ltmp_north[ltmp_north.Year.>=start_year, :Year]])
+    comp_years_center = (ref_years .∈ [ltmp_central[ltmp_central.Year.>=start_year, :Year]])
+    comp_years_south = (ref_years .∈ [ltmp_south[ltmp_south.Year.>=start_year, :Year]])
 
     for ts in axes(res.raw, 1)
-        rac = vec(sum(res.raw[ts, :, :], dims=1) .* loc_k_areas') ./ loc_areas
+        rac = dropdims(sum(res.raw[ts, :, :, :], dims=(1, 2)), dims=(1, 2)) .* loc_k_areas ./ loc_areas
         north_mean_cover[ts] = mean(rac[NORTH_MASK])
         center_mean_cover[ts] = mean(rac[CENTRAL_MASK])
         south_mean_cover[ts] = mean(rac[SOUTH_MASK])
@@ -188,7 +191,7 @@ function obj_func(
     central_perf = temporal_variability(central_perf_series)
     south_perf = temporal_variability(south_perf_series)
 
-    loc_cover = dropdims(sum(res.raw, dims=2), dims=2) .* loc_k_areas' ./ loc_areas'
+    loc_cover = dropdims(sum(res.raw, dims=(2, 3)), dims=(2, 3)) .* loc_k_areas' ./ loc_areas'
 
     class_error_series = class_error(loc_cover)
     reef_error_series = reef_error(loc_cover)
@@ -220,24 +223,24 @@ function obj_func(
     ]
 
     return sum([
-        north_perf,
-        central_perf,
-        south_perf
-    ]) + class_perf + reef_perf + sum(trough_score) + sum(end_score)
+               north_perf,
+               central_perf,
+               south_perf
+           ]) + class_perf + reef_perf + sum(trough_score) + sum(end_score)
 end
 
 base_location_vector = [
-    (0.0,  0.95), # habitable cover
+    (0.0, 0.95), # habitable cover
     (0.01, 1.0), # taxa weightings
     (0.01, 1.0),
     (0.01, 1.0),
     (0.01, 1.0),
     (0.01, 1.0),
-    (0.0,  5.0), # size distribution
-    (0.0,  5.0),
-    (0.0,  5.0),
-    (0.0,  5.0),
-    (0.0,  5.0),
+    (0.0, 5.0), # size distribution
+    (0.0, 5.0),
+    (0.0, 5.0),
+    (0.0, 5.0),
+    (0.0, 5.0),
 ]
 
 # Define parameter space to scan over
@@ -251,6 +254,7 @@ else
     best_init_state = nothing
 end
 
+available_threads = Threads.nthreads()
 
 if !@isdefined(best_init_state) || isnothing(best_init_state)
     # Include additional config if using BorgMOEA
@@ -260,16 +264,16 @@ if !@isdefined(best_init_state) || isnothing(best_init_state)
         obj_func;
         SearchRange=sample_bounds,
         MaxSteps=2_000,
-        NThreads=Threads.nthreads()-4
-    );
+        NThreads=available_threads - 1
+    )
 elseif !isnothing(best_init_state)
     res = bboptimize(
         obj_func,
         best_init_state;  # provide an initial solution
         SearchRange=sample_bounds,
         MaxSteps=2_000,
-        NThreads=Threads.nthreads()-4
-    );
+        NThreads=available_threads - 1
+    )
 end
 
 best_fitness(res)

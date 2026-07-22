@@ -58,7 +58,7 @@ function plot_metric_scatter(
     title = get(axis_opts, :title, "")
     xlabel = get(axis_opts, :xlabel, "Index")
     ylabel = get(axis_opts, :ylabel, "Metric value")
-    yticks = get(axis_opts, :yticks, Makie.automatic)
+    yticks = get(axis_opts, :yticks, automatic)
 
     fig = Figure(; size=size)
     ax = Axis(
@@ -88,8 +88,9 @@ function plot_metric_scatter(
 end
 
 function plot_rmse_diff_map(
-    raw_data::Array{Float64,4};
-    observations::LocationDataStore=COMBINED_STORE,
+    raw_data::Array{Float64,4},
+    dom;
+    observations::LocationDataStore,
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
@@ -97,22 +98,23 @@ function plot_rmse_diff_map(
     fig_size = get!(fig_opts, :size, FIG_SIZE[:map])
     fig = Figure(; fig_opts...)
     plot_rmse_diff_map!(
-        fig[1, 1], raw_data;
+        fig[1, 1], raw_data, dom;
         observations=observations, axis_opts=axis_opts, opts=opts
     )
     return fig
 end
 function plot_rmse_diff_map!(
     g::Union{GridPosition,GridLayout},
-    raw_data::Array{Float64,4};
-    observations::LocationDataStore=COMBINED_STORE,
+    raw_data::Array{Float64,4},
+    dom;
+    observations::LocationDataStore,
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Nothing
     n_obs = length(observations.ltmp_unique_ids)
     ltmp_loc_indexes = collect(1:n_obs)
 
-    error_stats = collect_error_stats(raw_data; observations=observations)
+    error_stats = collect_error_stats(raw_data, dom; observations=observations)
     rmse_diffs = error_stats.rmse_benchmark .- error_stats.rmse_model
 
     domain_gpkg = observations.domain_gpkg
@@ -134,9 +136,10 @@ function obs_lon_lat(observations, domain_gpkg)::DataFrame
 end
 
 function plot_correlation_map(
-    raw_data::Array{Float64,4};
+    raw_data::Array{Float64,4},
+    dom;
     metric_type::Symbol=:scc,
-    observations::LocationDataStore=COMBINED_STORE,
+    observations::LocationDataStore,
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
@@ -144,23 +147,24 @@ function plot_correlation_map(
     fig_size = pop!(fig_opts, :size, FIG_SIZE[:map])
     fig = Figure(; size=fig_size, fig_opts)
     plot_correlation_map!(
-        fig[1, 1], raw_data;
+        fig[1, 1], raw_data, dom;
         metric_type=metric_type, observations=observations, axis_opts=axis_opts, opts=opts,
     )
     return fig
 end
 function plot_correlation_map!(
     g::Union{GridPosition,GridLayout},
-    raw_data::Array{Float64,4};
+    raw_data::Array{Float64,4},
+    dom;
     metric_type::Symbol=:srcc,
-    observations::LocationDataStore=COMBINED_STORE,
+    observations::LocationDataStore,
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Nothing
     n_validation_obs = length(observations.ltmp_unique_ids)
     ltmp_loc_indexes = collect(1:n_validation_obs)
 
-    error_stats = collect_error_stats(raw_data; observations=observations)
+    error_stats = collect_error_stats(raw_data, dom; observations=observations)
     cc_ = error_stats.pcc
     srcc_ = error_stats.srcc
 
@@ -207,7 +211,7 @@ function plot_metric_map!(
     poly!(ax, geometries, color=:gray)
 
 
-    poly!(ax, GBRMPA_MAINLAND_GPKG.geometry[1], color="#121212")
+    poly!(ax, GBRMPA_MAINLAND_POLYS, color="#121212")
 
 
     max_val, min_val = extrema(metric)
@@ -249,7 +253,7 @@ function plot_metric_map!(
     if get(opts, :colorbar_visible, true)
         colorbar_label = get(opts, :colorbar_label, "Benchmark RMSE - Model RMSE")
         colorbar_ticklabelsize = get(opts, :colorbar_ticklabelsize, 16)
-        colorbar_ticks = get(opts, :colorbar_ticks, Makie.automatic)
+        colorbar_ticks = get(opts, :colorbar_ticks, automatic)
         colorbar_vertical = get(opts, :colorbar_vertical, true)
         position = colorbar_vertical ? (1, 2) : (2, 1)
         Colorbar(
@@ -268,10 +272,8 @@ function plot_metric_map!(
     return nothing
 end
 
-function plot_metrics_heatmap(rs_raw; fig_size=(500, 700), observations=COMBINED_STORE)::Figure
-    # n_validation_obs = length(observations.ltmp_unique_ids)
-    # ltmp_loc_indexes = collect(1:n_validation_obs)
-    error_stats = collect_error_stats(rs_raw; observations=observations)
+function plot_metrics_heatmap(rs_raw, dom; fig_size=(500, 700), observations::LocationDataStore)::Figure
+    error_stats = collect_error_stats(rs_raw, dom; observations=observations)
     Δrmse = error_stats.rmse_benchmark .- error_stats.rmse_model
 
     validation_ids = [

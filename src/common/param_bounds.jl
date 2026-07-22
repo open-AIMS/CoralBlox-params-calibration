@@ -156,7 +156,7 @@ julia> coral_df[ordered_idxs, :].fieldname
 
 """
 function sc_fg_param_idxs(param_name::String, coral_df::DataFrame)::Vector{Int64}
-    idxs = zeros(Int64, 35)
+    idxs = zeros(Int64, N_PARAMS)
 
     n_taxa, n_sizes = size(ADRIA.bin_widths())
     counter::Int64 = 1
@@ -189,150 +189,19 @@ function flatten_group_size(param_matrix::Matrix{Float64})::Vector{Float64}
     return reshape(permutedims(param_matrix, (2, 1)), (n_taxa * n_sizes,))
 end
 
-# Linear extension initial guess (informed by EcoRRAP data)
-linear_extension_mean = [
-    0.0245124 0.0507098 0.0501524 0.0637291 0.0672375 0.0779938 0.0
-    0.024296 0.0286086 0.0278468 0.0285766 0.0314185 0.0364447 0.0
-    0.0175738 0.0168217 0.0150495 0.0165701 0.0165701 0.0165701 0.0
-    0.0116048 0.00747208 0.00748131 0.00942616 0.0133995 0.0141176 0.0
-    0.011934 0.00747208 0.00748131 0.00942616 0.0133995 0.0141176 0.0
-]
-
-lin_ext_lb = linear_extension_mean[:, :] .* 0.9
-lin_ext_ub = linear_extension_mean[:, :] .* 1.1
-
-lin_ext_lb = flatten_group_size(lin_ext_lb)
-lin_ext_ub = flatten_group_size(lin_ext_ub)
-
-# Construct background mortality parameter bounds (informed by EcoRRAP data)
-mb_rate_mean = [
-    0.312661 0.194444 0.211039 0.192857 0.157895 0.142857 0.142857
-    0.223847 0.130748 0.0915385 0.123348 0.110294 0.110294 0.110294
-    0.218824 0.128571 0.078534 0.0833333 0.0833333 0.0833333 0.0833333
-    0.238342 0.0799508 0.0446043 0.026387 0.0135135 0.016 0.0272109
-    0.282609 0.0799508 0.0446043 0.026387 0.0135135 0.016 0.0272109
-]
-
-mb_rate_lb = mb_rate_mean[:, :] .* 0.9
-mb_rate_ub = mb_rate_mean[:, :] .* 1.1
-
-mb_rate_lb = flatten_group_size(mb_rate_lb)
-mb_rate_ub = flatten_group_size(mb_rate_ub)
-
-# Define parameter space to scan over
-coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
-
-# Extract just the target coral parameters
-lin_ext_idx, mbrate_idx, dhw_tol_mean_idx =
-    extract_param_group_idx.([coral_params], target_param_names())
-
-coral_param_idx = vcat(
-    lin_ext_idx, mbrate_idx, dhw_tol_mean_idx
-)
-coral_params = coral_params[sort(coral_param_idx), :]
-coral_param_names = coral_params.fieldname
-
-# Get updated parameter positions
-lin_ext_idx, mbrate_idx, dhw_tol_mean_idx =
-    extract_param_group_idx.([coral_params], target_param_names())
-
-lin_ext_idx = sc_fg_param_idxs("linear_extension", coral_params)
-mbrate_idx = sc_fg_param_idxs("mb_rate", coral_params)
-
-mbrate_scale_idx = findall(occursin.(Ref("mb_rate_scale"), string.(coral_params.fieldname)))
-lin_ext_scale_idx = findall(occursin.(Ref("linear_extension_scale"), string.(coral_params.fieldname)))
-
-sample_bounds = collect(zip(
-    coral_params.lower_bound,
-    coral_params.upper_bound
-))
-
-# Adjust bounds for initial mean DHW tolerance
-sample_bounds[dhw_tol_mean_idx] .= collect(zip(coral_params[dhw_tol_mean_idx, :lower_bound], coral_params[dhw_tol_mean_idx, :val]))
-
-# Set bounds for linear extension and mb rate
-set_bounds!(sample_bounds, lin_ext_idx, lin_ext_lb, lin_ext_ub)
-set_bounds!(sample_bounds, mbrate_idx, mb_rate_lb, mb_rate_ub)
-
-n_mbrate_scale_idx = length(mbrate_scale_idx)
-mbrate_scale_lb, mbrate_scale_up = fill(-1.0, n_mbrate_scale_idx), fill(1.0, n_mbrate_scale_idx)
-set_bounds!(sample_bounds, mbrate_scale_idx, mbrate_scale_lb, mbrate_scale_up)
-
-n_lin_ext_scale_idx = length(lin_ext_scale_idx)
-lin_ext_scale_lb, lin_ext_scale_up = fill(0.7, n_lin_ext_scale_idx), fill(1.5, n_lin_ext_scale_idx)
-set_bounds!(sample_bounds, lin_ext_scale_idx, lin_ext_scale_lb, lin_ext_scale_up)
-
-coral_start_idx = 1
-coral_end_idx = length(sample_bounds)
-
-const BIOGROUPS_ORDERING = sort(unique(canonical_gpkg.CB_CALIB_GROUPS))
-
-# Number of unique biogroups used in calibration
-n_biogroups = length(BIOGROUPS_ORDERING)
-
-# Add parameters for location-specific scaling
-n_groups = 5
-n_size_classes = 7
-n_factors = 2  # growth, mortality
-
-# Location-based growth scaling
-
-# Parameter indexs
-STEEPNESS_PARAM_IDX = 1
-HEIGHT_PARAM_IDX = 2
-MIDPOINT_PARAM_IDX = 3
-
-growth_acc_start_idx = coral_end_idx + 1
-
-biogroup_accel_bounds::Matrix = Matrix{Tuple{Float64,Float64}}(undef, n_biogroups, 3)
-
-biogroup_accel_bounds[:, STEEPNESS_PARAM_IDX] .= [(-20.0, -15.0)]
-biogroup_accel_bounds[:, HEIGHT_PARAM_IDX] .= [(0.0, 2.0)]
-biogroup_accel_bounds[:, MIDPOINT_PARAM_IDX] .= [(0.0, 0.3)]
-
-append!(sample_bounds, accel_params_array_to_vec(biogroup_accel_bounds))
-growth_acc_end_idx = length(sample_bounds)
-
-sc_dist_bounds = fill((0.25, 2.0), n_biogroups)
-
-sc_dist_start_idx = growth_acc_end_idx + 1
-append!(sample_bounds, sc_dist_bounds)
-sc_dist_end_idx = length(sample_bounds)
-
-global PARAM_IDXS = [
-    coral_start_idx, coral_end_idx,
-    growth_acc_start_idx, growth_acc_end_idx,
-    sc_dist_start_idx, sc_dist_end_idx
-]
-
-global CORAL_PARAM_NAMES = coral_params.fieldname
-global GROWTH_ACCEL_NAMES = accel_params_array_to_vec(
-    generate_growth_accel_names(collect(1:length(BIOGROUPS_ORDERING)))
-)
-
 # Utility functions for domain and parameter calibration setup
 
 """
-Reshape the growth acceleration parameters from a vector a matrix of shape [n_parameters ⋅ n_locs]
-"""
-function reshape_growth_accel_parameters(
-    params::Vector{Float64};
-    n_locs=length(TARGET_DOM_IDXS)
-)::Matrix{Float64}
-    return reshape(params, (3, n_locs))
-end
-
-"""
-    insert_init_loc_cover!(dom, lambdas; raw_ltmp_reef_data=raw_ltmp_reef_data, rm_ltmp_taxa=rm_ltmp_taxa, target_dom_idxs=TARGET_DOM_IDXS )::Nothing
+    insert_init_loc_cover!(dom, lambdas, observations, biogroup_ord)::Nothing
 
 Recalculate initial cover of target locations to match photogrammetry coral composition and
 manta tow total cover. Use the given lambda calculation
 """
 function insert_init_loc_cover!(
     dom,
-    lambdas;
-    observations::LocationDataStore=COMBINED_STORE,
-    biogroup_ord::Vector{Int64}=BIOGROUPS_ORDERING,
+    lambdas,
+    observations::LocationDataStore,
+    biogroup_ord::Vector{Int64}
 )::Nothing
     # Change the coral composition of location for which we have data
     for (idx, dom_idx) in enumerate(observations.composition_to_domain)
@@ -349,7 +218,7 @@ function insert_init_loc_cover!(
             non_missing_idx, :, idx
         ] .* size_class_props' ./ sum(observations.coral_composition[non_missing_idx, :, idx])
         dom.init_coral_cover[:, dom_idx] .=
-            reshape(permutedims(loc_cov, (2, 1)), (35,)) .* tmp_cover
+            reshape(permutedims(loc_cov, (2, 1)), (N_PARAMS,)) .* tmp_cover
     end
     for (idx, dom_idx) in enumerate(observations.ltmp_cover_to_domain)
         tot_cov =
@@ -364,12 +233,12 @@ end
 
 function get_scale_factors(
     dom::Domain,
-    scenario_df::DataFrame;
+    scenario_df::DataFrame
 )::Array{Float64,3}
     cb_calib_groups = sort(unique(dom.loc_data.CB_CALIB_GROUPS))
     scale_factor_names = scale_factor_array_to_vec(generate_scale_factor_names(cb_calib_groups))
     return scale_factor_vec_to_array(
-        collect(scenario_df[1, scale_factor_names]), 5, length(BIOGROUPS_ORDERING), 2
+        collect(scenario_df[1, scale_factor_names]), N_TAXA, length(cb_calib_groups), 2
     )
 end
 
@@ -399,7 +268,7 @@ function copy(dom::RMEDomain)::RMEDomain
 end
 
 """
-    setup_run(dom::Domain, sampled_params::Vector{Float64}; param_names::Vector{Symbol}=CORAL_PARAM_NAMES, param_idxs=PARAM_IDXS, loc_idxs=target_dom_idxs )::Nothing
+    setup_run(dom, sampled_params; param_names, growth_accel_names, param_idxs, observations, biogroup_ord)
 
 Insert coral parameters into dataframe, reconstruct size class distribution of target
 locations and extract scale factors and growth acceleration parameters.
@@ -407,9 +276,11 @@ locations and extract scale factors and growth acceleration parameters.
 function setup_run(
     dom::Domain,
     sampled_params::Vector{Float64};
-    param_names::Vector{Symbol}=CORAL_PARAM_NAMES,
-    growth_accel_names::Vector{String}=GROWTH_ACCEL_NAMES,
-    param_idxs=PARAM_IDXS,
+    param_names::Vector{Symbol},
+    growth_accel_names::Vector{String},
+    param_idxs::Vector{Int64},
+    observations::LocationDataStore,
+    biogroup_ord::Vector{Int64}
 )::Tuple{Domain,DataFrame}
     # The only changes between domain objects is initial coral cover
     new_dom = copy(dom)
@@ -423,7 +294,9 @@ function setup_run(
 
     insert_init_loc_cover!(
         new_dom,
-        sampled_params[param_idxs[5]:param_idxs[6]]
+        sampled_params[param_idxs[5]:param_idxs[6]],
+        observations,
+        biogroup_ord
     )
 
     return new_dom, scen

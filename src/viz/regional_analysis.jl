@@ -1,30 +1,28 @@
-include("../common/perf_metrics.jl")
-
 function region_stats(
-    region_names::Vector{Symbol}, region_masks::Vector{BitVector};
-    observations::LocationDataStore=COMBINED_STORE
+    region_names::Vector{Symbol},
+    region_masks::Vector{BitVector},
+    raw_data::Array{Float64,4},
+    dom;
+    observations::LocationDataStore,
 )::NamedTuple
-    stats = _region_stats.(Ref(dom), region_masks; observations=observations)
+    stats = _region_stats.(Ref(dom), region_masks, Ref(raw_data); observations=observations)
     has_data_mask = .!isnothing.(stats)
     return NamedTuple{Tuple(region_names[has_data_mask])}(Tuple(stats[has_data_mask]))
 end
 
 """
-    _region_stats(dom::ADRIA.Domain, region_mask::BitVector;observations::LocationDataStore=COMBINED_STORE)::Union{Nothing,@NamedTuple{model_stats::Array{Union{Missing,Float64}},historic_stats::Array{Union{Missing,Float64}}}}
+    _region_stats(dom, region_mask, raw_data; observations)
 
-Return a named tuple with the following aggregated statistics for the locations selected by
-the `region_mask`:
-    - model_stats: a (3 ⋅ n_timesteps) matrix with confint lower bound, median and confint
-upper bound for the modelled predictions
-    - historic_stats: a (3 ⋅ n_timesteps) matrix with confint lower bound, median and
-confint upper bound for the observed historic data
-    - rmse: RMSE for the pooled data across all target locations
-
+Return aggregated statistics for locations selected by `region_mask`:
+- `model_stats`: (3 × n_timesteps) matrix with confint lower, median, upper for model
+- `historic_stats`: (3 × n_timesteps) matrix with confint lower, median, upper for observations
+- `rmse`, `mae`, `srcc`: pooled metrics across all target locations
 """
 function _region_stats(
-    dom::ADRIA.Domain,
-    region_mask::BitVector;
-    observations::LocationDataStore=COMBINED_STORE
+    dom,
+    region_mask::BitVector,
+    raw_data::Array{Float64,4};
+    observations::LocationDataStore,
 )::Union{
     Nothing,
     @NamedTuple{
@@ -48,11 +46,8 @@ function _region_stats(
         observations.ltmp_unique_ids .∈ Ref(target_can_reefs_ids), :
     ]
 
-    # Select the locations within target region and, from those, the locations within the
-    # observation store
-    # Also converts rs_raw data from relative to habitable area to relative to total area
     target_model_data = @view(
-        _loc_cover(rs_raw.raw)[:, region_mask][:, target_reefs_mask]
+        _loc_cover(raw_data, dom)[:, region_mask][:, target_reefs_mask]
     )
 
     n_locations, n_timesteps = size(target_historic)
@@ -60,10 +55,8 @@ function _region_stats(
     historic_stats = Array{Union{Missing,Float64}}(fill(missing, 3, n_timesteps))
 
     for y in 1:n_timesteps
-        # Fill model median and confint
         model_stats[:, y] .= quantile(@view(target_model_data[y, :]), [0.025 0.5 0.975])'
 
-        # Fill historic median and confint
         target_historic_data = @view(
             target_historic[.!ismissing.(target_historic[:, y]), y]
         )
