@@ -1,5 +1,4 @@
 using StatsBase
-using DataStructures
 
 function temporal_correlation(err_series)::Float64
     return cor(1:length(err_series), err_series)
@@ -52,58 +51,6 @@ end
 
 function calib_func(sim, obs)
     return temporal_variability(MAEE_series(sim, obs))
-end
-
-function constant_error_statistics(
-    filename,
-    stat_func=mean
-)::DataFrame
-    region_data = OrderedDict(
-        "North" => ltmp_north,
-        "Central" => ltmp_central,
-        "South" => ltmp_south
-    )
-
-    n = length(region_data)
-    regions_vec = Vector{String}(undef, n)
-    rmse_vec = Vector{Float64}(undef, n)
-    cc_vec = Vector{Float64}(undef, n)
-    maee_vec = Vector{Float64}(undef, n)
-    bias_vec = Vector{Float64}(undef, n)
-
-    for (i, (region, df)) in enumerate(region_data)
-        start_ind::Int64 = findfirst(x -> x >= START_YEAR, df.Year)
-        end_ind::Int64 = findfirst(x -> x >= END_YEAR, df.Year) - 1
-
-        xs = df.Year[start_ind:end_ind]
-        resp = df.response[start_ind:end_ind]
-        stat = fill(stat_func(resp), length(xs))
-
-        r::Float64 = rmse(stat, resp)
-        cc::Float64 = cor(stat, resp)
-        me::Float64 = MAEE(stat, resp)
-        b::Float64 = bias(stat, resp)
-
-        @info "$(region) — RMSE: $(r), R: $(cc), MAEE: $(me), BIAS: $(b)"
-
-        regions_vec[i] = region
-        rmse_vec[i] = r
-        cc_vec[i] = cc
-        maee_vec[i] = me
-        bias_vec[i] = b
-    end
-
-    err_csv = DataFrame(
-        Regions=regions_vec,
-        RMSE=rmse_vec,
-        R=cc_vec,
-        MAEE=maee_vec,
-        BIAS=bias_vec
-    )
-
-    CSV.write(filename, err_csv, writeheader=true)
-
-    return err_csv
 end
 
 function _loc_cover(raw_data, dom)
@@ -201,7 +148,7 @@ function average_class_cover(
 end
 
 """
-    reef_taxa_error(cover; observations=CALIBRATION_STORE)::Float64
+    reef_taxa_error(cover; observations)::Float64
 
 Mean compositional mismatch between simulated and observed functional group cover across
 LTMP reefs and years. Returns a value in [0, 1] where 0 is a perfect match.
@@ -217,7 +164,7 @@ rescaling, then the objective is 1 minus the mean score across reefs.
 """
 function reef_taxa_error(
     cover;
-    observations::LocationDataStore=CALIBRATION_STORE
+    observations::LocationDataStore
 )
     n_locs = length(observations.composition_to_domain)
     loc_scores = Vector{Float64}(undef, n_locs)
@@ -244,7 +191,7 @@ function reef_taxa_error(
 end
 
 """
-    reef_error(cover; observations=CALIBRATION_STORE)::Vector{Float64}
+    reef_error(cover; observations)::Vector{Float64}
 
 Mean reef-level MAEE per year, averaged across all LTMP reefs with observations in that year.
 
@@ -259,7 +206,7 @@ Returns a `Vector{Float64}` of length `n_years` (one entry per modelled timestep
 """
 function reef_error(
     cover;
-    observations::LocationDataStore=CALIBRATION_STORE,
+    observations::LocationDataStore,
 )::Vector{Float64}
     n_years::Int64 = size(cover, 1)
     err_series::Vector{Float64} = zeros(Float64, n_years)

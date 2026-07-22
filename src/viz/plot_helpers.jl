@@ -3,7 +3,7 @@
         raw_data,
         ltmp_loc_idx;
         fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-        observations::LocationDataStore=COMBINED_STORE,
+        observations::LocationDataStore,
     )
 
 Construct a Rich Test string containing the location unique id, location name and the error
@@ -20,7 +20,7 @@ function _location_err_title(
     ltmp_loc_idx;
     dom,
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    observations::LocationDataStore=COMBINED_STORE,
+    observations::LocationDataStore,
 )
     domain_idx::Int64 = ltmp_cover_idx_to_domain(observations, ltmp_loc_idx)
     reef_name::String = try

@@ -1,6 +1,6 @@
 """
-    plot_location_comparison(dom, raw_data::Array{Float64,4}, reef_id::String, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore=COMBINED_STORE)::Figure
-    plot_location_comparison(dom, raw_data::Array{Float64,4}, ltmp_loc_index::Int64, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore=COMBINED_STORE)::Figure
+    plot_location_comparison(dom, raw_data::Array{Float64,4}, reef_id::String, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore)::Figure
+    plot_location_comparison(dom, raw_data::Array{Float64,4}, ltmp_loc_index::Int64, cyc_scens, dhw_scens, disturbances; observations::LocationDataStore)::Figure
 
 Plot LTMP Manta Tow Coral Cover against the modelled cover output given the LTMP location
 index.

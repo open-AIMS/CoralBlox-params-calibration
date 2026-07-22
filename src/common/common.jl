@@ -5,7 +5,6 @@ using ADRIA: RMEDomain
 using DataFrames
 using StatsBase
 using Statistics
-using DataStructures
 using CSV
 using TOML
 using YAXArrays
