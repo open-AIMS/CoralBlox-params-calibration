@@ -1,9 +1,5 @@
-using YAXArrays
-
-include("param_bounds.jl")
-
 """
-    build_params_dataset(calibrated_params)::Dataset
+    build_params_dataset(calibrated_params, param_idxs, coral_param_names, biogroups_ordering, growth_accel_names)::Dataset
 
 Unpack a flat calibrated-parameter vector into a labelled YAXArray Dataset.
 
@@ -16,45 +12,52 @@ Reshape ordering follows the layout produced by `sc_fg_param_idxs` and
 - `linear_extension_scale`, `mb_rate_scale`: flat order is group-fastest, biogroup-slowest
   → reshape `(n_biogroups, n_groups)` then permute to `(n_groups, n_biogroups)`
 """
-function build_params_dataset(calibrated_params::Vector{Float64})::Dataset
+function build_params_dataset(
+    calibrated_params::Vector{Float64},
+    param_idxs::Vector{Int64},
+    coral_param_names,
+    biogroups_ordering::Vector{Int64},
+    growth_accel_names::Vector{String}
+)::Dataset
     fgroup_names = ADRIA.functional_group_names()
+    n_biogroups = length(biogroups_ordering)
 
     fg_axis = Dim{:functional_group}(string.(fgroup_names))
-    sc_axis = Dim{:size_class}(1:n_size_classes)
-    bg_axis = Dim{:cb_calib_group}(BIOGROUPS_ORDERING)
+    sc_axis = Dim{:size_class}(1:N_SIZE_CLASSES)
+    bg_axis = Dim{:cb_calib_group}(biogroups_ordering)
     ap_axis = Dim{:accel_param}(["steepness", "height", "midpoint"])
 
-    coral_params = calibrated_params[PARAM_IDXS[1]:PARAM_IDXS[2]]
+    coral_params = calibrated_params[param_idxs[1]:param_idxs[2]]
 
-    le_mask = occursin.(Ref("_linear_extension"), string.(CORAL_PARAM_NAMES))
-    mb_mask = occursin.(Ref("_mb_rate"), string.(CORAL_PARAM_NAMES))
-    dm_mask = occursin.(Ref("_dist_mean"), string.(CORAL_PARAM_NAMES))
-    les_mask = occursin.(Ref("linear_extension_scale"), string.(CORAL_PARAM_NAMES))
-    mbs_mask = occursin.(Ref("mb_rate_scale"), string.(CORAL_PARAM_NAMES))
+    le_mask = occursin.(Ref("_linear_extension"), string.(coral_param_names))
+    mb_mask = occursin.(Ref("_mb_rate"), string.(coral_param_names))
+    dm_mask = occursin.(Ref("_dist_mean"), string.(coral_param_names))
+    les_mask = occursin.(Ref("linear_extension_scale"), string.(coral_param_names))
+    mbs_mask = occursin.(Ref("mb_rate_scale"), string.(coral_param_names))
 
     _fg_sc(mask, desc, units=nothing) = YAXArray(
         (fg_axis, sc_axis),
-        permutedims(reshape(coral_params[mask], n_size_classes, n_groups), (2, 1)),
+        permutedims(reshape(coral_params[mask], N_SIZE_CLASSES, N_TAXA), (2, 1)),
         units === nothing ? Dict("description" => desc) : Dict("description" => desc, "units" => units)
     )
 
     _fg_bg(mask, desc) = YAXArray(
         (fg_axis, bg_axis),
-        permutedims(reshape(coral_params[mask], n_biogroups, n_groups), (2, 1)),
+        permutedims(reshape(coral_params[mask], n_biogroups, N_TAXA), (2, 1)),
         Dict("description" => desc)
     )
 
-    accel_params = calibrated_params[PARAM_IDXS[3]:PARAM_IDXS[4]]
-    steep = accel_params[occursin.(Ref("steepness"), GROWTH_ACCEL_NAMES)]
-    height = accel_params[occursin.(Ref("height"), GROWTH_ACCEL_NAMES)]
-    mid = accel_params[occursin.(Ref("midpoint"), GROWTH_ACCEL_NAMES)]
+    accel_params = calibrated_params[param_idxs[3]:param_idxs[4]]
+    steep = accel_params[occursin.(Ref("steepness"), growth_accel_names)]
+    height = accel_params[occursin.(Ref("height"), growth_accel_names)]
+    mid = accel_params[occursin.(Ref("midpoint"), growth_accel_names)]
 
     return Dataset(;
         linear_extension=_fg_sc(le_mask, "Linear extension rate", "m"),
         mb_rate=_fg_sc(mb_mask, "Background mortality rate"),
         dist_mean=YAXArray(
             (fg_axis, sc_axis),
-            reshape(coral_params[dm_mask], n_groups, n_size_classes),
+            reshape(coral_params[dm_mask], N_TAXA, N_SIZE_CLASSES),
             Dict("description" => "DHW tolerance distribution mean")
         ),
         linear_extension_scale=_fg_bg(les_mask, "Linear extension biogroup scale factor"),
@@ -75,20 +78,8 @@ function build_params_dataset(calibrated_params::Vector{Float64})::Dataset
     )
 end
 
-calibrated_params = deserialize(joinpath(OUT_DIR, RESULT_FN))
-
-params_dir_path = joinpath(OUT_DIR, "params")
-!isdir(params_dir_path) && mkdir(params_dir_path)
-
-savedataset(
-    build_params_dataset(calibrated_params);
-    path=joinpath(params_dir_path, "calibrated_params.nc"),
-    driver=:netcdf,
-    overwrite=true
-)
-
 """
-    build_init_cover_dataset(dom, init_cover_sample, location_types, calibrated_params)::Dataset
+    build_init_cover_dataset(dom, init_cover_sample, location_types, calibrated_params, param_idxs, observations, biogroup_ord)::Dataset
 
 Compute the calibrated historical initial coral cover without mutating `dom`.
 
@@ -100,26 +91,15 @@ function build_init_cover_dataset(
     dom,
     init_cover_sample::Vector{Float64},
     location_types::AbstractVector{Int64},
-    calibrated_params::Vector{Float64}
+    calibrated_params::Vector{Float64},
+    param_idxs::Vector{Int64},
+    observations::LocationDataStore,
+    biogroup_ord::Vector{Int64}
 )::Dataset
     cover = compute_cover(init_cover_sample, location_types, ADRIA.n_locations(dom))
     tmp_dom = copy(dom)
     tmp_dom.init_coral_cover = copy(dom.init_coral_cover)
     tmp_dom.init_coral_cover .= cover
-    insert_init_loc_cover!(tmp_dom, calibrated_params[PARAM_IDXS[5]:PARAM_IDXS[6]])
+    insert_init_loc_cover!(tmp_dom, calibrated_params[param_idxs[5]:param_idxs[6]], observations, biogroup_ord)
     return Dataset(; tmp_dom.init_coral_cover)
 end
-
-if !@isdefined(dom)
-    include("../1_setup.jl")
-    include("param_bounds.jl")
-end
-init_cover_sample = deserialize(INIT_COVER_PATH)
-calibrated_params = deserialize(joinpath(OUT_DIR, RESULT_FN))
-
-savedataset(
-    build_init_cover_dataset(dom, init_cover_sample, location_classification.consecutive_classification, calibrated_params);
-    path=joinpath(params_dir_path, "historic_init_cover.nc"),
-    driver=:netcdf,
-    overwrite=true
-)

@@ -1,3 +1,26 @@
-include("../src/01_a_setup.jl")
-include("../src/01_b_data_split.jl")
-include("../src/02_location_calibration.jl")
+using CoralBloxCalib
+using CoralBloxCalib.common
+using CoralBloxCalib.calibration
+
+config = load_config()
+dom = load_domain(config)
+location_classification = load_location_classification(config.loc_class_path)
+
+cfg = CalibConfig(dom)
+
+calib_data = build_calibration_data(
+    dom, config.ltmp_reef_data_path, config.composition_path;
+    out_dir=config.out_dir
+)
+
+run_calibration(
+    dom,
+    cfg,
+    calib_data,
+    location_classification.consecutive_classification;
+    init_cover_path=config.init_cover_path,
+    out_dir=config.out_dir,
+    init_guess_path=config.init_guess_path,
+    result_fn=config.result_fn,
+    config=config
+)

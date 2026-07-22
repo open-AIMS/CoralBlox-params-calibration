@@ -56,10 +56,27 @@ julia> import CoralBloxCalib.viz     # plotting submodule
 ### Running calibration
 
 ```julia-repl
-julia> include("src/01_a_setup.jl")
-julia> include("src/01_b_data_split.jl")
-julia> include("src/02_location_calibration.jl")
+julia> using CoralBloxCalib, CoralBloxCalib.common, CoralBloxCalib.calibration
+julia> config = load_config()
+julia> dom = load_domain(config)
+julia> location_classification = load_location_classification(config.loc_class_path)
+julia> cfg = CalibConfig(dom)
+julia> calib_data = build_calibration_data(
+           dom, config.ltmp_reef_data_path, config.composition_path; out_dir=config.out_dir
+       )
+julia> run_calibration(
+           dom, cfg, calib_data, location_classification.consecutive_classification;
+           init_cover_path=config.init_cover_path, out_dir=config.out_dir,
+           init_guess_path=config.init_guess_path, result_fn=config.result_fn, config=config
+       )
 ```
+
+`load_config` parses `config.toml` and resolves every calibration input/output path (see
+`src/common/calib_setup.jl`); `load_domain` loads the ADRIA RME domain and attaches historical
+DHW/cyclone data. `CalibConfig` builds parameter bounds/ordering and `build_calibration_data`
+splits LTMP/composition data into calibration/validation/combined `LocationDataStore`s before
+`CoralBloxCalib.calibration.run_calibration` runs BlackBoxOptim. See `scripts/run_loc_calib.jl`
+for the equivalent non-interactive entry point.
 
 ### Results analysis and plots
 
@@ -101,7 +118,8 @@ After Phase 1, cover is overwritten at locations where observations exist:
   replaced with observed values; only the total cover magnitude is retained from Phase 1.
 
 The index vectors `ltmp_cover_to_domain` and `composition_to_domain` inside each
-`LocationDataStore` (`CALIBRATION_STORE`, `VALIDATION_STORE`, `COMBINED_STORE`) are the sole
+`LocationDataStore` (`calib_data.calibration_store`, `calib_data.validation_store`,
+`calib_data.combined_store` — see [Useful Variables](#useful-variables)) are the sole
 record of which domain locations have observed data. Everything outside these index sets
 retains its Phase 1 cover unchanged.
 
@@ -109,21 +127,41 @@ retains its Phase 1 cover unchanged.
 
 In order to reduce the number of files to be edited when making changes to which parameters
 are calibrated and what bounds they have, all parameter bounds setup is confined to the
-`common/param_bounds.jl` file.
+`CalibConfig` constructor in `src/calibration/config.jl`. It returns the sample bounds,
+biogroup ordering, parameter index ranges, and parameter names used throughout calibration
+and result analysis.
 
-The `setup_run` function accepts a vector of parameter values and constructs the domain,
-scenarios and scale factors required to perform a model run.
+The `setup_run` function (`src/common/param_bounds.jl`) accepts a vector of parameter values
+and constructs the domain, scenarios and scale factors required to perform a model run.
 
 ## Useful Variables
 
-After running `src/01_a_setup.jl` and `src/01_b_data_split.jl`:
+After `config = load_config()` and `dom = load_domain(config)` (both exported from
+`CoralBloxCalib.common`, see [Running calibration](#running-calibration)):
 
-- `dom` — ADRIA reefmod domain
-- `CALIBRATION_STORE`, `VALIDATION_STORE`, `COMBINED_STORE` — `LocationDataStore` instances
-  indexing LTMP reef data, coral composition data, and the domain geopackage
-- `NORTH_MASK`, `CENTRAL_MASK`, `SOUTH_MASK` — `BitVector` region masks for the ADRIA domain
-- `ltmp_north`, `ltmp_central`, `ltmp_south` — regional LTMP modelled cover `DataFrame`s
-- `location_classification` — CSV containing location classification of GBR-wide locations
+- `dom` — ADRIA reefmod domain, with historical DHW/cyclone data attached
+- `config.rng_seed`, `config.out_dir`, `config.ltmp_reef_data_path`, etc. — resolved
+  calibration paths/settings from `config.toml` (see `CalibrationConfig` in
+  `src/common/calib_setup.jl` for the full field list)
+- `location_classification` — CSV containing location classification of GBR-wide locations,
+  loaded via `load_location_classification(config.loc_class_path)`
+
+`dom.loc_data.CB_CALIB_GROUPS` carries the biogroup assignment used by `CalibConfig`/
+`build_calibration_data` (previously sourced from a separately-loaded canonical geopackage).
+
+Region masks/regional LTMP data (`NORTH_MASK`/`CENTRAL_MASK`/`SOUTH_MASK`,
+`ltmp_north`/`ltmp_central`/`ltmp_south`) are analysis-only and no longer loaded for
+calibration runs — see `viz.load_regional_analysis_data(dom, config.ltmp_modelled_obs_path,
+config.ltmp_shp_path)`, called from `scripts/plot/03_result_analysis.jl`.
+
+After additionally building `cfg = CalibConfig(dom)` and
+`calib_data = build_calibration_data(dom, config.ltmp_reef_data_path, config.composition_path)`
+(both exported from `CoralBloxCalib.calibration`):
+
+- `cfg.sample_bounds`, `cfg.biogroups_ordering`, `cfg.param_idxs`, `cfg.coral_param_names`,
+  `cfg.growth_accel_names` — parameter bounds and ordering used by `setup_run`
+- `calib_data.calibration_store`, `calib_data.validation_store`, `calib_data.combined_store`
+  — `LocationDataStore` instances indexing LTMP reef data and coral composition data
 
 ## Error Functions
 
@@ -155,22 +193,15 @@ Expects total cover of shape `[timesteps x location]`
 
 ## Parameter Extraction
 
-After calibration is complete, `src/common/params_extraction.jl` unpacks the flat
-calibrated-parameter vector into labelled NetCDF files suitable for use in ADRIA.
+After calibration is complete, `src/common/params_extraction.jl` provides
+`build_params_dataset` and `build_init_cover_dataset`, which unpack the flat
+calibrated-parameter vector into labelled `YAXArray` `Dataset`s suitable for use in ADRIA.
+These are pure functions (no side effects) — `scripts/plot/03_result_analysis.jl` calls them
+using `cfg` and `calib_data` (built from `CalibConfig`/`build_calibration_data`, see
+[Running calibration](#running-calibration)) and writes the resulting datasets to NetCDF as
+part of result analysis.
 
-**Prerequisites** — the following must be defined (run `01_a_setup.jl` first) and a
-completed calibration result must exist at `joinpath(OUT_DIR, RESULT_FN)`:
-
-- `dom` — ADRIA domain
-- `OUT_DIR`, `RESULT_FN` — output directory and result filename (from `config.toml`)
-- `INIT_COVER_PATH` — path to the serialised initial-cover sample
-
-```julia-repl
-julia> include("src/01_a_setup.jl")
-julia> include("src/common/params_extraction.jl")
-```
-
-This writes two files to `{out_dir}/params/`:
+Running `scripts/plot/03_result_analysis.jl` writes two files to `{out_dir}/params/`:
 
 - **`calibrated_params.nc`** — Calibrated coral parameters as a YAXArray `Dataset` with
   labelled `functional_group`, `size_class`, `cb_calib_group`, and `accel_param` axes.

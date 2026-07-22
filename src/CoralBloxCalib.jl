@@ -3,11 +3,11 @@ module CoralBloxCalib
 using ADRIA
 using DataFrames
 
-include("common/constants.jl")
 include("common/types.jl")
 
 include("common/common.jl")
 include("viz/viz.jl")
+include("calibration/calibration.jl")
 
 export LocationDataStore,
        ltmp_cover_idx_to_domain,

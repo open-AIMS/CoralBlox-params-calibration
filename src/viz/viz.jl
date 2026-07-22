@@ -2,6 +2,7 @@ module viz
 
 using ADRIA
 using ADRIA: GDF, AG
+using ADRIA: GDF.GeoInterface as GI
 
 using CairoMakie
 using GeometryBasics: Polygon, Point2f
@@ -20,8 +21,7 @@ import ..CoralBloxCalib:
     composition_idx_to_domain,
     get_ltmp_loc_unique_id
 
-include("../common/constants.jl")
-include("../common/perf_metrics.jl")
+using ..common
 
 # ----- Visual constants -------------------------------------------------------
 
@@ -90,6 +90,7 @@ const FIG_SIZE::Dict = Dict(
 # ----- Plot helpers and submodule files ---------------------------------------
 
 include("plot_helpers.jl")
+include("regional_data_loader.jl")
 
 include("location_comparison.jl")
 include("regional_comparison.jl")
@@ -129,6 +130,8 @@ export LocationDataStore,
        progress_run,
        save_regional_analysis_plots,
        save_metric_analysis_plots,
-       save_location_timeseries_plots
+       save_location_timeseries_plots,
+       RegionalAnalysisData,
+       load_regional_analysis_data
 
 end
