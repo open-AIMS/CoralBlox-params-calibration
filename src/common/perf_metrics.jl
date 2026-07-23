@@ -240,10 +240,9 @@ Mean reef-level MAE per year, averaged across all LTMP reefs with observations i
 
 For each LTMP reef location, computes the element-wise MAE between simulated `cover`
 and observed coral cover at each observed timestep, then accumulates into a `n_years`
-error series. The peak and trough years of each reef's observed time series are weighted
-2× to penalise errors at extremes of the dynamic range more heavily. Missing observations
-are excluded from both the error sum and the per-year reef count, so each element of the
-returned vector is the unweighted mean over whichever reefs had valid data that year.
+error series. Missing observations are excluded from both the error sum and the per-year
+reef count, so each element of the returned vector is the unweighted mean over whichever
+reefs had valid data that year.
 
 Returns a `Vector{Float64}` of length `n_years` (one entry per modelled timestep).
 """
@@ -263,8 +262,6 @@ function reef_error(
         domain_idx = ltmp_cover_idx_to_domain(observations, row_idx)
 
         not_missing .= (!).(ismissing.(loc_obs))
-        trough_idx = argmin(loc_obs[not_missing])
-        peak_idx = argmax(loc_obs[not_missing])
         tmp_err[not_missing] .= MAE_series(
             cover[not_missing, domain_idx], loc_obs[not_missing]
         )
