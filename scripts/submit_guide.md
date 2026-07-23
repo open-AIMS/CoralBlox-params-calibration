@@ -8,7 +8,7 @@ Run `sbatch` from the **repository root** (`~/CoralBlox-params-calibration/`), n
 ```bash
 cd ~/CoralBlox-params-calibration/
 
-sbatch --job-name=loc_calib_test --chdir ~/CoralBlox-params-calibration/ scripts/submit.slurm scripts/run_loc_calib.jl --output scripts/calib_output.log
+sbatch --job-name=cb-calib --chdir ~/CoralBlox-params-calibration/ scripts/submit.slurm scripts/run_loc_calib.jl --output scripts/calib_output.log
 ```
 
 A log of outputs from the optimizer will be saved in `scripts/calib_output.log`.
