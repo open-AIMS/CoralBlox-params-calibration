@@ -101,12 +101,10 @@ function _obj_func(
 
     loc_cover = dropdims(sum(res.raw; dims=(2, 3)); dims=(2, 3)) .* loc_k_areas' ./ loc_areas'
     reef_error_series = reef_error(loc_cover; observations=observations)
-    reef_perf = temporal_variability(reef_error_series)
+    reef_perf = year_weighted_error(reef_error_series, reef_observation_counts(observations))
+
     taxa_cover = dropdims(sum(res.raw; dims=3); dims=3)
     fg_corr = reef_taxa_error(taxa_cover; observations=observations)
-
-    first_non_zero = findfirst(x -> x != 0, reef_error_series)
-    last_non_zero = findlast(x -> x != 0, reef_error_series)
 
     has_obs = vec(any(.!ismissing.(observations.ltmp_coral_cover), dims=2))
     valid_survey_rows = findall(has_obs)
@@ -121,8 +119,6 @@ function _obj_func(
     modelled_troughs = loc_cover[CartesianIndex.(obs_trough_col, valid_domain_rows)]
 
     return reef_perf +
-            reef_error_series[first_non_zero] +
-            reef_error_series[last_non_zero] +
             mean(abs.(modelled_peaks .- obs_peaks)) * 0.5 +
             mean(abs.(modelled_troughs .- obs_troughs)) * 0.5 +
             fg_corr * 2.0

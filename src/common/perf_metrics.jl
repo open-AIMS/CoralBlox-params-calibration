@@ -54,6 +54,47 @@ function temporal_variability(x::AbstractVector{<:Real}; w=[0.9, 0.1])
     return mean([mean(x), std(x)], weights(w))
 end
 
+"""
+    reef_observation_counts(observations::LocationDataStore)::Vector{Int}
+
+Number of LTMP reefs with a non-missing cover observation in each year.
+"""
+function reef_observation_counts(observations::LocationDataStore)::Vector{Int}
+    return vec(count(!ismissing, observations.ltmp_coral_cover; dims=1))
+end
+
+"""
+    year_weighted_error(err_series::AbstractVector{<:Real}, counts::AbstractVector{<:Real})::Float64
+
+Weighted mean of a per-year error series (as returned by `reef_error`). Weight = year index
+(later years matter more) × `sqrt(counts)` (years with more reporting reefs are less noisy,
+so trusted more; `sqrt` rather than raw count since reefs surveyed in the same year plausibly
+don't fail independently — a bad year hits several reefs via the same disturbance forcing).
+Years with no observation data (`err_series[i] == 0`) are excluded entirely, not zero-weighted.
+
+# Why year-weighting
+ADRIA runs forward from `init_cover` with no re-anchoring to observations mid-run, so
+parameter error compounds year over year — a flat/endpoint-only score lets the optimizer
+nail the easy early years while drifting badly by the end. Verified empirically:
+`Spearman(year, error) ≈ 0.89` on a real calibrated run (2009: 0.038 → 2022: 0.150).
+Reproduce via [scripts/check_error_by_year.jl](../../scripts/check_error_by_year.jl).
+
+Replaced `temporal_variability`'s `0.9·mean + 0.1·std` blend plus a `first_non_zero`/
+`last_non_zero` double-count that had no justification for weighting the first year (it's
+the easiest to fit — zero time to drift). No dispersion (`std`) term: it would fight the
+year-weighting itself, which *wants* error to grow with year. Full discussion:
+`sandbox/feature_docs/13_break-up-obj-func.md` Q1/Q2 (not version-controlled — this
+docstring is the durable record).
+"""
+function year_weighted_error(
+    err_series::AbstractVector{<:Real}, counts::AbstractVector{<:Real}
+)::Float64
+    n = length(err_series)
+    weights = Float64.(1:n) .* sqrt.(counts)
+    valid = err_series .!= 0
+    return sum(err_series[valid] .* weights[valid]) / sum(weights[valid])
+end
+
 function calib_func(sim, obs)
     return temporal_variability(MAEE_series(sim, obs))
 end
