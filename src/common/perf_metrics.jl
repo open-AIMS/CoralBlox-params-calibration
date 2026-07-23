@@ -194,19 +194,17 @@ function average_class_cover(
 end
 
 """
+Bray-Curtis dissimilarity between two composition vectors, in [0, 1] (0 = identical, 1 =
+fully disjoint).
+"""
+bray_curtis(sim, obs) = sum(abs.(sim .- obs)) / sum(sim .+ obs)
+
+"""
     reef_taxa_error(cover; observations)::Float64
 
 Mean compositional mismatch between simulated and observed functional group cover across
-LTMP reefs and years. Returns a value in [0, 1] where 0 is a perfect match.
-
-At each (reef, timestep) pair with observations, the Pearson correlation across functional
-groups is computed and rescaled from [-1, 1] to [0, 1] via `(1 + r) / 2`, so that:
-- r = +1 (perfect match) → 1.0
-- r =  0 (no signal)     → 0.5
-- r = -1 (inversion)     → 0.0 (worst case, penalised harder than zero correlation)
-
-Per-reef scores are obtained by Fisher z-averaging the per-timestep r values before
-rescaling, then the objective is 1 minus the mean score across reefs.
+LTMP reefs and years, via Bray-Curtis dissimilarity. Returns a value in [0, 1], 0 = perfect
+match. Reefs with no observations get a neutral 0.5.
 """
 function reef_taxa_error(
     cover;
@@ -224,16 +222,15 @@ function reef_taxa_error(
             continue
         end
 
-        r_vals = [
-            cor(cover[id, :, idx], Float64.(observations.coral_composition[id, :, j]))
+        bc_vals = [
+            bray_curtis(cover[id, :, idx], Float64.(observations.coral_composition[id, :, j]))
             for id in observed_ids
         ]
 
-        r_mean = tanh(mean(atanh.(r_vals)))
-        loc_scores[j] = (1.0 + r_mean) / 2.0
+        loc_scores[j] = mean(bc_vals)
     end
 
-    return 1.0 - mean(loc_scores)
+    return mean(loc_scores)
 end
 
 """
