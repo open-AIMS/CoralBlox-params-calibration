@@ -17,10 +17,11 @@ run_calibration(
     dom,
     cfg,
     calib_data,
-    location_classification.consecutive_classification;
+    location_classification.consecutive_classification,
+    50_000;
     init_cover_path=config.init_cover_path,
     out_dir=config.out_dir,
     init_guess_path=config.init_guess_path,
     result_fn=config.result_fn,
-    config=config
+    config=config,
 )

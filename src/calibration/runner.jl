@@ -128,6 +128,55 @@ function _obj_func(
             fg_corr * 2.0
 end
 
+mutable struct _StagnationState
+    best_fitness::Float64
+    last_improved_step::Int
+    reason::String
+end
+
+"""
+    _stagnation_shutdown_check!(
+        oc,
+        state::_StagnationState;
+        patience::Int
+    )::Nothing
+
+Stop the optimiser (via `BlackBoxOptim.shutdown!`) once `patience` steps have passed without a
+new best fitness. BlackBoxOptim's own `MaxStepsWithoutProgress` parameter is parsed but never
+enforced for the single-objective `TopListArchive` path this project uses (verified against its
+source — it's only wired up for the Borg multi-objective archive), so this replaces it.
+
+# Arguments
+- `oc` : BlackBoxOptim `OptRunController` passed into the callback
+- `state` : mutable stagnation-tracking state, updated in place
+
+# Keyword arguments
+- `patience` : number of steps without a new best fitness before shutting down
+"""
+function _stagnation_shutdown_check!(
+    oc,
+    state::_StagnationState;
+    patience::Int
+)::Nothing
+    current_best = best_fitness(oc)
+    current_step = oc.num_steps
+
+    if current_best < state.best_fitness
+        state.best_fitness = current_best
+        state.last_improved_step = current_step
+        return nothing
+    end
+
+    if current_step - state.last_improved_step >= patience
+        state.reason = "No fitness improvement in $(patience) steps " *
+                        "(last improved at step $(state.last_improved_step))."
+        @info "Stopping: $(state.reason)"
+        BlackBoxOptim.shutdown!(oc)
+    end
+
+    return nothing
+end
+
 function _save_results_callback(
     oc,
     dom,
@@ -176,9 +225,32 @@ function _save_results_callback(
 end
 
 """
-    run_calibration(dom, cfg, calib_data, location_classification; kwargs...)
+    run_calibration(
+        dom,
+        cfg::CalibConfig,
+        calib_data::CalibrationData,
+        location_classification::AbstractVector{Int64},
+        stagnation_patience::Int;
+        init_cover_path::String,
+        out_dir::String,
+        init_guess_path::String="",
+        result_fn::String="results.dat",
+        config::Union{CalibrationConfig,Nothing}=nothing,
+        rng_seed::Int=isnothing(config) ? 42 : config.rng_seed,
+        n_threads::Union{Int,Nothing}=nothing,
+        time_interv::Real=1800.0,
+        step_interv::Int=1000
+    )::Nothing
 
 Run BlackBoxOptim to calibrate coral parameters. Calls `construct_cover!` on `dom` in place.
+
+# Arguments
+- `dom` : ADRIA domain
+- `cfg` : `CalibConfig` describing the parameter search space
+- `calib_data` : `CalibrationData` holding the calibration/validation observation split
+- `location_classification` : per-location classification vector used to construct initial cover
+- `stagnation_patience` : stop once this many steps pass without a new best fitness (fully
+  replaces the old fixed-`MaxSteps` budget; see `_stagnation_shutdown_check!`)
 
 # Keyword arguments
 - `init_cover_path` : path to the serialised initial-cover vector
@@ -188,7 +260,6 @@ Run BlackBoxOptim to calibrate coral parameters. Calls `construct_cover!` on `do
 - `config` : optional `CalibrationConfig`; when given, defaults `rng_seed` to `config.rng_seed`
   so it can't silently drift from `config.toml`'s `operation.rng_seed`
 - `rng_seed` : RNG seed passed to BlackBoxOptim
-- `max_steps` : optimiser step budget
 - `n_threads` : worker threads (`Threads.nthreads()` by default)
 - `time_interv` : minimum seconds between progress saves
 - `step_interv` : minimum steps between progress saves
@@ -197,18 +268,18 @@ function run_calibration(
     dom,
     cfg::CalibConfig,
     calib_data::CalibrationData,
-    location_classification::AbstractVector{Int64};
+    location_classification::AbstractVector{Int64},
+    stagnation_patience::Int;
     init_cover_path::String,
     out_dir::String,
     init_guess_path::String="",
     result_fn::String="results.dat",
     config::Union{CalibrationConfig,Nothing}=nothing,
     rng_seed::Int=isnothing(config) ? 42 : config.rng_seed,
-    max_steps::Int=1_000_000,
     n_threads::Union{Int,Nothing}=nothing,
     time_interv::Real=1800.0,
     step_interv::Int=1000
-)
+)::Nothing
     init_cover = deserialize(init_cover_path)
     construct_cover!(dom, init_cover, location_classification)
 
@@ -227,25 +298,32 @@ function run_calibration(
     @info "Using RNG seed $(rng_seed) for this calibration run (config.toml: operation.rng_seed)."
 
     last_save = Ref(0.0)
+    stagnation_state = _StagnationState(Inf, 0, "")
     obj = (init_values) -> _obj_func(
         init_values, dom, cfg, calib_data.calibration_store, location_classification
     )
-    callback = (oc) -> _save_results_callback(
-        oc, dom, cfg, calib_data.calibration_store, out_dir, result_fn, last_save;
-        time_interv=time_interv, step_interv=step_interv
-    )
+    callback = (oc) -> begin
+        _save_results_callback(
+            oc, dom, cfg, calib_data.calibration_store, out_dir, result_fn, last_save;
+            time_interv=time_interv, step_interv=step_interv
+        )
+        _stagnation_shutdown_check!(oc, stagnation_state; patience=stagnation_patience)
+    end
 
     mkpath(joinpath(out_dir, "taxa_cover"))
     mkpath(joinpath(out_dir, "taxa_pop"))
 
     opts = (
         SearchRange=cfg.sample_bounds,
-        MaxSteps=max_steps,
+        MaxSteps=0, # disabled — stagnation_patience (via _stagnation_shutdown_check!) fully
+                    # replaces the fixed step budget. 0 must be explicit: BlackBoxOptim's own
+                    # default is 10000, so omitting this would silently cap every run at 10000
+                    # steps.
         NThreads=available_threads - 1,
         CallbackFunction=callback,
         CallbackInterval=0,
         RngSeed=rng_seed,
-        RandomizeRngSeed=false
+        RandomizeRngSeed=false,
     )
 
     res = if isnothing(best_init_state)
@@ -255,8 +333,11 @@ function run_calibration(
         bboptimize(obj, best_init_state; opts...)
     end
 
+    stop_reason_str = isempty(stagnation_state.reason) ?
+        BlackBoxOptim.stop_reason(res) : stagnation_state.reason
     @info "Best fitness: $(best_fitness(res))"
+    @info "Stop reason: $(stop_reason_str)"
     serialize(joinpath(out_dir, result_fn), best_candidate(res))
 
-    return res
+    return nothing
 end
