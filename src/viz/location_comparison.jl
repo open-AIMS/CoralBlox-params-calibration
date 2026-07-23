@@ -12,7 +12,7 @@ these plots and to set axis and figure opts. See `filter_opts` dosctring for mor
 # Arguments
 - `opts` :
     - `:short_title` : If true, display only RMSE and SCC. Otherwise shows RMSE, μ bnch,
-    PCC, SCC, MAEE and BIAS
+    PCC, SCC, MAE and BIAS
     - `:show_ltmp_dist` : defaults to true.
     - `:show_model_dist` : defaults to true.
     - `:show_benthic_composition` : defaults to true.

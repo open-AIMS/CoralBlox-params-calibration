@@ -13,7 +13,7 @@ statistics for the location.
 # Arguments
 - `opts` :
     - `:short_title` : If true, display only RMSE and SCC. Otherwise shows RMSE, μ bnch,
-    PCC, SCC, MAEE and BIAS
+    PCC, SCC, MAE and BIAS
 """
 function _location_err_title(
     raw_data,
@@ -34,9 +34,9 @@ function _location_err_title(
         raw_data, ltmp_loc_idx, dom; observations=observations
     )
 
-    rmse_model, rmse_benchmark, pcc, maee, bias, srcc = trunc.(
+    rmse_model, rmse_benchmark, pcc, mae, bias, srcc = trunc.(
         getproperty.(
-            Ref(error_stats), [:rmse_model, :rmse_benchmark, :pcc, :maee, :bias, :srcc]
+            Ref(error_stats), [:rmse_model, :rmse_benchmark, :pcc, :mae, :bias, :srcc]
         ),
         digits=4
     )
@@ -45,7 +45,7 @@ function _location_err_title(
         "RMSE (model): $(rmse_model) | RMSE (benchmark): $(rmse_benchmark) | SRCC: $(srcc)"
     else
         "RMSE (model): $(rmse_model) | RMSE (benchmark): $(rmse_benchmark) | " *
-        "PCC: $(pcc) | SRCC: $(srcc) | MAEE: $(maee) | BIAS: $(bias)"
+        "PCC: $(pcc) | SRCC: $(srcc) | MAE: $(mae) | BIAS: $(bias)"
     end
 
     title_text = rich("$(reef_name)\n$(reef_id)\n", rich(err_report_str, fontsize=15))

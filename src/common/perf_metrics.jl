@@ -31,6 +31,11 @@ Mean Absolute Error
 MAE(sim, obs) = mean(abs.(sim .- obs))
 
 """
+Element-wise absolute error, i.e. `MAE` without the final `mean` reduction.
+"""
+MAE_series(sim, obs) = abs.(sim .- obs)
+
+"""
 Mean Absolute Exponential Error.
 
 Assign error that increases exponentially with distance to observed/"true" data.
@@ -73,7 +78,7 @@ function collect_error_stats(
     n_locations = size(observations.ltmp_coral_cover, 1)
 
     # Vectors to hold error stats for each location
-    rmse_model, rmse_benchmark, maee, pcc, srcc, bias =
+    rmse_model, rmse_benchmark, mae, pcc, srcc, bias =
         collect.(eachcol(repeat(zeros(Float64, n_locations), 1, n_locations)))
 
     for loc in 1:n_locations
@@ -81,14 +86,14 @@ function collect_error_stats(
 
         rmse_model[loc] = error_stats.rmse_model
         rmse_benchmark[loc] = error_stats.rmse_benchmark
-        maee[loc] = error_stats.maee
+        mae[loc] = error_stats.mae
         pcc[loc] = error_stats.pcc
         srcc[loc] = error_stats.srcc
         bias[loc] = error_stats.bias
     end
 
-    error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :srcc, :bias)
-    return NamedTuple{error_names}((rmse_model, rmse_benchmark, maee, pcc, srcc, bias))
+    error_names = (:rmse_model, :rmse_benchmark, :mae, :pcc, :srcc, :bias)
+    return NamedTuple{error_names}((rmse_model, rmse_benchmark, mae, pcc, srcc, bias))
 end
 function collect_error_stats(
     raw_data::Array{Float64,4},
@@ -112,7 +117,7 @@ function collect_error_stats(
 
     rmse_::Float64 = rmse(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     pcc_::Float64 = cor(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
-    maee_::Float64 = MAEE(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
+    mae_::Float64 = MAE(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     bias_::Float64 = bias(sim_data[not_missing_obs], obs_loc_data[not_missing_obs])
     srcc_::Float64 = corspearman(
         sim_data[not_missing_obs], Vector{Float64}(obs_loc_data[not_missing_obs])
@@ -122,8 +127,8 @@ function collect_error_stats(
     s = length(sim_data[not_missing_obs])
     benchmark_::Float64 = rmse(fill(μ_obs, s), obs_loc_data[not_missing_obs])
 
-    error_names = (:rmse_model, :rmse_benchmark, :maee, :pcc, :srcc, :bias)
-    return NamedTuple{error_names}((rmse_, benchmark_, maee_, pcc_, srcc_, bias_))
+    error_names = (:rmse_model, :rmse_benchmark, :mae, :pcc, :srcc, :bias)
+    return NamedTuple{error_names}((rmse_, benchmark_, mae_, pcc_, srcc_, bias_))
 end
 
 """
@@ -193,9 +198,9 @@ end
 """
     reef_error(cover; observations)::Vector{Float64}
 
-Mean reef-level MAEE per year, averaged across all LTMP reefs with observations in that year.
+Mean reef-level MAE per year, averaged across all LTMP reefs with observations in that year.
 
-For each LTMP reef location, computes the element-wise MAEE between simulated `cover`
+For each LTMP reef location, computes the element-wise MAE between simulated `cover`
 and observed coral cover at each observed timestep, then accumulates into a `n_years`
 error series. The peak and trough years of each reef's observed time series are weighted
 2× to penalise errors at extremes of the dynamic range more heavily. Missing observations
@@ -222,7 +227,7 @@ function reef_error(
         not_missing .= (!).(ismissing.(loc_obs))
         trough_idx = argmin(loc_obs[not_missing])
         peak_idx = argmax(loc_obs[not_missing])
-        tmp_err[not_missing] .= MAEE_series(
+        tmp_err[not_missing] .= MAE_series(
             cover[not_missing, domain_idx], loc_obs[not_missing]
         )
 
