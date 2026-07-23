@@ -22,6 +22,5 @@ run_calibration(
     init_cover_path=config.init_cover_path,
     out_dir=config.out_dir,
     init_guess_path=config.init_guess_path,
-    result_fn=config.result_fn,
     config=config,
 )

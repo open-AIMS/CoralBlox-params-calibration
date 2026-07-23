@@ -33,7 +33,7 @@ calib_data = build_calibration_data(
 
 # Pick a parameter vector to inspect. Swap this for any serialised result you want to check
 # (e.g. an in-progress run's intermediate save), not necessarily the final "best" one.
-params = deserialize(joinpath(config.out_dir, config.result_fn))
+params = deserialize(joinpath(config.out_dir, "results.dat"))
 
 res = progress_run(
     params, dom,

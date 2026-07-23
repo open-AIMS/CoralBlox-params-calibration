@@ -1,7 +1,7 @@
 # Result analysis and plot generation script.
 #
 # Prerequisites: run scripts/run_loc_calib.jl first to produce the calibrated parameter
-# file referenced by config.out_dir / config.result_fn.
+# file at config.out_dir/results.dat.
 
 using ADRIA
 using Statistics
@@ -37,7 +37,7 @@ calib_data = build_calibration_data(
 init_cover = deserialize(config.init_cover_path)
 construct_cover!(dom, init_cover, location_classification.consecutive_classification)
 
-calibrated_params = deserialize(joinpath(config.out_dir, config.result_fn))
+calibrated_params = deserialize(joinpath(config.out_dir, "results.dat"))
 
 params_dir_path = joinpath(OUT_DIR, "params")
 mkpath(params_dir_path)

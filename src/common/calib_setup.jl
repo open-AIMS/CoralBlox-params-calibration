@@ -17,7 +17,6 @@ struct CalibrationConfig
     init_cover_path::String
     init_guess_path::String
     out_dir::String
-    result_fn::String
     rng_seed::Int
 end
 
@@ -100,7 +99,6 @@ function load_config(
     init_guess_path = get(initialisation_config, "init_guess_filepath", "")
 
     out_dir = output_config["out_dir"]
-    result_fn = get(output_config, "result_filename", "results.dat")
 
     return CalibrationConfig(
         rme_domain_path,
@@ -115,7 +113,6 @@ function load_config(
         init_cover_path,
         init_guess_path,
         out_dir,
-        result_fn,
         rng_seed
     )
 end

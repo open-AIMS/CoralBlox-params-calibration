@@ -179,7 +179,6 @@ function _save_results_callback(
     cfg::CalibConfig,
     observations::LocationDataStore,
     out_dir::String,
-    result_fn::String,
     last_save::Ref{Float64};
     time_interv::Real=1800.0,
     step_interv::Int=1000
@@ -200,7 +199,7 @@ function _save_results_callback(
 
     last_save[] = datetime2unix(now(UTC))
     best_state = best_candidate(oc)
-    serialize(joinpath(out_dir, result_fn), best_state)
+    serialize(joinpath(out_dir, "intermediate_results.dat"), best_state)
 
     interim_res = progress_run(
         best_state, dom,
@@ -230,7 +229,6 @@ end
         init_cover_path::String,
         out_dir::String,
         init_guess_path::String="",
-        result_fn::String="results.dat",
         config::Union{CalibrationConfig,Nothing}=nothing,
         rng_seed::Int=isnothing(config) ? 42 : config.rng_seed,
         n_threads::Union{Int,Nothing}=nothing,
@@ -250,9 +248,9 @@ Run BlackBoxOptim to calibrate coral parameters. Calls `construct_cover!` on `do
 
 # Keyword arguments
 - `init_cover_path` : path to the serialised initial-cover vector
-- `out_dir` : directory for result and progress files
+- `out_dir` : directory for result and progress files. Final result is written to
+  `results.dat`; periodic progress saves go to `intermediate_results.dat`, both under `out_dir`
 - `init_guess_path` : filename (relative to `out_dir`) for a warm-start vector; `""` disables
-- `result_fn` : filename for the final serialised result
 - `config` : optional `CalibrationConfig`; when given, defaults `rng_seed` to `config.rng_seed`
   so it can't silently drift from `config.toml`'s `operation.rng_seed`
 - `rng_seed` : RNG seed passed to BlackBoxOptim
@@ -269,7 +267,6 @@ function run_calibration(
     init_cover_path::String,
     out_dir::String,
     init_guess_path::String="",
-    result_fn::String="results.dat",
     config::Union{CalibrationConfig,Nothing}=nothing,
     rng_seed::Int=isnothing(config) ? 42 : config.rng_seed,
     n_threads::Union{Int,Nothing}=nothing,
@@ -300,7 +297,7 @@ function run_calibration(
     )
     callback = (oc) -> begin
         _save_results_callback(
-            oc, dom, cfg, calib_data.calibration_store, out_dir, result_fn, last_save;
+            oc, dom, cfg, calib_data.calibration_store, out_dir, last_save;
             time_interv=time_interv, step_interv=step_interv
         )
         _stagnation_shutdown_check!(oc, stagnation_state; patience=stagnation_patience)
@@ -333,7 +330,7 @@ function run_calibration(
         BlackBoxOptim.stop_reason(res) : stagnation_state.reason
     @info "Best fitness: $(best_fitness(res))"
     @info "Stop reason: $(stop_reason_str)"
-    serialize(joinpath(out_dir, result_fn), best_candidate(res))
+    serialize(joinpath(out_dir, "results.dat"), best_candidate(res))
 
     return nothing
 end

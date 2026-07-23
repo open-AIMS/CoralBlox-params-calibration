@@ -63,5 +63,5 @@ canonical_path = "/absolute/path/to/canonical.gpkg"
 #   out_dir = "C:\\results\\calib_run_20260617"
 out_dir = "/absolute/path/to/output_directory"
 
-# Filename for serialised calibration results, relative to out_dir. (OPTIONAL)
-# result_filename = "results.dat"
+# Calibration writes results.dat (final) and intermediate_results.dat (periodic progress
+# saves) directly under out_dir; not configurable.

@@ -67,7 +67,7 @@ julia> calib_data = build_calibration_data(
 julia> run_calibration(
            dom, cfg, calib_data, location_classification.consecutive_classification;
            init_cover_path=config.init_cover_path, out_dir=config.out_dir,
-           init_guess_path=config.init_guess_path, result_fn=config.result_fn, config=config
+           init_guess_path=config.init_guess_path, config=config
        )
 ```
 
@@ -80,9 +80,9 @@ for the equivalent non-interactive entry point.
 
 ### Results analysis and plots
 
-The calibration parameters used for results analysis are read from the `result_filename`
-file in the output directory, `out_dir`, defined in `config.toml`. Any plots already
-existing in that directory will be **overwritten**.
+The calibration parameters used for results analysis are read from `results.dat` in the
+output directory, `out_dir`, defined in `config.toml`. Any plots already existing in that
+directory will be **overwritten**.
 
 ```julia-repl
 julia> include("scripts/plot/03_result_analysis.jl")
