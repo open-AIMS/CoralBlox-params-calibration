@@ -173,13 +173,13 @@ function collect_error_stats(
 end
 
 """
-    average_class_cover(cover; loc_classes=location_classification.consecutive_classification)::Array{Float64}
+    average_class_cover(cover; loc_classes)::Array{Float64}
 
 Calculate the average cover for each location classification.
 """
 function average_class_cover(
     cover;
-    loc_classes=location_classification.consecutive_classification
+    loc_classes
 )::Matrix{Float64}
     classes = sort(unique(loc_classes))
     n_tsteps, n_locs = size(cover)
@@ -279,14 +279,15 @@ function reef_error(
 end
 
 """
-    class_error(cover; obs_class_data=manta_tow_classes)::Vector{Float64}
+    class_error(cover; manta_tow_mean, manta_tow_std, loc_classes)::Vector{Float64}
 
 Calculate the average class level error per year.
 """
 function class_error(
     cover;
-    manta_tow_mean=manta_tow_mean,
-    manta_tow_std=manta_tow_std
+    manta_tow_mean,
+    manta_tow_std,
+    loc_classes
 )::Vector{Float64}
     # Preallocations
     err_series::Vector{Float64} = zeros(Float64, 15)
@@ -294,7 +295,7 @@ function class_error(
     not_missing::BitVector = BitVector(repeat([true], 15))
 
     # Dims ~ [timesteps ⋅ classes]
-    class_cover::Matrix{Float64} = average_class_cover(cover)
+    class_cover::Matrix{Float64} = average_class_cover(cover; loc_classes=loc_classes)
 
     for (idx, class) in enumerate(manta_tow_mean.class)
         if class == -1
