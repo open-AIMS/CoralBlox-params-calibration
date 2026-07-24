@@ -14,7 +14,7 @@ using CoralBloxCalib.common
 using CoralBloxCalib.calibration
 using CairoMakie: save
 
-config = load_config()
+config = load_config(joinpath(@__DIR__, "..", "..", "config.toml"))
 dom = load_domain(config)
 location_classification = load_location_classification(config.loc_class_path)
 regional_data = viz.load_regional_analysis_data(

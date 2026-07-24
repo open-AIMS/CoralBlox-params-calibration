@@ -22,7 +22,7 @@ using ADRIA
 using Serialization
 using StatsBase
 
-config = load_config()
+config = load_config(joinpath(@__DIR__, "..", "config.toml"))
 dom = load_domain(config)
 
 cfg = CalibConfig(dom)

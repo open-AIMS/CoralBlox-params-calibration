@@ -21,10 +21,16 @@ struct CalibrationConfig
 end
 
 """
-    load_config(config_path::String=<repo_root>/config.toml)::CalibrationConfig
+    load_config(config_path::String)::CalibrationConfig
 
-Parse `config.toml` and resolve all calibration input/output paths, defaulting any path not
-given explicitly to the corresponding file under `datasets/`.
+Parse the `config.toml` at `config_path` and resolve all calibration input/output paths,
+defaulting any path not given explicitly to the corresponding file under this package's
+`datasets/` directory.
+
+`config_path` has no default: it must be supplied by the caller (typically
+`joinpath(@__DIR__, "config.toml")` resolved against the *caller's* own location) rather than
+resolved relative to this package's install location, so `load_config` behaves correctly when
+called from outside this repo.
 
 Also sets `ENV["ADRIA_RNG_SEED"]` and `ENV["ADRIA_DEBUG"]` as a side effect: ADRIA's
 `set_random_seed`/scenario setup read these env vars directly at `run_model` time with no
@@ -32,9 +38,7 @@ keyword-argument alternative, and `ADRIA.setup()`'s own `config.toml` resolution
 `pwd()`-relative and fails silently whenever the script isn't run from the repo root — so we
 set `ADRIA_RNG_SEED` explicitly here rather than relying on it.
 """
-function load_config(
-    config_path::String=joinpath(dirname(dirname(@__DIR__)), "config.toml")
-)::CalibrationConfig
+function load_config(config_path::String)::CalibrationConfig
     src_path = dirname(@__DIR__)
     root_path = dirname(src_path)
     datasets_path = joinpath(root_path, "datasets")

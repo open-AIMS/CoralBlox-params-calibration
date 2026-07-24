@@ -57,7 +57,7 @@ julia> import CoralBloxCalib.viz     # plotting submodule
 
 ```julia-repl
 julia> using CoralBloxCalib, CoralBloxCalib.common, CoralBloxCalib.calibration
-julia> config = load_config()
+julia> config = load_config("path/to/config.toml")  # e.g. joinpath(@__DIR__, "config.toml")
 julia> dom = load_domain(config)
 julia> location_classification = load_location_classification(config.loc_class_path)
 julia> cfg = CalibConfig(dom)
