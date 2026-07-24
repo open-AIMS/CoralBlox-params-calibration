@@ -133,3 +133,4 @@ viz.save_location_timeseries_plots(
     rs_raw.raw, dom, calib_data.calibration_store, calib_data.validation_store, OUT_DIR,
     dhw_scens, cyc_scens, disturbances
 )
+nothing
