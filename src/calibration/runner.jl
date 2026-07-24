@@ -58,6 +58,7 @@ function _obj_func(
         dom, init_values;
         param_names=cfg.coral_param_names,
         growth_accel_names=cfg.growth_accel_names,
+        dist_std_group_cols=cfg.dist_std_group_cols,
         param_idxs=cfg.param_idxs,
         observations=observations,
         biogroup_ord=cfg.biogroups_ordering,
@@ -199,11 +200,13 @@ function _save_results_callback(
 
     last_save[] = datetime2unix(now(UTC))
     best_state = best_candidate(oc)
-    serialize(joinpath(out_dir, "intermediate_results.dat"), best_state)
+    intermediate_path = joinpath(out_dir, "intermediate_results.dat")
+    serialize(intermediate_path, best_state)
+    write_params_metadata(intermediate_path, length(best_state))
 
     interim_res = progress_run(
         best_state, dom,
-        cfg.coral_param_names, cfg.growth_accel_names, cfg.param_idxs,
+        cfg.coral_param_names, cfg.growth_accel_names, cfg.dist_std_group_cols, cfg.param_idxs,
         observations, cfg.biogroups_ordering
     )
     CairoMakie.save(
@@ -278,7 +281,7 @@ function run_calibration(
 
     best_score_file = isempty(init_guess_path) ? "" : joinpath(out_dir, init_guess_path)
     best_init_state = if !isempty(best_score_file) && isfile(best_score_file)
-        state = deserialize(best_score_file)
+        state = load_calibrated_params(best_score_file, length(cfg.sample_bounds))
         @assert all(first.(cfg.sample_bounds) .<= state .<= last.(cfg.sample_bounds)) "Initial state is out of bounds"
         state
     else
@@ -330,7 +333,10 @@ function run_calibration(
         BlackBoxOptim.stop_reason(res) : stagnation_state.reason
     @info "Best fitness: $(best_fitness(res))"
     @info "Stop reason: $(stop_reason_str)"
-    serialize(joinpath(out_dir, "results.dat"), best_candidate(res))
+    final_path = joinpath(out_dir, "results.dat")
+    best_params = best_candidate(res)
+    serialize(final_path, best_params)
+    write_params_metadata(final_path, length(best_params))
 
     return nothing
 end

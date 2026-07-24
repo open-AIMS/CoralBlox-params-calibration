@@ -8,6 +8,8 @@ using Statistics
 using CSV
 using TOML
 using YAXArrays
+using Dates
+using Serialization
 
 import Base: copy
 
@@ -25,6 +27,7 @@ include("cover_construction.jl")
 include("perf_metrics.jl")
 include("param_bounds.jl")
 include("params_extraction.jl")
+include("params_metadata.jl")
 
 export LocationDataStore,
        ltmp_cover_idx_to_domain,
@@ -80,9 +83,13 @@ export LocationDataStore,
        GROWTH_ACCEL_MIDPOINT_BOUNDS,
        SC_DIST_LB,
        SC_DIST_UB,
+       DIST_STD_SCALE_LB,
+       DIST_STD_SCALE_UB,
        scale_factor_vec_to_array,
        scale_factor_array_to_vec,
        generate_scale_factor_names,
+       generate_dist_std_scale_names,
+       dist_std_group_field_names,
        accel_params_array_to_vec,
        accel_params_vec_to_array,
        generate_growth_accel_names,
@@ -98,6 +105,9 @@ export LocationDataStore,
        CalibrationConfig,
        load_config,
        load_domain,
-       load_location_classification
+       load_location_classification,
+       PARAM_SCHEMA_VERSION,
+       write_params_metadata,
+       load_calibrated_params
 
 end

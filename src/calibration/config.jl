@@ -4,6 +4,7 @@ struct CalibConfig
     param_idxs::Vector{Int64}
     coral_param_names::Vector{Symbol}
     growth_accel_names::Vector{String}
+    dist_std_group_cols::Vector{Vector{Symbol}}
 end
 
 function CalibConfig(dom)::CalibConfig
@@ -77,10 +78,22 @@ function CalibConfig(dom)::CalibConfig
     append!(sample_bounds, fill((SC_DIST_LB, SC_DIST_UB), n_biogroups))
     sc_dist_end_idx = length(sample_bounds)
 
+    # dist_std is not among target_param_names(), so it never survives the earlier
+    # coral_params filtering - look it up fresh from the full (unfiltered) Coral component
+    # params table.
+    full_coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
+    dist_std_group_cols = dist_std_group_field_names(full_coral_params)
+    n_dist_std_groups = length(dist_std_group_cols)
+
+    dist_std_scale_start_idx = sc_dist_end_idx + 1
+    append!(sample_bounds, fill((DIST_STD_SCALE_LB, DIST_STD_SCALE_UB), n_dist_std_groups))
+    dist_std_scale_end_idx = length(sample_bounds)
+
     param_idxs = [
         coral_start_idx, coral_end_idx,
         growth_acc_start_idx, growth_acc_end_idx,
-        sc_dist_start_idx, sc_dist_end_idx
+        sc_dist_start_idx, sc_dist_end_idx,
+        dist_std_scale_start_idx, dist_std_scale_end_idx
     ]
 
     coral_param_names = coral_params.fieldname
@@ -88,5 +101,8 @@ function CalibConfig(dom)::CalibConfig
         generate_growth_accel_names(collect(1:n_biogroups))
     )
 
-    return CalibConfig(sample_bounds, biogroups_ordering, param_idxs, coral_param_names, growth_accel_names)
+    return CalibConfig(
+        sample_bounds, biogroups_ordering, param_idxs, coral_param_names,
+        growth_accel_names, dist_std_group_cols
+    )
 end

@@ -37,7 +37,9 @@ calib_data = build_calibration_data(
 init_cover = deserialize(config.init_cover_path)
 construct_cover!(dom, init_cover, location_classification.consecutive_classification)
 
-calibrated_params = deserialize(joinpath(config.out_dir, "results.dat"))
+calibrated_params = load_calibrated_params(
+    joinpath(config.out_dir, "results.dat"), length(cfg.sample_bounds)
+)
 
 params_dir_path = joinpath(OUT_DIR, "params")
 mkpath(params_dir_path)
@@ -65,6 +67,7 @@ dom, scen = setup_run(
     calibrated_params;
     param_names=cfg.coral_param_names,
     growth_accel_names=cfg.growth_accel_names,
+    dist_std_group_cols=cfg.dist_std_group_cols,
     param_idxs=cfg.param_idxs,
     observations=calib_data.combined_store,
     biogroup_ord=cfg.biogroups_ordering,

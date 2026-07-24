@@ -33,11 +33,13 @@ calib_data = build_calibration_data(
 
 # Pick a parameter vector to inspect. Swap this for any serialised result you want to check
 # (e.g. an in-progress run's intermediate save), not necessarily the final "best" one.
-params = deserialize(joinpath(config.out_dir, "results.dat"))
+params = load_calibrated_params(
+    joinpath(config.out_dir, "results.dat"), length(cfg.sample_bounds)
+)
 
 res = progress_run(
     params, dom,
-    cfg.coral_param_names, cfg.growth_accel_names, cfg.param_idxs,
+    cfg.coral_param_names, cfg.growth_accel_names, cfg.dist_std_group_cols, cfg.param_idxs,
     calib_data.calibration_store, cfg.biogroups_ordering
 )
 

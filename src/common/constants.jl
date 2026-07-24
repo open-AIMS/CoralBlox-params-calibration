@@ -63,3 +63,18 @@ const GROWTH_ACCEL_MIDPOINT_BOUNDS = (0.0, 0.3)
 # Size-class distribution (lambda) bounds
 const SC_DIST_LB = 0.25
 const SC_DIST_UB = 2.0
+
+# DHW-tolerance stdev (`dist_std`) scale factor bounds, one per functional group.
+# Diagnostic sweep (sandbox/dist_std_sweep.jl) found widening dist_std monotonically
+# reduces the high-DHW bleaching-mortality overestimate found in H1; narrowing (tau<1) made
+# it worse over the same range. Lower bound pinned at 1.0 (no narrowing, matching the
+# evidence); upper bound set beyond the largest tested multiplier (tau=2.0, at which the
+# error had not yet reversed sign) to give the optimizer room to go further if warranted.
+const DIST_STD_SCALE_LB = 1.0
+const DIST_STD_SCALE_UB = 3.0
+
+# Serialized-parameter-vector schema version, recorded in each result's `.meta.toml`
+# sidecar (see `write_params_metadata`/`load_calibrated_params`). Bump whenever
+# CalibConfig's param_idxs/sample_bounds shape changes, so older serialized results can be
+# told apart from the current schema and transparently upgraded.
+const PARAM_SCHEMA_VERSION = 2

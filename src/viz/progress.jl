@@ -14,7 +14,10 @@ function convert_to_ltmp_values(res)
 end
 
 """
-    progress_run(interm_params, dom, param_names, growth_accel_names, param_idxs, observations, biogroup_ord)
+    progress_run(
+        interm_params, dom, param_names, growth_accel_names, dist_std_group_cols, param_idxs,
+        observations, biogroup_ord
+    )
 
 Run ADRIA-CoralBlox with calibrated parameters.
 """
@@ -23,6 +26,7 @@ function progress_run(
     dom,
     param_names::Vector{Symbol},
     growth_accel_names::Vector{String},
+    dist_std_group_cols::Vector{Vector{Symbol}},
     param_idxs::Vector{Int64},
     observations::LocationDataStore,
     biogroup_ord::Vector{Int64}
@@ -32,6 +36,7 @@ function progress_run(
         interm_params;
         param_names=param_names,
         growth_accel_names=growth_accel_names,
+        dist_std_group_cols=dist_std_group_cols,
         param_idxs=param_idxs,
         observations=observations,
         biogroup_ord=biogroup_ord,
