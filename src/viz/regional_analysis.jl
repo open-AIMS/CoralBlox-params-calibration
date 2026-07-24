@@ -47,7 +47,7 @@ function _region_stats(
     ]
 
     target_model_data = @view(
-        _loc_cover(raw_data, dom)[:, region_mask][:, target_reefs_mask]
+        common._loc_cover(raw_data, dom)[:, region_mask][:, target_reefs_mask]
     )
 
     n_locations, n_timesteps = size(target_historic)
