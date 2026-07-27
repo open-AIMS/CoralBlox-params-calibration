@@ -5,6 +5,7 @@ version = "0.3.0"
 [deps]
 ADRIA = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
+Bootstrap = "e28b5b4c-05e8-5b66-bc03-6f0c0a0a06e0"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
@@ -36,6 +37,7 @@ YAXArrays = "c21b50f5-aa40-41ea-b809-c0f5e47bfa5c"
 
 [compat]
 ADRIA = "0.17.0"
+Bootstrap = "2.4.0"
 Random = "1.11.0"
 ReefMonitoring = "0.1.0"
 Serialization = "1.11.0"

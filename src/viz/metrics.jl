@@ -1,32 +1,185 @@
 using CairoMakie
 using GeoMakie
 
+"""
+    _plot_bootstrap_metric_scatter(estimate, ci_lo, ci_hi, block_eligible, median, median_lo,
+                                    median_hi; title, ylabel, metric_label, fig_opts, axis_opts)::Figure
+
+Shared scatter-plot core for per-reef bootstrap-CI metrics (as returned by
+[`rmse_diff_stats`](@ref)/[`nse_stats`](@ref)): one dot per reef with a bootstrap CI
+error bar (solid for block-bootstrap reefs with `n_years >= 5`, dashed for iid reefs with
+`n_years == 4`), plus the aggregate median and its bootstrap CI (over
+block-bootstrap-eligible reefs only) as a horizontal line/band. `title` is used verbatim
+(callers build the metric-specific title text).
+
+`y_margin`, if given, fixes the y-axis lower bound at `minimum(estimate) - y_margin` —
+comfortably below the worst *point estimate*, but CI whiskers (which can be far wider,
+e.g. a ratio-type metric like NSE blowing up for a near-zero-variance resample) are
+truncated at that floor rather than stretching the axis to fit them. A truncated whisker
+keeps its usual solid/dashed style (that already encodes block vs iid, so overloading it
+to also mean "truncated" would be ambiguous) and gets a small downward-pointing marker
+capping it at the floor instead, to signal "this CI continues further than shown." Leave
+as `nothing` (the default) to auto-scale the lower bound to the data with no truncation —
+appropriate for metrics whose CIs don't have this kind of unbounded-tail blowup. `y_high`,
+if given, fixes the axis' upper bound (via `ylims!`) rather than auto-scaling — e.g. NSE
+has a true upper bound of 1.
+"""
+function _plot_bootstrap_metric_scatter(
+    estimate::Vector{Float64},
+    ci_lo::Vector{Float64},
+    ci_hi::Vector{Float64},
+    block_eligible::BitVector,
+    median_val::Float64,
+    median_lo::Float64,
+    median_hi::Float64;
+    title::String,
+    ylabel::String,
+    metric_label::String,
+    y_high::Union{Float64,Nothing}=nothing,
+    y_margin::Union{Float64,Nothing}=nothing,
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Figure
+    order = sortperm(estimate)
+    estimate = estimate[order]
+    ci_lo = ci_lo[order]
+    ci_hi = ci_hi[order]
+    block_eligible = block_eligible[order]
+
+    y_low = isnothing(y_margin) ? nothing : minimum(estimate) - y_margin
+    clipped_lo = isnothing(y_low) ? ci_lo : max.(ci_lo, y_low)
+    truncated = isnothing(y_low) ? falses(length(ci_lo)) : ci_lo .< y_low
+
+    axis_opts = merge(Dict{Symbol,Any}(:title => title, :ylabel => ylabel), axis_opts)
+
+    size = get(fig_opts, :size, (600, 400))
+    fig = Figure(; size=size)
+    ax = Axis(
+        fig[1, 1],
+        title=axis_opts[:title],
+        xlabel=get(axis_opts, :xlabel, "Index"),
+        ylabel=axis_opts[:ylabel],
+    )
+
+    block_color = "#0072B2"
+    iid_color = "#E69F00"
+    median_color = "#009E73"
+
+    x = collect(1:length(estimate))
+    iid_mask = .!block_eligible
+    trunc_block = truncated .& block_eligible
+    trunc_iid = truncated .& iid_mask
+
+    scatter!(ax, x[block_eligible], estimate[block_eligible], color=block_color)
+    scatter!(ax, x[iid_mask], estimate[iid_mask], color=iid_color)
+
+    rangebars!(
+        ax, x[block_eligible], clipped_lo[block_eligible], ci_hi[block_eligible],
+        color=block_color, linestyle=:solid
+    )
+    rangebars!(
+        ax, x[iid_mask], clipped_lo[iid_mask], ci_hi[iid_mask],
+        color=iid_color, linestyle=:dash
+    )
+
+    if !isnothing(y_low)
+        scatter!(
+            ax, x[trunc_block], fill(y_low, sum(trunc_block));
+            marker=:dtriangle, color=block_color, markersize=10
+        )
+        scatter!(
+            ax, x[trunc_iid], fill(y_low, sum(trunc_iid));
+            marker=:dtriangle, color=iid_color, markersize=10
+        )
+    end
+
+    hlines!(ax, [median_val], color=median_color, linestyle=:solid, linewidth=2)
+    hlines!(ax, [median_lo, median_hi], color=(median_color, 0.6), linestyle=:dash)
+
+    legend_els = [
+        MarkerElement(color=block_color, marker=:circle),
+        MarkerElement(color=iid_color, marker=:circle),
+        LineElement(color=median_color, linestyle=:solid),
+    ]
+    legend_labels = [
+        "$metric_label (block bootstrap, n≥5 yrs)",
+        "$metric_label (iid bootstrap, n=4 yrs)",
+        "Median [95% CI]",
+    ]
+    if any(truncated)
+        push!(legend_els, MarkerElement(color=:gray, marker=:dtriangle))
+        push!(legend_labels, "CI truncated at axis floor")
+    end
+
+    Legend(fig[1, 2], legend_els, legend_labels)
+
+    ylims!(ax, y_low, y_high)
+
+    return fig
+end
+
+"""
+    plot_rmse_scatter(rmse_stats::NamedTuple; observation_type="", fig_opts=Dict(), axis_opts=Dict())::Figure
+
+Scatter plot of per-reef `benchmark_RMSE - model_RMSE` (as returned by
+[`rmse_diff_stats`](@ref)) — see [`_plot_bootstrap_metric_scatter`](@ref).
+"""
 function plot_rmse_scatter(
-    rmse_diff;
+    rmse_stats::NamedTuple;
     observation_type::String="",
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Figure
-    _rmse_diff = sort(rmse_diff)
-
-    # Calculate mean and confidence intervals
-    mean_rmse_diff = trunc(mean(_rmse_diff); digits=3)
-    std_rmse_diff = trunc(std(_rmse_diff); digits=3)
-
-    n_greater_than_zero = sum(_rmse_diff .> 0)
-    success_rate = round((n_greater_than_zero / length(_rmse_diff)) * 100, digits=2)
+    n_eligible = sum(rmse_stats.block_eligible)
+    n_greater_than_zero = sum(rmse_stats.diff[rmse_stats.block_eligible] .> 0)
+    pct_greater_than_zero = round(100 * n_greater_than_zero / n_eligible; digits=1)
+    median_val = trunc(rmse_stats.median; digits=3)
+    median_lo = trunc(rmse_stats.median_lo; digits=3)
+    median_hi = trunc(rmse_stats.median_hi; digits=3)
 
     obs_title = isempty(observation_type) ? "" : "\n$(titlecase(observation_type)) data"
-    axis_opts::Dict{Symbol,Any} = Dict(
-        :title => "Benchmark - Model (RMSE)" * obs_title * "\n# > 0: $n_greater_than_zero | Avg: $mean_rmse_diff | Std: $std_rmse_diff",
-        :ylabel => "RMSE Difference"
+    title = "Benchmark - Model (RMSE)" * obs_title *
+            "\n# > 0: $n_greater_than_zero ($pct_greater_than_zero%) | Median: $median_val [$median_lo, $median_hi]"
+
+    return _plot_bootstrap_metric_scatter(
+        rmse_stats.diff, rmse_stats.ci_lo, rmse_stats.ci_hi, rmse_stats.block_eligible,
+        rmse_stats.median, rmse_stats.median_lo, rmse_stats.median_hi;
+        title=title, ylabel="RMSE Difference", metric_label="RMSE Diff",
+        fig_opts=fig_opts, axis_opts=axis_opts,
     )
+end
 
-    opts::Dict{Symbol,Any} = Dict(:metric_label => "RMSE Diff",)
+"""
+    plot_nse_scatter(nse_stats::NamedTuple; observation_type="", fig_opts=Dict(), axis_opts=Dict())::Figure
 
-    return plot_metric_scatter(
-        _rmse_diff, mean_rmse_diff;
-        fig_opts=fig_opts, axis_opts=axis_opts, opts=opts
+Scatter plot of per-reef Nash-Sutcliffe efficiency (as returned by
+[`nse_stats`](@ref)) — see [`_plot_bootstrap_metric_scatter`](@ref). NSE normalizes
+`benchmark_RMSE - model_RMSE` by each reef's own variance (`RMSE_benchmark`), so reefs
+with little natural variability aren't penalized relative to more volatile ones purely
+for having less absolute room to beat the benchmark.
+"""
+function plot_nse_scatter(
+    nse_stats::NamedTuple;
+    observation_type::String="",
+    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+)::Figure
+    n_eligible = sum(nse_stats.block_eligible)
+    n_greater_than_zero = sum(nse_stats.nse[nse_stats.block_eligible] .> 0)
+    pct_greater_than_zero = round(100 * n_greater_than_zero / n_eligible; digits=1)
+    median_val = trunc(nse_stats.median; digits=3)
+    median_lo = trunc(nse_stats.median_lo; digits=3)
+    median_hi = trunc(nse_stats.median_hi; digits=3)
+
+    obs_title = isempty(observation_type) ? "" : "\n$(titlecase(observation_type)) data"
+    title = "Nash-Sutcliffe Efficiency" * obs_title *
+            "\n# > 0: $n_greater_than_zero ($pct_greater_than_zero%) | Median: $median_val [$median_lo, $median_hi]"
+
+    return _plot_bootstrap_metric_scatter(
+        nse_stats.nse, nse_stats.ci_lo, nse_stats.ci_hi, nse_stats.block_eligible,
+        nse_stats.median, nse_stats.median_lo, nse_stats.median_hi;
+        title=title, ylabel="NSE", metric_label="NSE", y_high=1.0, y_margin=1.0,
+        fig_opts=fig_opts, axis_opts=axis_opts,
     )
 end
 

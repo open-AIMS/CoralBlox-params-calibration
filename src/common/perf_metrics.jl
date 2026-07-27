@@ -329,6 +329,137 @@ function rmse_diff(
     return benchmark_rmse .- model_rmse
 end
 
+function _rmse_diff_statistic(rows::AbstractMatrix)
+    s, o = rows[:, 1], rows[:, 2]
+    return rmse(fill(mean(o), length(o)), o) - rmse(s, o)
+end
+
+function _nse_statistic(rows::AbstractMatrix)
+    s, o = rows[:, 1], rows[:, 2]
+    rmse_benchmark = rmse(fill(mean(o), length(o)), o)
+    return 1 - (rmse(s, o) / rmse_benchmark)^2
+end
+
+"""
+    _per_reef_bootstrap_stats(rs_raw, observations, dom, statistic; B=2000, rng_seed=1, ci_level=0.95)::NamedTuple
+
+Per-reef bootstrap CI for `statistic(rows)` (a function of the `n_years x 2` matrix of
+paired `[sim obs]` rows) — block bootstrap over observed years for reefs with
+`n_years >= 5`, iid bootstrap for `n_years == 4`, plus a median + second-level bootstrap
+CI aggregated over the block-bootstrap-eligible (`n_years >= 5`) reefs only. Returns a
+`NamedTuple` with `estimate`, `ci_lo`, `ci_hi`, `se`, `n_years`, `block_eligible` (one
+entry per reef), and `median`/`median_lo`/`median_hi`/`median_se` (aggregate, over
+eligible reefs only). Shared by [`rmse_diff_stats`](@ref) and [`nse_stats`](@ref).
+"""
+function _per_reef_bootstrap_stats(
+    rs_raw::Array{Float64,4},
+    observations::LocationDataStore,
+    dom,
+    statistic::Function;
+    B::Int=2000,
+    rng_seed::Int=1,
+    ci_level::Float64=0.95,
+)::NamedTuple
+    n_locs = length(observations.ltmp_cover_to_domain)
+    estimate = zeros(Float64, n_locs)
+    ci_lo = zeros(Float64, n_locs)
+    ci_hi = zeros(Float64, n_locs)
+    se = zeros(Float64, n_locs)
+    n_years = zeros(Int, n_locs)
+    block_eligible = falses(n_locs)
+
+    loc_cover = _loc_cover(rs_raw, dom)
+    Random.seed!(rng_seed)
+
+    for i in 1:n_locs
+        obs_loc_data = observations.ltmp_coral_cover[i, :]
+        not_missing = (!).(ismissing.(obs_loc_data))
+
+        domain_idx::Int64 = ltmp_cover_idx_to_domain(observations, i)
+        sim = loc_cover[not_missing, domain_idx]
+        obs = Vector{Float64}(obs_loc_data[not_missing])
+        n = length(obs)
+        n_years[i] = n
+        block = n >= 5
+        block_eligible[i] = block
+
+        # Rows kept paired so sim/obs resample together
+        data = hcat(sim, obs)
+        stats = block ?
+                block_bootstrap_ci(statistic, data; B=B, ci_level=ci_level) :
+                iid_bootstrap_ci(statistic, data; B=B, ci_level=ci_level)
+        estimate[i] = stats.estimate
+        ci_lo[i] = stats.lo
+        ci_hi[i] = stats.hi
+        se[i] = stats.se
+    end
+
+    agg = bootstrap_median_ci(estimate[block_eligible]; B=B, ci_level=ci_level)
+
+    return (
+        estimate=estimate, ci_lo=ci_lo, ci_hi=ci_hi, se=se, n_years=n_years,
+        block_eligible=block_eligible,
+        median=agg.median, median_lo=agg.lo, median_hi=agg.hi, median_se=agg.se,
+    )
+end
+
+"""
+    rmse_diff_stats(rs_raw, observations, dom; B=2000, rng_seed=1, ci_level=0.95)::NamedTuple
+
+Per-reef `benchmark_RMSE - model_RMSE` with bootstrap CIs — see
+[`_per_reef_bootstrap_stats`](@ref) for the resampling/aggregation method. Returns a
+`NamedTuple` with `diff`, `ci_lo`, `ci_hi`, `se`, `n_years`, `block_eligible`, and
+`median`/`median_lo`/`median_hi`/`median_se`.
+"""
+function rmse_diff_stats(
+    rs_raw::Array{Float64,4},
+    observations::LocationDataStore,
+    dom;
+    B::Int=2000,
+    rng_seed::Int=1,
+    ci_level::Float64=0.95,
+)::NamedTuple
+    stats = _per_reef_bootstrap_stats(
+        rs_raw, observations, dom, _rmse_diff_statistic; B=B, rng_seed=rng_seed, ci_level=ci_level
+    )
+    return (
+        diff=stats.estimate, ci_lo=stats.ci_lo, ci_hi=stats.ci_hi, se=stats.se,
+        n_years=stats.n_years, block_eligible=stats.block_eligible,
+        median=stats.median, median_lo=stats.median_lo, median_hi=stats.median_hi,
+        median_se=stats.median_se,
+    )
+end
+
+"""
+    nse_stats(rs_raw, observations, dom; B=2000, rng_seed=1, ci_level=0.95)::NamedTuple
+
+Per-reef Nash-Sutcliffe efficiency `1 - (RMSE_model / RMSE_benchmark)^2` — a skill score
+normalized by each reef's own observed variance, so reefs with little natural variability
+(and thus little room to beat the benchmark in absolute terms) aren't penalized relative
+to more volatile reefs. Bootstrap CIs computed identically to
+[`rmse_diff_stats`](@ref) — see [`_per_reef_bootstrap_stats`](@ref). Returns a
+`NamedTuple` with `nse`, `ci_lo`, `ci_hi`, `se`, `n_years`, `block_eligible`, and
+`median`/`median_lo`/`median_hi`/`median_se`.
+"""
+function nse_stats(
+    rs_raw::Array{Float64,4},
+    observations::LocationDataStore,
+    dom;
+    B::Int=2000,
+    rng_seed::Int=1,
+    ci_level::Float64=0.95,
+)::NamedTuple
+    stats = _per_reef_bootstrap_stats(
+        rs_raw, observations, dom, _nse_statistic; B=B, rng_seed=rng_seed, ci_level=ci_level
+    )
+    return (
+        nse=stats.estimate, ci_lo=stats.ci_lo, ci_hi=stats.ci_hi, se=stats.se,
+        n_years=stats.n_years, block_eligible=stats.block_eligible,
+        median=stats.median, median_lo=stats.median_lo, median_hi=stats.median_hi,
+        median_se=stats.median_se,
+    )
+end
+
 function location_correlation_coefficients(
     raw_data::Array{Float64,4},
     observations::LocationDataStore,

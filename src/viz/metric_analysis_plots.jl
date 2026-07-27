@@ -31,13 +31,25 @@ function save_metric_analysis_plots(
     )
     save(joinpath(metrics_save_dir, "scc_map.png"), scc_map)
 
-    rmse_diff_validation = sort(rmse_diff(raw_data, validation_store, dom))
-    f_rmse_diff_validation = plot_rmse_scatter(rmse_diff_validation; observation_type="Validation")
+    rmse_diff_stats_validation = rmse_diff_stats(raw_data, validation_store, dom)
+    f_rmse_diff_validation = plot_rmse_scatter(
+        rmse_diff_stats_validation; observation_type="Validation"
+    )
     save(joinpath(metrics_save_dir, "rmse_diff_validation.png"), f_rmse_diff_validation)
 
-    rmse_diff_calibration = sort(rmse_diff(raw_data, calibration_store, dom))
-    f_rmse_diff_calibration = plot_rmse_scatter(rmse_diff_calibration; observation_type="Calibration")
+    rmse_diff_stats_calibration = rmse_diff_stats(raw_data, calibration_store, dom)
+    f_rmse_diff_calibration = plot_rmse_scatter(
+        rmse_diff_stats_calibration; observation_type="Calibration"
+    )
     save(joinpath(metrics_save_dir, "rmse_diff_calibration.png"), f_rmse_diff_calibration)
+
+    nse_stats_validation = nse_stats(raw_data, validation_store, dom)
+    f_nse_validation = plot_nse_scatter(nse_stats_validation; observation_type="Validation")
+    save(joinpath(metrics_save_dir, "nse_validation.png"), f_nse_validation)
+
+    nse_stats_calibration = nse_stats(raw_data, calibration_store, dom)
+    f_nse_calibration = plot_nse_scatter(nse_stats_calibration; observation_type="Calibration")
+    save(joinpath(metrics_save_dir, "nse_calibration.png"), f_nse_calibration)
 
     scc_validation = location_correlation_coefficients(raw_data, validation_store, dom)
     f_srcc_validation = plot_metric_scatter(

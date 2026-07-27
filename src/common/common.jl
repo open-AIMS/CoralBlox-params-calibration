@@ -10,6 +10,8 @@ using TOML
 using YAXArrays
 using Dates
 using Serialization
+using Random
+using Bootstrap
 
 import Base: copy
 
@@ -24,6 +26,7 @@ import ..CoralBloxCalib:
 include("constants.jl")
 include("calib_setup.jl")
 include("cover_construction.jl")
+include("bootstrap_stats.jl")
 include("perf_metrics.jl")
 include("param_bounds.jl")
 include("params_extraction.jl")
@@ -55,6 +58,11 @@ export LocationDataStore,
        calib_func,
        collect_error_stats,
        rmse_diff,
+       rmse_diff_stats,
+       nse_stats,
+       block_bootstrap_ci,
+       iid_bootstrap_ci,
+       bootstrap_median_ci,
        location_correlation_coefficients,
        average_cc,
        reef_taxa_error,
