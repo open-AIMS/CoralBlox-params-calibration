@@ -183,61 +183,38 @@ function plot_nse_scatter(
     )
 end
 
-function plot_metric_scatter(
-    outcomes::Vector{Float64};
+"""
+    plot_correlation_scatter(corr_stats::NamedTuple; metric_label="Correlation",
+                              observation_type="", fig_opts=Dict(), axis_opts=Dict())::Figure
+
+Scatter plot of per-reef correlation coefficient (as returned by
+[`correlation_stats`](@ref)) — see [`_plot_bootstrap_metric_scatter`](@ref). `metric_label`
+is used verbatim in the title/y-axis/legend (e.g. `"SRCC"` or `"PCC"`).
+"""
+function plot_correlation_scatter(
+    corr_stats::NamedTuple;
+    metric_label::String="Correlation",
+    observation_type::String="",
     fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Figure
-    mean_outcome = mean(outcomes)
-    _yticks = sort(unique(vcat((-1:0.5:1), round(mean_outcome, digits=2))))
-    axis_opts = merge(Dict(:ylabel => "Outcome", :yticks => _yticks), axis_opts)
+    n_eligible = sum(corr_stats.block_eligible)
+    n_greater_than_zero = sum(corr_stats.corr[corr_stats.block_eligible] .> 0)
+    pct_greater_than_zero = round(100 * n_greater_than_zero / n_eligible; digits=1)
+    median_val = trunc(corr_stats.median; digits=3)
+    median_lo = trunc(corr_stats.median_lo; digits=3)
+    median_hi = trunc(corr_stats.median_hi; digits=3)
 
-    return plot_metric_scatter(
-        sort(outcomes), mean_outcome;
-        fig_opts=fig_opts, axis_opts=axis_opts, opts=opts
+    obs_title = isempty(observation_type) ? "" : "\n$(titlecase(observation_type)) data"
+    title = metric_label * obs_title *
+            "\n# > 0: $n_greater_than_zero ($pct_greater_than_zero%) | Median: $median_val [$median_lo, $median_hi]"
+
+    return _plot_bootstrap_metric_scatter(
+        corr_stats.corr, corr_stats.ci_lo, corr_stats.ci_hi, corr_stats.block_eligible,
+        corr_stats.median, corr_stats.median_lo, corr_stats.median_hi;
+        title=title, ylabel=metric_label, metric_label=metric_label,
+        fig_opts=fig_opts, axis_opts=axis_opts,
     )
-end
-
-function plot_metric_scatter(
-    metric_data::Vector{Float64},
-    agg_data::Float64;
-    fig_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
-    opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
-)
-    size = get(fig_opts, :size, (600, 400))
-
-    title = get(axis_opts, :title, "")
-    xlabel = get(axis_opts, :xlabel, "Index")
-    ylabel = get(axis_opts, :ylabel, "Metric value")
-    yticks = get(axis_opts, :yticks, automatic)
-
-    fig = Figure(; size=size)
-    ax = Axis(
-        fig[1, 1],
-        title=title,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        yticks=yticks
-    )
-
-    metric_color = get(opts, :metric_color, :blue)
-    agg_color = get(opts, :agg_color, :red)
-    metric_label = get(opts, :metric_label, "Metric")
-    agg_label = get(opts, :agg_label, "Mean")
-
-    scatter!(ax, 1:length(metric_data), metric_data, color=metric_color)
-    hlines!(ax, [agg_data], color=agg_color, linestyle=:dash)
-
-    legend_els = [
-        MarkerElement(color=metric_color, marker=:circle),
-        LineElement(color=agg_color, linestyle=:dash),
-    ]
-
-    Legend(fig[1, 2], legend_els, [metric_label, agg_label])
-
-    return fig
 end
 
 function plot_rmse_diff_map(

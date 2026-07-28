@@ -460,22 +460,27 @@ function nse_stats(
     )
 end
 
-function location_correlation_coefficients(
-    raw_data::Array{Float64,4},
+"""
+    correlation_stats(rs_raw, observations, dom; correlation_metric=:spearman, B=2000,
+                       rng_seed=1, ci_level=0.95)::NamedTuple
+
+Per-reef correlation coefficient (`:spearman` or `:pearson`) between simulated and
+observed cover, with bootstrap CIs — see [`_per_reef_bootstrap_stats`](@ref) for the
+resampling/aggregation method (shared with [`rmse_diff_stats`](@ref)/[`nse_stats`](@ref)).
+A degenerate resample (e.g. all-identical resampled years) makes the correlation
+undefined (zero-variance denominator); rejected and redrawn like any other non-finite
+bootstrap replicate, same as NSE's 0/0 case. Returns a `NamedTuple` with `corr`, `ci_lo`,
+`ci_hi`, `se`, `n_years`, `block_eligible`, and `median`/`median_lo`/`median_hi`/`median_se`.
+"""
+function correlation_stats(
+    rs_raw::Array{Float64,4},
     observations::LocationDataStore,
     dom;
-    correlation_metric::Symbol=:spearman
-)
-    n_locs = length(observations.ltmp_cover_to_domain)
-    loc_cc = zeros(Float64, n_locs)
-
-    obs_loc_data = observations.ltmp_coral_cover
-    not_missing_obs = (!).(ismissing.(obs_loc_data))
-
-    loc_cover = _loc_cover(raw_data, dom)
-    domain_idxs = ltmp_cover_idx_to_domain.(Ref(observations), 1:n_locs)
-    sim_data = loc_cover[:, domain_idxs]
-
+    correlation_metric::Symbol=:spearman,
+    B::Int=2000,
+    rng_seed::Int=1,
+    ci_level::Float64=0.95,
+)::NamedTuple
     correlation_function = if correlation_metric == :spearman
         corspearman
     elseif correlation_metric == :pearson
@@ -484,14 +489,16 @@ function location_correlation_coefficients(
         error("Invalid value for `correlation_metric`")
     end
 
-    for i in 1:n_locs
-        loc_cc[i] = correlation_function(
-            sim_data[not_missing_obs[i, :], i],
-            Vector{Float64}(obs_loc_data[i, not_missing_obs[i, :]])
-        )
-    end
-
-    return loc_cc
+    statistic = rows -> correlation_function(rows[:, 1], rows[:, 2])
+    stats = _per_reef_bootstrap_stats(
+        rs_raw, observations, dom, statistic; B=B, rng_seed=rng_seed, ci_level=ci_level
+    )
+    return (
+        corr=stats.estimate, ci_lo=stats.ci_lo, ci_hi=stats.ci_hi, se=stats.se,
+        n_years=stats.n_years, block_eligible=stats.block_eligible,
+        median=stats.median, median_lo=stats.median_lo, median_hi=stats.median_hi,
+        median_se=stats.median_se,
+    )
 end
 
 """

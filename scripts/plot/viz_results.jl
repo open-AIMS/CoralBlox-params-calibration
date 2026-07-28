@@ -7,6 +7,7 @@ using ADRIA
 using Statistics
 using Serialization
 using YAXArrays
+using DataFrames
 
 using CoralBloxCalib
 import CoralBloxCalib.viz
@@ -123,6 +124,37 @@ viz.save_regional_analysis_plots(
 viz.save_metric_analysis_plots(
     rs_raw.raw, dom, calib_data.calibration_store, calib_data.validation_store, OUT_DIR
 )
+
+# Extreme-score reef tables (RMSE diff, PCC, SRCC; validation & calibration)
+function _extremes_table(ids, names, scores; n::Int=2)
+    order = sortperm(scores)
+    lo, hi = order[1:n], order[(end - n + 1):end]
+    idx = vcat(lo, hi)
+    return DataFrame(
+        Group=vcat(fill("Lowest", n), fill("Highest", n)),
+        ID=ids[idx],
+        Name=names[idx],
+        Score=round.(scores[idx]; digits=3),
+    )
+end
+
+for (store, store_label) in (
+    (calib_data.calibration_store, "Calibration"), (calib_data.validation_store, "Validation")
+)
+    ids = store.ltmp_unique_ids
+    names = dom.loc_data.GBRMPA_ID[store.ltmp_cover_to_domain]
+
+    rmse_stats = rmse_diff_stats(rs_raw.raw, store, dom)
+    pcc_stats = correlation_stats(rs_raw.raw, store, dom; correlation_metric=:pearson)
+    srcc_stats = correlation_stats(rs_raw.raw, store, dom; correlation_metric=:spearman)
+
+    println("\n$store_label RMSE diff (Benchmark - Model):")
+    println(_extremes_table(ids, names, rmse_stats.diff))
+    println("\n$store_label PCC:")
+    println(_extremes_table(ids, names, pcc_stats.corr))
+    println("\n$store_label SRCC:")
+    println(_extremes_table(ids, names, srcc_stats.corr))
+end
 
 # Per-location time-series plots (03_d)
 root_path = dirname(dirname(dirname(@__FILE__)))

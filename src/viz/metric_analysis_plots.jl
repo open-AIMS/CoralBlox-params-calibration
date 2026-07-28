@@ -51,51 +51,35 @@ function save_metric_analysis_plots(
     f_nse_calibration = plot_nse_scatter(nse_stats_calibration; observation_type="Calibration")
     save(joinpath(metrics_save_dir, "nse_calibration.png"), f_nse_calibration)
 
-    scc_validation = location_correlation_coefficients(raw_data, validation_store, dom)
-    f_srcc_validation = plot_metric_scatter(
-        scc_validation;
-        axis_opts=Dict{Symbol,Any}(
-            :title => "Spearman's Correlation Coefficient (SCC)\nValidation reefs",
-            :ylabel => "SCC"
-        ),
-        opts=Dict{Symbol,Any}(:metric_label => "SCC")
+    srcc_stats_validation = correlation_stats(
+        raw_data, validation_store, dom; correlation_metric=:spearman
+    )
+    f_srcc_validation = plot_correlation_scatter(
+        srcc_stats_validation; metric_label="SRCC", observation_type="Validation"
     )
     save(joinpath(metrics_save_dir, "scc_validation.png"), f_srcc_validation)
 
-    scc_calibration = location_correlation_coefficients(raw_data, calibration_store, dom)
-    f_srcc_calibration = plot_metric_scatter(
-        scc_calibration;
-        axis_opts=Dict{Symbol,Any}(
-            :title => "Spearman's Correlation Coefficient (SCC)\nCalibration reefs",
-            :ylabel => "SCC"
-        ),
-        opts=Dict{Symbol,Any}(:metric_label => "SCC")
+    srcc_stats_calibration = correlation_stats(
+        raw_data, calibration_store, dom; correlation_metric=:spearman
+    )
+    f_srcc_calibration = plot_correlation_scatter(
+        srcc_stats_calibration; metric_label="SRCC", observation_type="Calibration"
     )
     save(joinpath(metrics_save_dir, "scc_calibration.png"), f_srcc_calibration)
 
-    pcc_validation = location_correlation_coefficients(
+    pcc_stats_validation = correlation_stats(
         raw_data, validation_store, dom; correlation_metric=:pearson
     )
-    f_pcc_validation = plot_metric_scatter(
-        pcc_validation;
-        axis_opts=Dict{Symbol,Any}(
-            :title => "Pearson's Correlation Coefficient (PCC)\nValidation reefs",
-            :ylabel => "PCC"
-        ),
-        opts=Dict{Symbol,Any}(:metric_label => "PCC")
+    f_pcc_validation = plot_correlation_scatter(
+        pcc_stats_validation; metric_label="PCC", observation_type="Validation"
     )
     save(joinpath(metrics_save_dir, "pcc_validation.png"), f_pcc_validation)
 
-    pcc_calibration = location_correlation_coefficients(
+    pcc_stats_calibration = correlation_stats(
         raw_data, calibration_store, dom; correlation_metric=:pearson
     )
-    f_pcc_calibration = plot_metric_scatter(
-        pcc_calibration;
-        axis_opts=Dict{Symbol,Any}(
-            :title => "Pearson's Correlation Coefficient (PCC)\nCalibration reefs",
-            :ylabel => "PCC"
-        ),
-        opts=Dict{Symbol,Any}(:metric_label => "PCC")
+    f_pcc_calibration = plot_correlation_scatter(
+        pcc_stats_calibration; metric_label="PCC", observation_type="Calibration"
     )
     save(joinpath(metrics_save_dir, "pcc_calibration.png"), f_pcc_calibration)
 
