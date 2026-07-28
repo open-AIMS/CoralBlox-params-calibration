@@ -2107,7 +2107,7 @@ version = "1.3.4"
 
 [[deps.ReefMonitoring]]
 deps = ["ArchGDAL", "CSV", "DataFrames", "Dates", "GeoDataFrames", "HTTP", "JSON", "NetCDF", "ProgressMeter", "StringDistances", "YAXArrays"]
-git-tree-sha1 = "e42dc20e96c0b0592b63b4776ea7a43d573b704f"
+git-tree-sha1 = "f4d016df1e7780192107e034adf31807b6f7d298"
 repo-rev = "main"
 repo-url = "https://github.com/open-AIMS/ReefMonitoring-DataClient"
 uuid = "a3af5ec7-7e43-4bf4-9531-3ce64fba4f24"
