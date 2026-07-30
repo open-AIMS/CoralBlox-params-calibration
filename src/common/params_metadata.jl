@@ -1,9 +1,9 @@
 """
 Sidecar `.meta.toml` metadata for serialised calibration-result parameter vectors.
 
-Records enough to detect and transparently upgrade parameter vectors serialised under an
-older `CalibConfig` schema (see `PARAM_SCHEMA_VERSION`), so old `results.dat`/
-`intermediate_results.dat` files keep working after the parameter space grows.
+Records enough to detect parameter vectors serialised under an older `CalibConfig` schema
+(see `PARAM_SCHEMA_VERSION`), so stale `results.dat`/`intermediate_results.dat` files are
+rejected rather than silently reinterpreted when the parameter space changes.
 """
 
 function _meta_path(dat_path::String)::String
@@ -34,41 +34,38 @@ end
 """
     load_calibrated_params(dat_path::String, expected_n::Int)::Vector{Float64}
 
-Load a serialised calibration-result parameter vector, transparently upgrading vectors
-shorter than `expected_n` by padding missing trailing values with `1.0`.
+Load a serialised calibration-result parameter vector, erroring if it was not written under
+the current `PARAM_SCHEMA_VERSION`.
 
-`1.0` is only a safe pad value because the current (and so far only) schema growth is the
-trailing `dist_std` group-scale block, for which `1.0` is a no-op (see `DIST_STD_SCALE_LB`).
-A future parameter-space change whose no-op value isn't `1.0` will need this reconsidered.
+Vectors from older schemas cannot be upgraded in place. Schema v3 moved `dist_std` from a
+trailing block of 5 group-level scale factors into the coral parameter block as 35 absolute
+per-group/size-class values, which shifts the meaning of every index after the coral block.
+Padding or truncating to match lengths would silently reinterpret unrelated parameters.
 
-Reads the `.meta.toml` sidecar (if present, written by `write_params_metadata`) purely to
-report which schema version produced a too-short vector; falls back to a raw length
-comparison (with a less specific warning) for results saved before this sidecar existed.
+A vector of the expected length whose `.meta.toml` sidecar is missing is accepted with a
+warning: every schema so far has had a distinct parameter count, so length alone identifies
+it. A sidecar recording a *different* version is always fatal.
 """
 function load_calibrated_params(dat_path::String, expected_n::Int)::Vector{Float64}
     params = deserialize(dat_path)
     n = length(params)
 
-    n == expected_n && return params
-
-    if n > expected_n
-        throw(ArgumentError(
-            "$dat_path has $n params, more than the current schema's $expected_n - " *
-            "can't safely truncate."
-        ))
-    end
-
     meta_path = _meta_path(dat_path)
-    version_str = if isfile(meta_path)
-        meta = TOML.parsefile(meta_path)
-        "param_schema_version=$(get(meta, "param_schema_version", "unknown")), " *
-        "package_version=$(get(meta, "package_version", "unknown")) (from $meta_path)"
-    else
-        "no .meta.toml sidecar found"
-    end
-    @warn "Loaded $n-param result ($version_str), padding $(expected_n - n) missing " *
-          "trailing value(s) with 1.0 (no-op scale) to match the current $expected_n-param " *
-          "schema. Path: $dat_path"
+    version = isfile(meta_path) ?
+        get(TOML.parsefile(meta_path), "param_schema_version", nothing) : nothing
 
-    return vcat(params, fill(1.0, expected_n - n))
+    if n == expected_n && (version == PARAM_SCHEMA_VERSION || isnothing(version))
+        isnothing(version) && @warn "No .meta.toml sidecar for $dat_path; accepting it as " *
+            "schema v$PARAM_SCHEMA_VERSION on its $n-param length alone."
+        return params
+    end
+
+    version_str = isnothing(version) ?
+        "no .meta.toml sidecar found (predates schema versioning)" :
+        "param_schema_version=$version"
+    throw(ArgumentError(
+        "$dat_path holds $n params ($version_str) but the current schema " *
+        "v$PARAM_SCHEMA_VERSION expects $expected_n. Parameter vectors cannot be migrated " *
+        "across schema versions - re-run the calibration from scratch."
+    ))
 end

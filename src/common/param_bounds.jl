@@ -122,36 +122,8 @@ end
 """
 function target_param_names()
     return [
-        "linear_extension", "mb_rate", "dist_mean"
+        "linear_extension", "mb_rate", "dist_mean", "dist_std"
     ]
-end
-
-"""
-    generate_dist_std_scale_names()::Vector{String}
-
-Name of the per-functional-group DHW-tolerance stdev (`dist_std`) scale factor, one per
-`ADRIA.functional_group_names()` entry. No size-class or spatial-group breakdown: `dist_std`
-is already flat across size classes in the literature defaults, and there is no evidence yet
-of spatial heterogeneity in the DHW-response error to justify per-spatial-group parameters.
-"""
-function generate_dist_std_scale_names()::Vector{String}
-    return ["dist_std_scale_$(fg)" for fg in ADRIA.functional_group_names()]
-end
-
-"""
-    dist_std_group_field_names(coral_params::DataFrame)::Vector{Vector{Symbol}}
-
-The 7 `<coral_id>_dist_std` fieldnames for each functional group, in
-`ADRIA.functional_group_names()` order. Used to broadcast one calibrated scale factor per
-functional group across all its size classes. `coral_params` must be the full (unfiltered)
-`ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)` table, since `dist_std` is not
-among the target params kept by `CalibConfig`'s own filtering.
-"""
-function dist_std_group_field_names(coral_params::DataFrame)::Vector{Vector{Symbol}}
-    n_taxa, n_sizes = size(ADRIA.bin_widths())
-    dist_std_idxs = sc_fg_param_idxs("dist_std", coral_params)
-    dist_std_fieldnames = coral_params.fieldname[dist_std_idxs]
-    return [dist_std_fieldnames[((g-1)*n_sizes+1):(g*n_sizes)] for g in 1:n_taxa]
 end
 
 """
@@ -298,8 +270,7 @@ end
 """
     setup_run(
         dom, sampled_params;
-        param_names, growth_accel_names, dist_std_group_cols, param_idxs, observations,
-        biogroup_ord
+        param_names, growth_accel_names, param_idxs, observations, biogroup_ord
     )
 
 Insert coral parameters into dataframe, reconstruct size class distribution of target
@@ -310,7 +281,6 @@ function setup_run(
     sampled_params::Vector{Float64};
     param_names::Vector{Symbol},
     growth_accel_names::Vector{String},
-    dist_std_group_cols::Vector{Vector{Symbol}},
     param_idxs::Vector{Int64},
     observations::LocationDataStore,
     biogroup_ord::Vector{Int64}
@@ -331,16 +301,6 @@ function setup_run(
         observations,
         biogroup_ord
     )
-
-    # dist_std is flat across size classes in the literature defaults (one shared value per
-    # functional group already) - broadcast the calibrated group-level scale across each
-    # group's 7 size-class columns rather than sampling them independently.
-    dist_std_scales = sampled_params[param_idxs[7]:param_idxs[8]]
-    for (group_cols, scale) in zip(dist_std_group_cols, dist_std_scales)
-        for col in group_cols
-            scen[1, col] *= scale
-        end
-    end
 
     return new_dom, scen
 end

@@ -4,12 +4,10 @@
 Unpack a flat calibrated-parameter vector into a labelled YAXArray Dataset.
 
 Reshape ordering follows the layout produced by `sc_fg_param_idxs` and
-`ADRIA.accel_params_vec_to_array`:
-- `linear_extension`, `mb_rate`: flat order is group-slowest, size-fastest
-  → reshape `(n_sizes, n_groups)` then permute to `(n_groups, n_sizes)`
-- `dist_mean`: flat order is size-slowest, group-fastest
-  → reshape `(n_groups, n_sizes)` directly
-- `linear_extension_scale`, `mb_rate_scale`: flat order is group-fastest, biogroup-slowest
+`accel_params_vec_to_array`:
+- `linear_extension`, `mb_rate`, `dist_mean`, `dist_std`: flat order is group-slowest,
+  size-fastest → reshape `(n_sizes, n_groups)` then permute to `(n_groups, n_sizes)`
+- `linear_extension_scale`, `mb_rate_scale`: flat order is group-slowest, biogroup-fastest
   → reshape `(n_biogroups, n_groups)` then permute to `(n_groups, n_biogroups)`
 """
 function build_params_dataset(
@@ -32,6 +30,7 @@ function build_params_dataset(
     le_mask = occursin.(Ref("_linear_extension"), string.(coral_param_names))
     mb_mask = occursin.(Ref("_mb_rate"), string.(coral_param_names))
     dm_mask = occursin.(Ref("_dist_mean"), string.(coral_param_names))
+    ds_mask = occursin.(Ref("_dist_std"), string.(coral_param_names))
     les_mask = occursin.(Ref("linear_extension_scale"), string.(coral_param_names))
     mbs_mask = occursin.(Ref("mb_rate_scale"), string.(coral_param_names))
 
@@ -55,11 +54,8 @@ function build_params_dataset(
     return Dataset(;
         linear_extension=_fg_sc(le_mask, "Linear extension rate", "m"),
         mb_rate=_fg_sc(mb_mask, "Background mortality rate"),
-        dist_mean=YAXArray(
-            (fg_axis, sc_axis),
-            reshape(coral_params[dm_mask], N_TAXA, N_SIZE_CLASSES),
-            Dict("description" => "DHW tolerance distribution mean")
-        ),
+        dist_mean=_fg_sc(dm_mask, "DHW tolerance distribution mean", "DHW"),
+        dist_std=_fg_sc(ds_mask, "DHW tolerance distribution standard deviation", "DHW"),
         linear_extension_scale=_fg_bg(les_mask, "Linear extension biogroup scale factor"),
         mb_rate_scale=_fg_bg(mbs_mask, "Background mortality biogroup scale factor"),
         growth_acceleration=YAXArray(
@@ -70,10 +66,11 @@ function build_params_dataset(
         properties=Dict(
             "description" => "Calibrated coral model parameters. Included in each variable (key)
             represents: linear extensions (linear_extension), background mortality rates
-            (mb_rate_scale), heat tolerance distribution means (dist_mean), linear extension
-            scale factors per CB_GROUP (linear_extension_scale), background mortality rates scale
-            factors per CB_GROUP (mb_rate_scale), growth acceleration steepness, height,
-            and midpoints (growth_acceleration)."
+            (mb_rate), heat tolerance distribution means (dist_mean) and standard
+            deviations (dist_std), linear extension scale factors per CB_GROUP
+            (linear_extension_scale), background mortality rates scale factors per CB_GROUP
+            (mb_rate_scale), growth acceleration steepness, height, and midpoints
+            (growth_acceleration)."
         )
     )
 end

@@ -58,7 +58,6 @@ function _obj_func(
         dom, init_values;
         param_names=cfg.coral_param_names,
         growth_accel_names=cfg.growth_accel_names,
-        dist_std_group_cols=cfg.dist_std_group_cols,
         param_idxs=cfg.param_idxs,
         observations=observations,
         biogroup_ord=cfg.biogroups_ordering,
@@ -89,13 +88,17 @@ function _obj_func(
             any(contains(err_msg, p) for p in _param_assert_patterns)
         is_param_assert || rethrow(err)
 
+        # Match only the 35 per-(group, size class) params: a bare "linear_ext"/"mb_rate"
+        # substring also catches the 60 biogroup scale factors, so the broadcast below would
+        # throw DimensionMismatch from inside this recovery path.
         comp_params = ADRIA.component_params(local_dom.model, :Coral)
-        coral_fn = comp_params[:, :fieldname]
         lin_ext_overage = _relative_deviation_penalty.(
-            corals.linear_extension, comp_params[contains.(string.(coral_fn), "linear_ext"), :val]
+            corals.linear_extension,
+            comp_params[sc_fg_param_idxs("linear_extension", comp_params), :val]
         )
         mb_rate_overage = _relative_deviation_penalty.(
-            corals.mb_rate, comp_params[contains.(string.(coral_fn), "mb_rate"), :val]
+            corals.mb_rate,
+            comp_params[sc_fg_param_idxs("mb_rate", comp_params), :val]
         )
         return 5e5 + sum(lin_ext_overage) + sum(mb_rate_overage) + sum(scale_factors .> 1.0)
     end
@@ -206,7 +209,7 @@ function _save_results_callback(
 
     interim_res = progress_run(
         best_state, dom,
-        cfg.coral_param_names, cfg.growth_accel_names, cfg.dist_std_group_cols, cfg.param_idxs,
+        cfg.coral_param_names, cfg.growth_accel_names, cfg.param_idxs,
         observations, cfg.biogroups_ordering
     )
     CairoMakie.save(

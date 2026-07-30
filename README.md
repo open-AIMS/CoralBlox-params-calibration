@@ -205,8 +205,8 @@ Running `scripts/plot/03_result_analysis.jl` writes two files to `{out_dir}/para
 
 - **`calibrated_params.nc`** — Calibrated coral parameters as a YAXArray `Dataset` with
   labelled `functional_group`, `size_class`, `cb_calib_group`, and `accel_param` axes.
-  Variables: `linear_extension`, `mb_rate`, `dist_mean`, `linear_extension_scale`,
-  `mb_rate_scale`, `growth_acceleration`.
+  Variables: `linear_extension`, `mb_rate`, `dist_mean`, `dist_std`,
+  `linear_extension_scale`, `mb_rate_scale`, `growth_acceleration`.
 - **`historic_init_cover.nc`** — GBR-wide historical initial coral cover with
   observation-based overrides applied at LTMP and photogrammetry sites
   (see [Initial Coral Cover](#initial-coral-cover)).

@@ -68,7 +68,6 @@ dom, scen = setup_run(
     calibrated_params;
     param_names=cfg.coral_param_names,
     growth_accel_names=cfg.growth_accel_names,
-    dist_std_group_cols=cfg.dist_std_group_cols,
     param_idxs=cfg.param_idxs,
     observations=calib_data.combined_store,
     biogroup_ord=cfg.biogroups_ordering,
