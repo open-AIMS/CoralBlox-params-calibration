@@ -4,17 +4,28 @@
 # manually by eye picking from the Reef Monitoring Dashboard
 # (https://apps.aims.gov.au/reef-monitoring/reefs)
 
-# Add `survival_rate`s to `disturbance_years_transect.csv`
-disturbance_years_transect_path = "data/disturbance_years_transect.csv"
+disturbance_years_transect_path = joinpath(DATA_DIR, "disturbance_years_transect.csv")
 disturbance_years_transect = CSV.read(disturbance_years_transect_path, DataFrame; stringtype=String, comment="#")
 
-# Coral composition data was extracted from ReefMonitoring API and is used to fill the
-# benthic composition to disturbance_years_transect
-coral_composition = open_dataset(COMPOSITION_PATH).mean
-composition_reef_ids = coral_composition.location.val.data
+_raw_composition = open_dataset(COMPOSITION_PATH).mean
+composition_reef_ids = _raw_composition.location.val.data
 
-functional_groups = coral_composition.taxa.val.data
-for (group) in functional_groups
+# coral_composition.nc predates a taxa-naming fix upstream in ReefMonitoring.jl - relabel to
+# this pipeline's functional_groups spelling (data itself is unchanged).
+coral_composition = YAXArray(
+    (
+        Dim{:timesteps}(collect(_raw_composition.timesteps.val.data)),
+        Dim{:taxa}(replace(
+            collect(_raw_composition.taxa.val.data),
+            "Corymboses_non_Acropora" => "Corymbose_non_Acropora"
+        )),
+        Dim{:location}(collect(_raw_composition.location.val.data)),
+    ),
+    _raw_composition.data,
+    _raw_composition.properties
+)
+
+for group in functional_groups
     disturbance_years_transect[!, "cover_before_$(group)"] .= 0.0
     disturbance_years_transect[!, "cover_after_$(group)"] .= 0.0
 end
@@ -32,19 +43,15 @@ for (reef_idx, reef_name) in enumerate(transect_reef_names)
     end
 
     target_cover = coral_composition[location=At(reef_id), taxa=At(functional_groups)]
-    #transect_cover = ReefMonitoring.get_photo_transect(reef_name)
 
-    # Find cyclones for current reef
     cache_mask .= disturbance_years_transect.reef_name .== reef_name
     reef_disturbances = disturbance_years_transect[cache_mask, :]
 
-    # If there are two disturbances in the same year, the for loop below will not work
     @assert length(reef_disturbances.year) == length(unique(reef_disturbances.year))
 
     for disturbance in eachrow(reef_disturbances)
         year_before, year_after = disturbance.year_before, disturbance.year_after
 
-        # Mask to match by reef name and disturbance year
         cache_mask .= disturbance_years_transect.reef_name .== reef_name
         cache_mask .= cache_mask .&& (disturbance_years_transect.year .== disturbance.year)
 
@@ -53,28 +60,23 @@ for (reef_idx, reef_name) in enumerate(transect_reef_names)
             cover_after = read(target_cover[timesteps=At(year_after)])
             disturbance_years_transect[cache_mask, cover_before_col_names] .= cover_before'
             disturbance_years_transect[cache_mask, cover_after_col_names] .= cover_after'
-        catch
-            @info("Reef name: $reef_name \nCyclone: $cyclone")
+        catch e
+            @info "Reef name: $reef_name \nDisturbance: $disturbance" exception = e
             continue
         end
     end
 end
 
-# Assert there are no NaN values
 @assert all(Matrix(.!isnan.(disturbance_years_transect[!, cover_before_col_names])))
 @assert all(Matrix(.!isnan.(disturbance_years_transect[!, cover_after_col_names])))
-
-# Assert there are no survival rate greater than 1
 @assert all((0.0 .<= Matrix(disturbance_years_transect[!, cover_before_col_names]) .<= 1.0))
 @assert all((0.0 .<= Matrix(disturbance_years_transect[!, cover_after_col_names]) .<= 1.0))
 
-# Manually split cover for these two reefs in two steps
 split_taxa_cover!(disturbance_years_transect, "Taylor Reef", 2016, 2018)
 split_taxa_cover!(disturbance_years_transect, "Hoskyn Island", 2008, 2010)
 
-# Delete rows with all zero values
 zero_before_mask = sum(Matrix(disturbance_years_transect[!, cover_before_col_names]), dims=2) .== 0.0
 zero_after_mask = sum(Matrix(disturbance_years_transect[!, cover_after_col_names]), dims=2) .== 0.0
 deleteat!(disturbance_years_transect, getindex.(findall(zero_before_mask .&& zero_after_mask), 1))
 
-CSV.write("historic_cyclone_trajectories/disturbance_cover_transect.csv", disturbance_years_transect)
+CSV.write(joinpath(DATA_DIR, "disturbance_cover_transect.csv"), disturbance_years_transect)

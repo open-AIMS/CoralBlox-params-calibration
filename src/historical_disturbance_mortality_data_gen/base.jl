@@ -5,7 +5,9 @@ using CSV, DataFrames
 using YAXArrays, NetCDF
 using TOML
 
-isdefined(Main, :CONFIG) || (global CONFIG = TOML.parsefile("config.toml"))
+isdefined(Main, :DATA_DIR) || (global DATA_DIR = joinpath(@__DIR__, "data"))
+
+isdefined(Main, :CONFIG) || (global CONFIG = TOML.parsefile(joinpath(@__DIR__, "..", "..", "config.toml")))
 
 isdefined(Main, :OUTPUT_CONFIG) || (global OUTPUT_CONFIG = CONFIG["calibration"]["outputs"])
 isdefined(Main, :OUT_DIR) || (global OUT_DIR = OUTPUT_CONFIG["out_dir"])
@@ -16,14 +18,50 @@ isdefined(Main, :RME_DOMAIN_PATH) || global RME_DOMAIN_PATH = DOMAIN_CONFIG["rme
 isdefined(Main, :GEOSPATIAL_CONFIG) || (global GEOSPATIAL_CONFIG = CONFIG["calibration"]["geospatial"])
 isdefined(Main, :CANONICAL_PATH) || (global CANONICAL_PATH = GEOSPATIAL_CONFIG["canonical_path"])
 
+# Kept in sync manually with CalibrationConfig.composition_path/ltmp_reef_data_path in
+# src/common/calib_setup.jl - this pipeline predates that config API.
+isdefined(Main, :TARGET_CONFIG) || (global TARGET_CONFIG = get(CONFIG["calibration"], "observations", Dict()))
+isdefined(Main, :COMPOSITION_PATH) || (global COMPOSITION_PATH = get(
+    TARGET_CONFIG, "composition_netcdf",
+    joinpath(@__DIR__, "..", "..", "datasets", "ltmp_data", "coral_composition.nc")
+))
+isdefined(Main, :LTMP_REEF_DATA_PATH) || (global LTMP_REEF_DATA_PATH = get(
+    TARGET_CONFIG, "ltmp_reef_data",
+    joinpath(@__DIR__, "..", "..", "datasets", "ltmp_data", "manta_tow_data_reef_lvl.gpkg")
+))
+
 """
-Ids of the locations we use in the calibration
+Ids of every calibration+validation location - every reef mortality needs to be computed for.
 """
 function _target_loc_ids(calib_split_path)::Vector{String}
     calib_split = CSV.read(calib_split_path, DataFrame)
     return string.(sort(calib_split.UNIQUE_IDS))
 end
-target_loc_ids = _target_loc_ids(joinpath(OUT_DIR, "calibration_split.csv"))
+
+"""
+Ids of CALIBRATION-only locations. Used for growth-rate estimation, so validation reefs are
+never used to fit the correction their own mortality is later evaluated against.
+"""
+function _calibration_loc_ids(calib_split_path)::Vector{String}
+    calib_split = CSV.read(calib_split_path, DataFrame)
+    calibration_only = calib_split[calib_split.USAGE.=="calibration", :]
+    return string.(sort(calibration_only.UNIQUE_IDS))
+end
+
+# Cached locally rather than under config.toml's out_dir, to avoid a circular dependency on
+# historical_disturbance_mortality_rates.nc (the file this pipeline builds). See
+# base/generate_calibration_split.jl.
+local_calib_split_path = joinpath(DATA_DIR, "calibration_split.csv")
+if isfile(local_calib_split_path)
+    @info "Found local_calib_split file, skipping its generation."
+else
+    @info "Generating local_calib_split file."
+    include(joinpath(@__DIR__, "base", "generate_calibration_split.jl"))
+    @info "local_calib_split file successfully generated."
+end
+
+target_loc_ids = _target_loc_ids(local_calib_split_path)
+calibration_loc_ids = _calibration_loc_ids(local_calib_split_path)
 
 if !@isdefined(canonical_gpkg)
     @info "Loading Canonical gpkg"
@@ -42,6 +80,29 @@ functional_groups = [
 cover_before_col_names = "cover_before_" .* functional_groups
 cover_after_col_names = "cover_after_" .* functional_groups
 
+# Caches ReefMonitoring.get_manta_tow's raw output, shared by 03_a and
+# generate_clean_growth_intervals.jl below. Delete to force a fresh pull.
+manta_tow_cache_path = joinpath(DATA_DIR, "manta_tow_raw_cache.csv")
+if isfile(manta_tow_cache_path)
+    @info "Found manta_tow_raw_cache file, skipping its generation."
+else
+    @info "Generating manta_tow_raw_cache file."
+    include(joinpath(@__DIR__, "base", "generate_manta_tow_cache.jl"))
+    @info "manta_tow_raw_cache file successfully generated."
+end
+
+# Guards on background_growth_rates.csv, not clean_growth_intervals.csv's own existence -
+# clean_growth_intervals.csv is only ever a means to the former. See
+# base/generate_clean_growth_intervals.jl.
+background_growth_rates_path = joinpath(DATA_DIR, "background_growth_rates.csv")
+if isfile(background_growth_rates_path)
+    @info "Found background_growth_rates file, its skipping generation."
+else
+    @info "Generating background_growth_rates file."
+    include(joinpath(@__DIR__, "base", "generate_clean_growth_intervals.jl"))
+    @info "background_growth_rates file successfully generated."
+end
+
 """
     rm_reef_spec(canonical_gpkg)::Tuple{Vector{String},Vector{String}}
 
@@ -58,16 +119,12 @@ function rm_reef_spec(canonical_gpkg)::Tuple{Vector{String},Vector{String}}
 end
 
 """
-For some reefs there are disturbances reported in the transect data that are not reported
-in the manta data. In some of these cases, there is a big time window in the manta without
-data (e.g. in Rebe Reef there is one data point in 2005 and another in 2011) with a big
-drop in cover caused by two disturbances. For these, I add an extra datapoint to have a
-"hook" where I can add the data for this extra disturbance.
+Splits a manta cover interval that spans two undetected disturbances into two, inserting
+`intermediate_year` as a hook to attach the missing disturbance's data to.
 
-# Example
 ```julia
 split_cover!(disturbance_manta_years, "Rebe Reef", 2005, 2011, 2009)
-````
+```
 """
 function split_cover!(
     disturbance_cover,
@@ -153,10 +210,6 @@ function create_template_disturbance_years(
     start_year = 2008
     end_year = 2022
 
-    # Use the ReefMonitoring api to get disturbance data for each reef considered (excluding
-    # reefs for which there is no reef_name associated with that reef's reef_id)
-    # For each disturbance, adds one entry to template_disturbance_years_df
-    # Each entry will become a row on the template CSV
     for reef_row in eachrow(reef_name_and_ids)
         reef_name, reef_id = reef_row
         isempty(reef_name) ? continue : 0
@@ -174,13 +227,11 @@ function create_template_disturbance_years(
                 :
             ]
 
-        # Build new `template_disturbance_years_df` entries
         n_target_disturbances = nrow(target_disturbances)
         storm_names = replace(target_disturbances.storm_name, nothing => "unknown")
         description = replace(target_disturbances.description, nothing => "")
         storm_years = parse.(Float64, target_disturbances.ddate)
 
-        # Collate results to build new entries
         new_entries = hcat(
             storm_names,
             target_disturbances.disturbance,
@@ -190,7 +241,6 @@ function create_template_disturbance_years(
                 n_target_disturbances)
         )
 
-        # Add new entries to `template_disturbance_years_df`
         push!.(Ref(template_disturbance_years_df), eachrow(new_entries))
     end
 

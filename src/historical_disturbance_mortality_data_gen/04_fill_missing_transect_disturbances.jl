@@ -4,34 +4,28 @@
 # (whichever has the lowest coefficient of variation) to estimate the benthic composition
 # before/after the disturbance.
 
-# Load manta and transect data
-cover_manta_path = "disturbance_data_gen/data/disturbance_cover_manta.csv"
+cover_manta_path = joinpath(DATA_DIR, "disturbance_cover_manta.csv")
 cover_manta_df = CSV.read(cover_manta_path, DataFrame; stringtype=String, comment="#")
 
-cover_transect_path = "disturbance_data_gen/data/disturbance_cover_transect.csv"
+cover_transect_path = joinpath(DATA_DIR, "disturbance_cover_transect.csv")
 cover_transect_df = CSV.read(cover_transect_path, DataFrame; stringtype=String, comment="#")
 
-# Add `cover_before_<functional_group>` and `cover_after_<functional_group>`
 for group in functional_groups
     cover_manta_df[!, "cover_before_$group"] .= 0.0
     cover_manta_df[!, "cover_after_$group"] .= 0.0
 end
 
-# For each row in cover_manta_df we need to estimate the benthic composition
-# Find manta rows without a corresponding transect row
+# Manta rows with no matching transect row - these get an all-zero placeholder row below,
+# to be filled in from the global/bioregion mean further down.
 empty_manta_rows = .!(eachrow(cover_manta_df[!, [:reef_name, :year]]) .∈ [eachrow(cover_transect_df[!, [:reef_name, :year]])])
 
-# Cache Dict to add missing rows to cover_transect_df
 cache_cover_row = Dict(pairs(copy(cover_transect_df[1, :])))
-
 for col in Symbol.(vcat(cover_after_col_names, cover_before_col_names, [:year]))
     cache_cover_row[col] = 0.0
 end
 cache_cover_row[:year_before] = cache_cover_row[:year_after] = cache_cover_row[:reef_id] = 0
 cache_cover_row[:reef_name] = cache_cover_row[:cyclone_name] = cache_cover_row[:type] = ""
 
-# For each row in cover_manta_df that doesn't have a corresponding row in cover_transect_df
-# add a new corresponding row in cover_transect_df to fill in with cover data
 for manta_row in eachrow(cover_manta_df[empty_manta_rows, :])
     cache_cover_row[:cyclone_name] = manta_row.cyclone_name
     cache_cover_row[:type] = manta_row.type
@@ -43,11 +37,8 @@ for manta_row in eachrow(cover_manta_df[empty_manta_rows, :])
     push!(cover_transect_df, cache_cover_row)
 end
 
-# @assert nrow(cover_transect_df) == nrow(cover_manta_df)
-
 sort!(cover_transect_df, [:reef_name, :year])
 
-# Assign bioregions to reefs in cover_transect_df
 transect_reef_ids = string.((cover_transect_df.reef_id))
 corresponding_indices = [findfirst(==(tid), canonical_gpkg.RME_UNIQUE_ID) for tid in transect_reef_ids]
 cover_transect_df.bioregion = Int.(canonical_gpkg[corresponding_indices, :GBRMPA_BIOREGION])
@@ -55,31 +46,25 @@ cover_transect_df.bioregion = Int.(canonical_gpkg[corresponding_indices, :GBRMPA
 bioregions = sort(unique(cover_transect_df.bioregion))
 n_bioregions = length(bioregions)
 
-# Coefficient of variation for each functional group in each bioregion
 bioregions_before_cv = zeros(n_bioregions, 5)
 bioregions_after_cv = zeros(n_bioregions, 5)
 
 empty_transect_cover = dropdims(sum(Matrix(cover_transect_df[!, cover_before_col_names]), dims=2), dims=2) .== 0.0
-# as expected, `empty_manta_rows == empty_transect_cover`
 
-# For each empty row in cover_transect_df we estimate the benthic composition before/after a
-# disturbance using either the mean across all reef or the mean inside that reef's bioregion.
-# To decide which one to use we compare the Coefficient of Variation (CV) for both sets and
-# use the one with smaller CV.
-
-# Coefficient of variation for cover before for each functional group across all reefs
-mean_before = mean(Matrix(cover_transect_df[!, cover_before_col_names]), dims=1)
-std_before = std(Matrix(cover_transect_df[!, cover_before_col_names]), dims=1)
+# Missing cover is imputed from either the global mean or this reef's bioregion mean,
+# whichever has the lower coefficient of variation. Both CVs below exclude the placeholder
+# rows themselves (empty_transect_cover) - including them would contaminate the CV with exact
+# zeros and bias the comparison toward the bioregion mean.
+mean_before = mean(Matrix(cover_transect_df[.!empty_transect_cover, cover_before_col_names]), dims=1)
+std_before = std(Matrix(cover_transect_df[.!empty_transect_cover, cover_before_col_names]), dims=1)
 cv_before = std_before ./ mean_before
 
-mean_after = mean(Matrix(cover_transect_df[!, cover_after_col_names]), dims=1)
-std_after = std(Matrix(cover_transect_df[!, cover_after_col_names]), dims=1)
+mean_after = mean(Matrix(cover_transect_df[.!empty_transect_cover, cover_after_col_names]), dims=1)
+std_after = std(Matrix(cover_transect_df[.!empty_transect_cover, cover_after_col_names]), dims=1)
 cv_after = std_after ./ mean_after
 
-# For each bioregion fill missing transect cover values with average of bioregion
 for (idx, bioregion) in enumerate(bioregions)
     if bioregion == -1
-        # Continue unless there's any empty transect cover in this bioregion
         sum(cover_transect_df.bioregion .== bioregion .&& empty_transect_cover) == 0 && continue
 
         cover_transect_df[cover_transect_df.bioregion.==bioregion.&&empty_transect_cover, cover_before_col_names] .= mean_before
@@ -87,17 +72,12 @@ for (idx, bioregion) in enumerate(bioregions)
         continue
     end
 
-    # Rows in cover_transect_df in current bioregion
     target_cover_transect_df = cover_transect_df[cover_transect_df.bioregion.==bioregion, :]
 
-    #
     bio_zero_cover_before = dropdims(sum(Matrix(target_cover_transect_df[:, cover_before_col_names]), dims=2), dims=2) .== 0.0
     bio_zero_cover_after = dropdims(sum(Matrix(target_cover_transect_df[:, cover_after_col_names]), dims=2), dims=2) .== 0.0
-
-    # Locations without cover before should be the same without cover after
     @assert all(bio_zero_cover_before .== bio_zero_cover_after)
 
-    # If there's no data missing in any current bioregion's reef, continue
     if sum(bio_zero_cover_before .&& bio_zero_cover_after) == 0
         continue
     end

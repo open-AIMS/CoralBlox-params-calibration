@@ -2,15 +2,13 @@ using ADRIA
 using CSV, YAXArrays, NetCDF, DataFrames
 using Dates, TimeZones
 
-# Read the CSV file
-survival_rates_path = "historical_disturbance_mortality_data_gen/data/disturbance_survival_rates.csv"
+survival_rates_path = joinpath(DATA_DIR, "disturbance_survival_rates.csv")
 survival_rates_df = CSV.read(survival_rates_path, DataFrame; stringtype=String, comment="#")
 
 # Ensure that there are no duplicate pairs of reef/year
 @assert length(unique(eachrow(survival_rates_df[:, [:reef_name, :dist_year]]))) == nrow(survival_rates_df)
 
 START_YEAR, END_YEAR = 2008, 2022
-RME = "C:/Users/pribeiro/AIMS/DataPackages/ReefMod/reefmod_domain"
 
 dom = ADRIA.load_domain(RMEDomain, RME_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
 new_cyclone_mortality_scens = deepcopy(dom.cyclone_mortality_scens)
@@ -43,10 +41,6 @@ for reef_id in disturbance_reef_ids
     end
 end
 
-# Only do that if we are matching the disturbance on the year_before
-# new_cyclone_mortality_scens[2:end, :, :, :] .= new_cyclone_mortality_scens[1:end-1, :, :, :].data
-# new_cyclone_mortality_scens[1, :, :, :] .= 0.0
-
 new_axes = (
     Dim{:timesteps}(2008:2022),
     Dim{:locs}(collect(new_cyclone_mortality_scens.locs)),
@@ -77,10 +71,7 @@ disturbance_mortality_scens = YAXArray(
 
 savedataset(
     Dataset(; disturbance_mortality_scens);
-    path="historical_disturbance_mortality_data_gen/" *
-         "data/" *
-         "historical_disturbance_mortality_rates/" *
-         "historical_disturbance_mortality_rates.nc",
+    path=joinpath(DATA_DIR, "historical_disturbance_mortality_rates", "historical_disturbance_mortality_rates.nc"),
     driver=:netcdf,
     overwrite=true
 )
