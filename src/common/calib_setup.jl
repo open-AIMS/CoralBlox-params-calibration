@@ -122,15 +122,21 @@ function load_config(config_path::String)::CalibrationConfig
 end
 
 """
-    load_domain(config::CalibrationConfig)
+    load_domain(config::CalibrationConfig; calib_params_fn::String="")
 
 Load the RME domain and attach historical DHW/cyclone-mortality data used in place of
 ADRIA's default projected scenarios.
+
+`calib_params_fn` is passed through to ADRIA: given a `calibrated_params.nc` written by
+`export_calibration_products`, the returned domain's model spec already carries the
+calibrated coral and growth-acceleration values, so `ADRIA.param_table(dom)` yields a
+calibrated scenario without going through `setup_run`.
 """
-function load_domain(config::CalibrationConfig)
+function load_domain(config::CalibrationConfig; calib_params_fn::String="")
     @info "Loading RMEDomain"
     dom = ADRIA.load_domain(
-        RMEDomain, config.rme_domain_path, "45", timeframe=(START_YEAR, END_YEAR)
+        RMEDomain, config.rme_domain_path, "45", timeframe=(START_YEAR, END_YEAR),
+        calib_params_fn=calib_params_fn
     )
 
     @info "Attaching historic DHW and Cyclone/COTS data"

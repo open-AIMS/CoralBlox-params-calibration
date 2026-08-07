@@ -1,11 +1,11 @@
 # Result analysis and plot generation script.
 #
-# Prerequisites: run scripts/run_loc_calib.jl first to produce the calibrated parameter
-# file at config.out_dir/results.dat.
+# Read-only: loads the calibration products written by scripts/run_loc_calib.jl and writes
+# plots only. Prerequisites are config.out_dir/params/calibrated_params.nc and
+# config.out_dir/params/historic_init_cover.nc.
 
 using ADRIA
 using Statistics
-using Serialization
 using YAXArrays
 using DataFrames
 
@@ -16,62 +16,39 @@ using CoralBloxCalib.calibration
 using CairoMakie: save
 
 config = load_config(joinpath(@__DIR__, "..", "..", "config.toml"))
-dom = load_domain(config)
-location_classification = load_location_classification(config.loc_class_path)
+
+OUT_DIR = config.out_dir
+PARAMS_DIR = joinpath(OUT_DIR, "params")
+CALIB_PARAMS_FN = joinpath(PARAMS_DIR, "calibrated_params.nc")
+INIT_COVER_FN = joinpath(PARAMS_DIR, "historic_init_cover.nc")
+
+for fn in (CALIB_PARAMS_FN, INIT_COVER_FN)
+    isfile(fn) || error("Missing calibration product $fn - run scripts/run_loc_calib.jl first.")
+end
+
+# ADRIA folds calibrated_params.nc into the domain's model spec, so param_table returns the
+# calibrated scenario directly - no results.dat and no setup_run needed here.
+dom = load_domain(config; calib_params_fn=CALIB_PARAMS_FN)
+
+init_cover_da = open_dataset(INIT_COVER_FN).init_coral_cover
+@assert size(init_cover_da) == size(dom.init_coral_cover) (
+    "$INIT_COVER_FN is $(size(init_cover_da)) but the domain expects " *
+    "$(size(dom.init_coral_cover)) - it was written for a different domain."
+)
+dom.init_coral_cover .= Array(init_cover_da)
+
 regional_data = viz.load_regional_analysis_data(
     dom, config.ltmp_modelled_obs_path, config.ltmp_shp_path
 )
-
-OUT_DIR = config.out_dir
-
-# ----- Build parameter config and data stores ---------------------------------
-
-cfg = CalibConfig(dom)
 
 calib_data = build_calibration_data(
     dom,
     config.ltmp_reef_data_path, config.composition_path
 )
 
-# ----- Load cover, run model --------------------------------------------------
+# ----- Run model --------------------------------------------------------------
 
-init_cover = deserialize(config.init_cover_path)
-construct_cover!(dom, init_cover, location_classification.consecutive_classification)
-
-calibrated_params = load_calibrated_params(
-    joinpath(config.out_dir, "results.dat"), length(cfg.sample_bounds)
-)
-
-params_dir_path = joinpath(OUT_DIR, "params")
-mkpath(params_dir_path)
-savedataset(
-    build_params_dataset(
-        calibrated_params, cfg.param_idxs, cfg.coral_param_names,
-        cfg.biogroups_ordering, cfg.growth_accel_names
-    );
-    path=joinpath(params_dir_path, "calibrated_params.nc"),
-    driver=:netcdf,
-    overwrite=true
-)
-savedataset(
-    build_init_cover_dataset(
-        dom, init_cover, location_classification.consecutive_classification,
-        calibrated_params, cfg.param_idxs, calib_data.combined_store, cfg.biogroups_ordering
-    );
-    path=joinpath(params_dir_path, "historic_init_cover.nc"),
-    driver=:netcdf,
-    overwrite=true
-)
-
-dom, scen = setup_run(
-    dom,
-    calibrated_params;
-    param_names=cfg.coral_param_names,
-    growth_accel_names=cfg.growth_accel_names,
-    param_idxs=cfg.param_idxs,
-    observations=calib_data.combined_store,
-    biogroup_ord=cfg.biogroups_ordering,
-)
+scen = ADRIA.param_table(dom)
 rs_raw = ADRIA.run_model(dom, scen[1, :])
 mkpath(OUT_DIR)
 
@@ -119,10 +96,12 @@ viz.save_regional_analysis_plots(
     regional_data.north_mask, regional_data.central_mask, regional_data.south_mask
 )
 
+@info "Plotting metrics"
 # Metric analysis plots (03_c)
 viz.save_metric_analysis_plots(
     rs_raw.raw, dom, calib_data.calibration_store, calib_data.validation_store, OUT_DIR
 )
+@info "Finished plotting metrics"
 
 # Extreme-score reef tables (RMSE diff, PCC, SRCC; validation & calibration)
 function _extremes_table(ids, names, scores; n::Int=2)

@@ -255,7 +255,9 @@ Run BlackBoxOptim to calibrate coral parameters. Calls `construct_cover!` on `do
 # Keyword arguments
 - `init_cover_path` : path to the serialised initial-cover vector
 - `out_dir` : directory for result and progress files. Final result is written to
-  `results.dat`; periodic progress saves go to `intermediate_results.dat`, both under `out_dir`
+  `results.dat`; periodic progress saves go to `intermediate_results.dat`, both under `out_dir`.
+  The labelled NetCDF products (`params/calibrated_params.nc`, `params/historic_init_cover.nc`)
+  are written here too, via `export_calibration_products`
 - `init_guess_path` : filename (relative to `out_dir`) for a warm-start vector; `""` disables
 - `config` : optional `CalibrationConfig`; when given, defaults `rng_seed` to `config.rng_seed`
   so it can't silently drift from `config.toml`'s `operation.rng_seed`
@@ -340,6 +342,13 @@ function run_calibration(
     best_params = best_candidate(res)
     serialize(final_path, best_params)
     write_params_metadata(final_path, length(best_params))
+
+    export_calibration_products(
+        dom, init_cover, location_classification, best_params, cfg.param_idxs,
+        cfg.coral_param_names, cfg.growth_accel_names, calib_data.combined_store,
+        cfg.biogroups_ordering;
+        out_dir=out_dir
+    )
 
     return nothing
 end

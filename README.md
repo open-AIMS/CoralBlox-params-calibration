@@ -80,17 +80,21 @@ for the equivalent non-interactive entry point.
 
 ### Results analysis and plots
 
-The calibration parameters used for results analysis are read from `results.dat` in the
-output directory, `out_dir`, defined in `config.toml`. Any plots already existing in that
-directory will be **overwritten**.
-
 ```julia-repl
-julia> include("scripts/plot/03_result_analysis.jl")
+julia> include("scripts/plot/viz_results.jl")
 ```
 
-This single script inlines the domain setup and runs all plot-generation routines via
-`CoralBloxCalib.viz`. Outputs are organised into subdirectories under `out_dir`:
-`regional_analysis/`, `metrics/`, `calibration_locations/`, `validation_locations/`.
+The script is read-only with respect to calibration state: it consumes the two NetCDF
+products written by `run_calibration` (`{out_dir}/params/calibrated_params.nc` and
+`{out_dir}/params/historic_init_cover.nc`, see [Parameter Extraction](#parameter-extraction))
+and writes plots only. It does **not** read `results.dat` or `init_cover.dat`, and does not
+need `CalibConfig`/`setup_run`: `calibrated_params.nc` is handed to ADRIA as
+`load_domain(config; calib_params_fn=...)`, so `ADRIA.param_table(dom)` already returns the
+calibrated scenario. It errors up front if either product is missing.
+
+Outputs are organised into subdirectories under `out_dir`: `regional_analysis/`, `metrics/`,
+`calibration_locations/`, `validation_locations/`. Any plots already in those directories
+will be **overwritten**.
 
 ## Initial Coral Cover
 
@@ -193,15 +197,13 @@ Expects total cover of shape `[timesteps x location]`
 
 ## Parameter Extraction
 
-After calibration is complete, `src/common/params_extraction.jl` provides
-`build_params_dataset` and `build_init_cover_dataset`, which unpack the flat
-calibrated-parameter vector into labelled `YAXArray` `Dataset`s suitable for use in ADRIA.
-These are pure functions (no side effects) — `scripts/plot/03_result_analysis.jl` calls them
-using `cfg` and `calib_data` (built from `CalibConfig`/`build_calibration_data`, see
-[Running calibration](#running-calibration)) and writes the resulting datasets to NetCDF as
-part of result analysis.
+`src/common/params_extraction.jl` provides `build_params_dataset` and
+`build_init_cover_dataset`, which unpack the flat calibrated-parameter vector into labelled
+`YAXArray` `Dataset`s suitable for use in ADRIA. These are pure functions (no side effects);
+`export_calibration_products` wraps them and writes both to NetCDF.
 
-Running `scripts/plot/03_result_analysis.jl` writes two files to `{out_dir}/params/`:
+`run_calibration` calls `export_calibration_products` immediately after serialising
+`results.dat`, so a completed calibration run writes two files to `{out_dir}/params/`:
 
 - **`calibrated_params.nc`** — Calibrated coral parameters as a YAXArray `Dataset` with
   labelled `functional_group`, `size_class`, `cb_calib_group`, and `accel_param` axes.
@@ -211,8 +213,18 @@ Running `scripts/plot/03_result_analysis.jl` writes two files to `{out_dir}/para
   observation-based overrides applied at LTMP and photogrammetry sites
   (see [Initial Coral Cover](#initial-coral-cover)).
 
+`calibrated_params.nc` is the file ADRIA accepts as `calib_params_fn`:
+`ADRIA.load_domain(RMEDomain, path, rcp; calib_params_fn=...)` folds its values into the
+domain's model spec, so downstream users (including `scripts/plot/viz_results.jl`) get a
+calibrated domain without ever touching `results.dat`.
+
 > **Note:** The `params/` subdirectory is created automatically if it does not exist.
 > Existing files are overwritten without warning.
+>
+> ADRIA names its per-biogroup factors `*_cb_group_<i>_*` with `i` positional, and
+> `load_calib_params` silently falls back to defaults on an unrecognised name. The
+> `cb_calib_group` axis therefore has to be `1:n`, which `export_calibration_products`
+> asserts before writing.
 
 ## Historical DHW
 

@@ -100,3 +100,58 @@ function build_init_cover_dataset(
     insert_init_loc_cover!(tmp_dom, calibrated_params[param_idxs[5]:param_idxs[6]], observations, biogroup_ord)
     return Dataset(; tmp_dom.init_coral_cover)
 end
+
+"""
+    export_calibration_products(dom, init_cover_sample, location_types, calibrated_params, param_idxs, coral_param_names, growth_accel_names, observations, biogroup_ord; out_dir)::String
+
+Write the two NetCDF products of a calibration run to `{out_dir}/params/`:
+`calibrated_params.nc` (ADRIA `calib_params_fn` input) and `historic_init_cover.nc`.
+
+Returns the `params/` directory path. Existing files are overwritten.
+"""
+function export_calibration_products(
+    dom,
+    init_cover_sample::Vector{Float64},
+    location_types::AbstractVector{Int64},
+    calibrated_params::Vector{Float64},
+    param_idxs::Vector{Int64},
+    coral_param_names,
+    growth_accel_names::Vector{String},
+    observations::LocationDataStore,
+    biogroup_ord::Vector{Int64};
+    out_dir::String
+)::String
+    # ADRIA names its per-biogroup factors `*_cb_group_<i>_*` with `i` positional (1:n).
+    # `load_calib_params` rebuilds those names from this file's `cb_calib_group` axis and
+    # silently falls back to defaults on a miss, so a non-positional axis would produce an
+    # uncalibrated domain with no error.
+    @assert biogroup_ord == collect(1:length(biogroup_ord)) (
+        "CB_CALIB_GROUPS must be 1:n to round-trip through ADRIA's calib_params_fn, got " *
+        "$(biogroup_ord)"
+    )
+
+    params_dir_path = joinpath(out_dir, "params")
+    mkpath(params_dir_path)
+
+    savedataset(
+        build_params_dataset(
+            calibrated_params, param_idxs, coral_param_names, biogroup_ord,
+            growth_accel_names
+        );
+        path=joinpath(params_dir_path, "calibrated_params.nc"),
+        driver=:netcdf,
+        overwrite=true
+    )
+    savedataset(
+        build_init_cover_dataset(
+            dom, init_cover_sample, location_types, calibrated_params, param_idxs,
+            observations, biogroup_ord
+        );
+        path=joinpath(params_dir_path, "historic_init_cover.nc"),
+        driver=:netcdf,
+        overwrite=true
+    )
+
+    @info "Wrote calibration products to $(params_dir_path)"
+    return params_dir_path
+end
