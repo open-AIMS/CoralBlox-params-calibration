@@ -7,7 +7,8 @@ script_names = [
     "03_b_create_cover_transect_csv.jl",
     "04_fill_missing_transect_disturbances.jl",
     "05_create_survival_rates_csv.jl",
-    "06_build_dist_mortality_datacube.jl"
+    "06_build_dist_mortality_datacube.jl",
+    "07_create_unmapped_disturbance_years.jl"
 ]
 
 for name in script_names

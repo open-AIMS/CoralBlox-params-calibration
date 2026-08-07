@@ -7,6 +7,9 @@ using TOML
 
 isdefined(Main, :DATA_DIR) || (global DATA_DIR = joinpath(@__DIR__, "data"))
 
+# START_YEAR/END_YEAR and friends, rather than a local copy per numbered step.
+isdefined(Main, :START_YEAR) || include(joinpath(@__DIR__, "..", "common", "constants.jl"))
+
 isdefined(Main, :CONFIG) || (global CONFIG = TOML.parsefile(joinpath(@__DIR__, "..", "..", "config.toml")))
 
 isdefined(Main, :OUTPUT_CONFIG) || (global OUTPUT_CONFIG = CONFIG["calibration"]["outputs"])

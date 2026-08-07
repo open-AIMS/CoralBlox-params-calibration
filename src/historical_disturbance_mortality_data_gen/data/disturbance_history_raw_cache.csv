@@ -1,0 +1,198 @@
+# Raw per-reef MANTA disturbance history (ALL types, unfiltered), cached from
+# ReefMonitoring.get_disturbances - read by 07_create_unmapped_disturbance_years.jl.
+# Generated: 2026-07-30T18:03:39.586
+reef_id,reef_name,type,ddate,description
+14114100104,Macgillivray Reef,u,2008.0,Not known
+14114100104,Macgillivray Reef,c,2015.0,COTS
+14114100104,Macgillivray Reef,m,2016.0849315068492,bleaching in sector. COTS and cyclone
+14123100104,Martin Reef,u,2008.0,Not known
+14123100104,Martin Reef,c,2013.0,COTS
+14123100104,Martin Reef,m,2016.0849315068492,"Bleaching, COTS, storm damage"
+14126100104,Linnet Reef,u,2008.0,Not known
+14126100104,Linnet Reef,c,2013.0,COTS
+14126100104,Linnet Reef,s,2015.2109589041097,0+ bleaching in sector
+14135100104,Helsdon Reef,c,2011.0,COTS
+14135100104,Helsdon Reef,c,2013.0,COTS
+14135100104,Helsdon Reef,c,2015.0,"COTS, COTS removal"
+14137100104,Carter Reef,s,2012.0876712328768,Storm damage
+14137100104,Carter Reef,m,2016.0849315068492,"0+ survey severe bleaching in sector 2016 summer, also severe storm damage"
+14138100104,Yonge Reef,s,2014.2739726027398,Storm damage
+14138100104,Yonge Reef,m,2016.0849315068492,"bleaching mortality, storm dmage"
+14139100104,No Name Reef,s,2014.2739726027398,Storm damage
+14139100104,No Name Reef,m,2016.0849315068492,"Bleaching, storm damage"
+14143100104,North Direction Island,u,2008.0,Not known
+14143100104,North Direction Island,u,2010.0,Not known
+14143100104,North Direction Island,c,2011.0,"Olga tracked in from E toward agincourt and then down inshore end jan 2010, max cat 2"
+14143100104,North Direction Island,s,2014.2739726027398,"COTS ,Cyclone Ita April 2014, 0+bl"
+14143100104,North Direction Island,u,2022.0,
+15009100104,Forrester Reef,c,2013.0,COTS
+15009100104,Forrester Reef,c,2015.0,"COTS, COTS removal"
+15012100104,Boulder Reef,u,2011.0,Not known
+15012100104,Boulder Reef,u,2021.0,"multiple (C, S, B?) but from a while back"
+15025100104,Harrier Reef,m,2016.0849315068492,"Bleaching, storm damage"
+15028100104,Startle Reef East,c,2013.0,COTS
+15028100104,Startle Reef East,c,2015.0,"COTS, COTS removal"
+15030100104,Swinger Reef,c,2010.0,COTS
+15030100104,Swinger Reef,m,2015.0,"COTS, storm damage, COTS removal"
+15034100104,Reef 15-034,b,2016.0849315068492,Bleaching
+15093100104,Pickersgill Reef,c,2015.0,COTS
+15093100104,Pickersgill Reef,b,2017.0849315068492,Bleaching summer 2015/16 and 2016/17
+15099103104,Agincourt Reef No.1,s,2010.0630136986301,pre yasi survey - olga or  (Tasha 24 Dec 2010 cat 1 passed ~90km south)
+15099103104,Agincourt Reef No.1,b,2016.0849315068492,bleaching mortality-decline in HC and SC
+15099103104,Agincourt Reef No.1,s,2011.0876712328768,"Cyclone Yasi February 2011, post yasi survey ( has bleaching here before"
+16015100104,Mackay Reef,c,2015.0,"COTS, COTS removal"
+16015100104,Mackay Reef,b,2017.0849315068492,Bleaching summer 2016/17
+16019100104,St. Crispin Reef,b,2016.0849315068492,bleaching mortality- HC and particularly SC
+16019100104,St. Crispin Reef,s,2011.0876712328768,"Cyclone Yasi, February 2011"
+16019100104,St. Crispin Reef,b,2017.0849315068492,
+16025100104,Opal Reef,b,2016.0849315068492,"bleaching mortality- HC and particularly SC, COTS removal-2188"
+16025100104,Opal Reef,b,2017.0849315068492,Bleaching summer 2016/17 probably COTS too
+16028100104,Low Isles,u,2020.0,no evidence
+16028100104,Low Isles,b,2017.0849315068492,bl- DHW 11 in 2017 after survey. COTS see PPOINT
+16049100104,Green Island,c,2013.0,32 COTS
+16049100104,Green Island,b,2017.0849315068492,Bleaching summer 2015/16 and 2016/17
+16054101104,Fitzroy Island,s,2010.978082191781,"Cyclone Yasi, February 2011"
+16057100104,Hastings Reef,b,2016.0849315068492,bleaching mortality- HC
+16057100104,Hastings Reef,b,2017.0849315068492,Bleaching summer 2016/17
+16057100104,Hastings Reef,b,2017.0849315068492,"bleaching mortality- HC, COTS removal"
+16060100104,Michaelmas Cay,s,2011.0876712328768,"Cyclone Yasi, February 2011"
+16060100104,Michaelmas Cay,b,2017.0849315068492,"Bleaching summer 2015/16 and 2016/17, COTS culling"
+16064100104,Arlington Reef,s,2011.0876712328768,"Bleaching, disease, cyclone"
+16064100104,Arlington Reef,b,2017.0849315068492,2016/17 summer bleaching
+16068100104,Thetford Reef,s,2011.0876712328768,"Cyclone Yasi, February 2011"
+16068100104,Thetford Reef,b,2017.0849315068492,declines in HC and SC
+16071100104,Moore Reef,s,2011.0876712328768,"Bleaching, Yasi"
+16071100104,Moore Reef,b,2017.0849315068492,"2016/17 summer bleaching, COTS removal"
+17014100104,Hedley Reef,s,2011.0876712328768,Yasi
+17014100104,Hedley Reef,b,2017.0849315068492,"0+ bleaching, disease, Drupella and low numbers of COTS, 2016/17 summer bleaching"
+17016101104,McCulloch Reef,m,2017.0849315068492,2016/17 summer bleaching
+17024100104,Peart Reef,s,2011.0876712328768,"Yasi, bleaching"
+17024100104,Peart Reef,c,2016.0,130 COTS then AMPTO COTS removal post survey and bleaching event after survey
+17024100104,Peart Reef,c,2018.0,"0+ bleaching, COTS, disease and Drupella on transects, COTS removal"
+17032100104,Wardle Reef,b,2017.0849315068492,Bleaching
+17034100104,Feather Reef,b,2017.0849315068492,2015/16 and 2016/17 summer Bleaching
+17063101104,Farquharson Reef,c,2018.0,COTS AO in 2018 COTS removal-308
+17064100104,Taylor Reef,s,2011.0876712328768,Storm damage
+17064100104,Taylor Reef,c,2018.0,COTS
+17064100104,Taylor Reef,c,2017.0,COTS
+18031100104,Little Kelso Reef,m,2017.0849315068492,COTS and Bleaching
+18031100104,Little Kelso Reef,c,2020.0,or Multiple.
+18032100104,Rib Reef,s,2011.0876712328768,Cyclone Yasi February 2011
+18032100104,Rib Reef,c,2017.0,"tons of cots on sites, COTS removal"
+18032100104,Rib Reef,c,2018.0,"COTS, COTS removal"
+18034100104,Myrmidon Reef,s,2011.0876712328768,Cyclone Yasi February 2011
+18039100104,Dip Reef,s,2011.0876712328768,Cyclone Yasi February 2011
+18042100104,Roxburgh Reef,s,2011.0876712328768,"Cyclone Yasi February 2011, bleaching"
+18075100104,John Brewer Reef,b,2017.0849315068492,"2- bl no mortality, 2016/17 summer bleaching"
+18075100104,John Brewer Reef,c,2019.0,COTS outbreak
+18076100104,Helix Reef,c,2008.0,COTS year before
+18076100104,Helix Reef,s,2011.0876712328768,"Cyclone Yasi February 2011,bleaching"
+18077100104,Grub Reef (18-077),s,2011.0876712328768,Cyclone Yasi February 2011
+18081100104,Knife Reef,s,2011.0876712328768,Cyclone Yasi February 2011
+18081100104,Knife Reef,b,2017.0849315068492,no decline HCC. Decline in manta coral cover.
+18083100104,Fork Reef,u,2010.0,Not known
+18083100104,Fork Reef,s,2011.0876712328768,Cyclone Yasi February 2011
+18086100104,Chicken Reef,s,2011.0876712328768,Cyclone Yasi February 2011
+18086100104,Chicken Reef,u,2010.0,Not known
+18088100104,Centipede Reef,b,2017.0849315068492,
+18096100104,Davies Reef,s,2011.0876712328768,Cyclone Yasi February 2011
+19019100104,Bowden Reef,b,2017.0849315068492,"Bleaching 2016, 2017"
+19019100104,Bowden Reef,c,2011.0,COTS
+19131101104,Reef 19-131,s,2009.1808219178083,Cyclone Hamish March 2009
+19131101104,Reef 19-131,s,2017.2356164383561,Cyclone Debbie
+19138100104,Reef 19-138,s,2010.213698630137,"Jan 11 Cyclone Anthony tracked from east just to the north of WH reefs cat 2 over gbr, mcame north to TOI as a low. Cyclone Ului March 2010"
+19138100104,Reef 19-138,s,2017.2356164383561,Cyclone Debbie
+19159100104,Slate Reef,s,2009.1808219178083,"Cyclone Hamish March 2009,"
+19159100104,Slate Reef,s,2010.213698630137,Cyclone Ului March 2010
+19207100104,Hyde Reef,s,2009.1808219178083,Cyclone Hamish March 2009
+19209100104,Rebe Reef,s,2010.213698630137,"Anthony & Ului. Six years between manta surveys, Cyclone Hamish March 2009, Cyclone Ului March 2010"
+20104100104,Reef 20-104,m,2009.0,1 COT in 09. COTS at IO levels on manta
+20104100104,Reef 20-104,s,2009.1808219178083,Hamish. Ului was after manta tow survey.
+20104100104,Reef 20-104,s,2011.0,"COTS on site in 07 one COT on site in 07,09"
+20104100104,Reef 20-104,s,2017.2356164383561,Cyclone Debbie 2017.  1st post debbie survey
+20104100104,Reef 20-104,u,2022.0,Mar 2022 DHW 4.07
+20113100104,Ben Reef,s,2010.213698630137,Storm damage
+20287100104,Credlin Reef East,s,2017.2356164383561,"Close to Debbie, some bleaching in 2017"
+20297100104,Creal Reef,s,2009.1808219178083,Storm damage
+20297100104,Creal Reef,c,2013.0,COTS
+20309100104,Tern Island,m,2010.0,COTS & TC Hamish?
+20309100104,Tern Island,c,2012.0,COTS
+20348100104,Reef 20-348,s,2009.1808219178083,Storm damage
+20351101104,Pompey Reef No.1,s,2009.1808219178083,TC Hamish
+20351101104,Pompey Reef No.1,s,2015.1342465753426,Possibly bleaching for sites 2015/16 and or 2016/17 events. For manta tow- Cyclone Marcia
+20351102104,Pompey Reef No.2,s,2009.1808219178083,TC Hamish
+20351102104,Pompey Reef No.2,s,2015.1342465753426,For manta tow-Cyclone Marcia as not surveyed in 2016
+20351102104,Pompey Reef No.2,u,2022.0,Mar 2022 DHW 3.54 Aerial bl 3
+20353100104,Reef 20-353,s,2009.1808219178083,Storm damage
+21060100104,Reef 21-060,m,2010.0,"COTS, Storm damage"
+21060100104,Reef 21-060,c,2014.0,COTS
+21062100104,Reef 21-062,m,2014.0,"COTS, multiple- COTS storm.  12 COTS"
+21062100104,Reef 21-062,c,2016.0,COTS.  9 COTS
+21064100104,Reef 21-064,s,2009.1808219178083,Storm damage
+21064100104,Reef 21-064,c,2014.0,COTS
+21064100104,Reef 21-064,c,2018.0,
+21139100104,Reef 21-139,u,2008.0,Manta median decline
+21139100104,Reef 21-139,s,2009.1808219178083,Storm damage
+21187100104,Reef 21-187,s,2009.1808219178083,TC Hamish
+21245100104,Reef 21-245,s,2009.1808219178083,TC Hamish
+21278100104,Reef 21-278,u,2008.0,Not known
+21278100104,Reef 21-278,u,2012.0,mortality pattern suggests storm storm
+21296100104,Reef 21-296,s,2014.0849315068492,Storm damage
+21302100104,Reef 21-302,u,2008.0,Not known for manta
+21305100104,East Cay,u,2011.0,Not known
+21305100104,East Cay,s,2014.2794520547945,Storm damage
+21305100104,East Cay,u,2008.0,Not known
+21529100104,Reef 21-529,u,2008.0,Not known
+21529100104,Reef 21-529,s,2009.1808219178083,Storm damage
+21550100104,Reef 21-550,s,2009.1808219178083,TC Hamish- all sites
+21556100104,Gannet Cay,s,2009.1808219178083,Storm damage
+21556100104,Gannet Cay,c,2019.0,COTS outbreak
+21556100104,Gannet Cay,c,2021.0,DHW2020 6.8
+21558100104,Reef 21-558,u,2008.0,"Not known, declines in HC on site 2 and 3, increase in SC"
+21558100104,Reef 21-558,s,2009.1808219178083,"Storm damage, large decline SC"
+21558100104,Reef 21-558,s,2014.0849315068492,Cyclone Edna
+21558100104,Reef 21-558,c,2022.0,COTS just below IO level
+21562100104,Turner Cay,s,2009.1835616438357,site diffs decreasing
+21562100104,Turner Cay,c,2019.0,COTS outbreak
+21572100104,Small Lagoon Reef,c,2020.0,active outbreak manta tow.  A B and 100 C cots on ss
+21584100104,Jenkins Reef,s,2009.1808219178083,"site 3 affected, but overall coral increased"
+21584100104,Jenkins Reef,c,2018.0,COTS
+21588100104,Wade Reef,c,2018.0,COTS
+21591100104,Reef 21-591,c,2010.0,"COTS, Cyclone"
+21591100104,Reef 21-591,s,2010.213698630137,Cyclone - storm damage
+22084100104,Reef 22-084,c,2010.0,Cyclone Hamish March 2009 all sites affected
+22084100104,Reef 22-084,c,2020.0,
+22088101104,Snake Reef,s,2009.1808219178083,Hamish
+22088101104,Snake Reef,c,2021.0,"Active outbreak COTS, DHW2020 4.9.  cots around, DHW2020 4.9"
+22088101104,Snake Reef,c,2021.9424657534246,COTS Active outbreak
+22102100104,Chinaman Reef (22-102),c,2017.0,COTS
+22102100104,Chinaman Reef (22-102),c,2018.0,COTS
+22102100104,Chinaman Reef (22-102),c,2019.0,COTS
+22102100104,Chinaman Reef (22-102),s,2009.1808219178083,Storm damage
+22102100104,Chinaman Reef (22-102),u,2016.0,Not known
+22104101104,Horseshoe Reef,c,2019.0,COTS outbreak
+23045101104,North Island,s,2009.1808219178083,Storm & cyclone
+23045101104,North Island,d,2018.0,
+23048100104,Broomfield Reef,s,2008.4136986301369,Unknown storm
+23051100104,Wreck Island,u,2009.0,
+23051100104,Wreck Island,s,2009.1835616438357,Cyclone Hamish March 2009
+23051100104,Wreck Island,u,2019.0,
+23055101104,One Tree Island,u,2009.0,"disease, not known"
+23055101104,One Tree Island,s,2009.1835616438357,"Cyclone Hamish, march 2009"
+23068100104,Erskine Island,m,2020.0849315068492,Bleaching and possible unknown storm damage for manta tow
+23068100104,Erskine Island,s,2009.1808219178083,"Storm & cyclone, Cyclone Hamish March 2009"
+23068100104,Erskine Island,s,2010.0821917808219,Emu Park wave buoy- HS over 3m 31 Jan to 2 Feb. same for MMP Middle Island
+23068100104,Erskine Island,b,2021.0,DHW2020 8.7.  COTS culling in the region also
+23069100104,Masthead Island,u,2008.0,bleaching. Not known
+23069100104,Masthead Island,b,2021.0,DHW2020 8.9
+23079100104,Boult Reef,m,2008.0,Disease
+23079100104,Boult Reef,s,2009.1808219178083,Storm & cyclone
+23079100104,Boult Reef,c,2020.0,"2 cots on SS, log says much coral dead from cots"
+23080100104,Hoskyn Island,m,2008.0,"Disease, storm damage"
+23080100104,Hoskyn Island,s,2009.1808219178083,"storms, Cyclone Hamish March 2009"
+23081100104,Fairfax Island,m,2008.0,COTS & storms & Disease
+23081100104,Fairfax Island,s,2009.1808219178083,"Storms, cyclones and COTS (below outbreak)"
+23081100104,Fairfax Island,c,2012.0,32 COTS from manta tow
+23081100104,Fairfax Island,c,2014.0,43 COTS from manta tow
+23082101104,Lady Musgrave Island,m,2009.0,Disease and unknown storm damage
+23082101104,Lady Musgrave Island,s,2009.1808219178083,Storm damage

@@ -1,0 +1,20 @@
+# ReefMonitoring "unknown"-type disturbances with NO mortality forcing in
+# historical_disturbance_mortality_rates.nc. `affected_year` is the first LTMP survey
+# year at or after `ddate` - the (reef, year) observation the calibration down-weights.
+# Generated: 2026-07-30T18:08:09.595
+reef_id,reef_name,type,ddate,affected_year,description
+14114100104,Macgillivray Reef,u,2008.0,2008,Not known
+14123100104,Martin Reef,u,2008.0,2008,Not known
+14126100104,Linnet Reef,u,2008.0,2008,Not known
+14143100104,North Direction Island,u,2008.0,2008,Not known
+14143100104,North Direction Island,u,2022.0,2022,
+15012100104,Boulder Reef,u,2011.0,2011,Not known
+15012100104,Boulder Reef,u,2021.0,2021,"multiple (C, S, B?) but from a while back"
+16028100104,Low Isles,u,2020.0,2020,no evidence
+20104100104,Reef 20-104,u,2022.0,2022,Mar 2022 DHW 4.07
+20351102104,Pompey Reef No.2,u,2022.0,2022,Mar 2022 DHW 3.54 Aerial bl 3
+21278100104,Reef 21-278,u,2008.0,2008,Not known
+21278100104,Reef 21-278,u,2012.0,2012,mortality pattern suggests storm storm
+21305100104,East Cay,u,2008.0,2008,Not known
+21305100104,East Cay,u,2011.0,2011,Not known
+23051100104,Wreck Island,u,2019.0,2019,

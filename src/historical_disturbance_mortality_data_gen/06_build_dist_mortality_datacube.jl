@@ -8,8 +8,6 @@ survival_rates_df = CSV.read(survival_rates_path, DataFrame; stringtype=String, 
 # Ensure that there are no duplicate pairs of reef/year
 @assert length(unique(eachrow(survival_rates_df[:, [:reef_name, :dist_year]]))) == nrow(survival_rates_df)
 
-START_YEAR, END_YEAR = 2008, 2022
-
 dom = ADRIA.load_domain(RMEDomain, RME_DOMAIN_PATH, "45", timeframe=(START_YEAR, END_YEAR))
 new_cyclone_mortality_scens = deepcopy(dom.cyclone_mortality_scens)
 
