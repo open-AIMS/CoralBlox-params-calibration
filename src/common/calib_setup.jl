@@ -129,8 +129,8 @@ ADRIA's default projected scenarios.
 
 `calib_params_fn` is passed through to ADRIA: given a `calibrated_params.nc` written by
 `export_calibration_products`, the returned domain's model spec already carries the
-calibrated coral and growth-acceleration values, so `ADRIA.param_table(dom)` yields a
-calibrated scenario without going through `setup_run`.
+calibrated coral, growth-acceleration and depth-attenuation values, so
+`ADRIA.param_table(dom)` yields a calibrated scenario without going through `setup_run`.
 """
 function load_domain(config::CalibrationConfig; calib_params_fn::String="")
     @info "Loading RMEDomain"

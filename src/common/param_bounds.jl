@@ -270,17 +270,26 @@ end
 """
     setup_run(
         dom, sampled_params;
-        param_names, growth_accel_names, param_idxs, observations, biogroup_ord
+        param_names, growth_accel_names, depth_atten_names, dist_std_names,
+        dist_mean_names, param_idxs, observations, biogroup_ord
     )
 
 Insert coral parameters into dataframe, reconstruct size class distribution of target
-locations and extract scale factors and growth acceleration parameters.
+locations and extract scale factors, growth acceleration and depth attenuation parameters.
+
+`dist_mean` and `dist_std` are calibrated per functional group, so their 5 sampled values
+each are broadcast across that group's `N_SIZE_CLASSES` ADRIA columns. Both name vectors must
+therefore be ordered group-major, size-fastest to line up with
+`repeat(...; inner=N_SIZE_CLASSES)`.
 """
 function setup_run(
     dom::Domain,
     sampled_params::Vector{Float64};
     param_names::Vector{Symbol},
     growth_accel_names::Vector{String},
+    depth_atten_names::Vector{String},
+    dist_std_names::Vector{String},
+    dist_mean_names::Vector{String},
     param_idxs::Vector{Int64},
     observations::LocationDataStore,
     biogroup_ord::Vector{Int64}
@@ -294,6 +303,16 @@ function setup_run(
     scen[!, param_names] .= coral_param_values'
 
     scen[!, growth_accel_names] .= sampled_params[param_idxs[3]:param_idxs[4]]'
+
+    scen[!, depth_atten_names] .= sampled_params[param_idxs[7]:param_idxs[8]]'
+
+    scen[!, dist_std_names] .= repeat(
+        sampled_params[param_idxs[9]:param_idxs[10]]; inner=N_SIZE_CLASSES
+    )'
+
+    scen[!, dist_mean_names] .= repeat(
+        sampled_params[param_idxs[11]:param_idxs[12]]; inner=N_SIZE_CLASSES
+    )'
 
     insert_init_loc_cover!(
         new_dom,

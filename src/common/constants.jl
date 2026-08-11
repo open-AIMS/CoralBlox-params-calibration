@@ -64,13 +64,46 @@ const GROWTH_ACCEL_MIDPOINT_BOUNDS = (0.0, 0.3)
 const SC_DIST_LB = 0.25
 const SC_DIST_UB = 2.0
 
-# DHW-tolerance distribution bounds, as factors of the ADRIA literature default. Shared by
-# both `dist_mean` and `dist_std`, applied per functional group and size class.
-const DHW_TOL_LB_FACTOR = 0.5
-const DHW_TOL_UB_FACTOR = 1.5
+# Depth attenuation bounds (ADRIA `effective_dhw_at_depth`). Two GBR-wide scalars, in the
+# order they occupy in the parameter vector.
+#
+# Both are free parameters with no empirical anchor (see ADRIA's `effective_dhw_at_depth`
+# docstring), so these boxes are deliberately wide rather than centred on the ADRIA defaults
+# of 0.04 / 12.0. Note that RME assigns depth_med = 7 m to every location, so there is no
+# spatial depth gradient to identify them against - they act on the whole domain uniformly
+# and are only weakly constrained by the cover trajectories. Treat calibrated values as
+# "what best reproduces cover", not as measured optical properties.
+const DEPTH_ATTEN_PARAM_NAMES = ["eff_dhw_base", "eff_dhw_mix"]
+const EFF_DHW_BASE_BOUNDS = (0.0, 1.0)
+const EFF_DHW_MIX_BOUNDS = (0.0, 40.0)
+const N_DEPTH_ATTEN_PARAMS = length(DEPTH_ATTEN_PARAM_NAMES)
+
+# DHW-tolerance distribution bounds, as factors of the ADRIA literature default.
+#
+# Both `dist_mean` and `dist_std` are calibrated per functional group only (5 values each),
+# broadcast across that group's 7 size classes when written into the scenario. That matches
+# ADRIA's own priors, which are `repeat(<5 group values>; inner=n_sizes)` for both - already
+# constant within a group - so the 30 extra degrees of freedom per parameter were
+# unsupported by the literature they came from.
+const DHW_TOL_MEAN_LB_FACTOR = 0.5
+const DHW_TOL_MEAN_UB_FACTOR = 1.5
+
+# `dist_std` is deliberately tighter than `dist_mean`. The two trade off along a ridge - many
+# (mean, std) pairs produce near-identical bleaching at a given DHW - and letting both hit
+# opposite corners of a +/-50% box spans a coefficient of variation of 0.26 to 2.32 (the
+# ADRIA defaults all sit at CV 0.774). The high end is degenerate: a tolerance distribution
+# that wide, truncated to [HEAT_LB, mean+HEAT_UB], is nearly flat, making bleaching almost
+# insensitive to DHW. Holding std to +/-25% narrows the span to 0.39-1.94, removing the
+# CV > 2 corner. Std is genetic variance and far less likely to be 2x wrong than the mean.
+const DHW_TOL_STD_LB_FACTOR = 0.75
+const DHW_TOL_STD_UB_FACTOR = 1.25
+
+# Number of calibrated `dist_mean` / `dist_std` values: one per functional group each
+const N_DIST_MEAN_PARAMS = N_TAXA
+const N_DIST_STD_PARAMS = N_TAXA
 
 # Serialized-parameter-vector schema version, recorded in each result's `.meta.toml`
 # sidecar (see `write_params_metadata`/`load_calibrated_params`). Bump whenever
 # CalibConfig's param_idxs/sample_bounds shape changes, so older serialized results are
 # rejected rather than silently reinterpreted under the current schema.
-const PARAM_SCHEMA_VERSION = 3
+const PARAM_SCHEMA_VERSION = 6

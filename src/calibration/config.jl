@@ -4,6 +4,9 @@ struct CalibConfig
     param_idxs::Vector{Int64}
     coral_param_names::Vector{Symbol}
     growth_accel_names::Vector{String}
+    depth_atten_names::Vector{String}
+    dist_std_names::Vector{String}
+    dist_mean_names::Vector{String}
 end
 
 function CalibConfig(dom)::CalibConfig
@@ -27,16 +30,25 @@ function CalibConfig(dom)::CalibConfig
     mb_rate_lb = flatten_group_size(mb_rate_mean[:, :] .* MB_RATE_LB_FACTOR)
     mb_rate_ub = flatten_group_size(mb_rate_mean[:, :] .* MB_RATE_UB_FACTOR)
 
-    coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
+    all_coral_params = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Coral)
 
-    lin_ext_idx, mbrate_idx, dhw_tol_mean_idx, dhw_tol_std_idx =
-        extract_param_group_idx.([coral_params], target_param_names())
+    # `dist_mean` and `dist_std` are deliberately excluded from the coral block: both are
+    # calibrated per functional group (5 values each) rather than per group and size class
+    # (35), so neither maps 1:1 onto ADRIA field names like the rest of the block. They get
+    # their own appended blocks below, expanded back to all 35 ADRIA columns in `setup_run`.
+    lin_ext_idx, mbrate_idx =
+        extract_param_group_idx.([all_coral_params], target_param_names()[1:2])
 
-    coral_param_idx = vcat(lin_ext_idx, mbrate_idx, dhw_tol_mean_idx, dhw_tol_std_idx)
-    coral_params = coral_params[sort(coral_param_idx), :]
+    # Group-major, size-fastest - the order `repeat(...; inner=N_SIZE_CLASSES)` expands into
+    _fieldnames(needle) = string.(
+        all_coral_params[sc_fg_param_idxs(needle, all_coral_params), :fieldname]
+    )
+    dist_mean_names = _fieldnames("dist_mean")
+    dist_std_names = _fieldnames("dist_std")
 
-    _, _, dhw_tol_mean_idx, dhw_tol_std_idx =
-        extract_param_group_idx.([coral_params], target_param_names())
+    coral_param_idx = vcat(lin_ext_idx, mbrate_idx)
+    coral_params = all_coral_params[sort(coral_param_idx), :]
+
     lin_ext_idx = sc_fg_param_idxs("linear_extension", coral_params)
     mbrate_idx = sc_fg_param_idxs("mb_rate", coral_params)
 
@@ -44,19 +56,6 @@ function CalibConfig(dom)::CalibConfig
     lin_ext_scale_idx = findall(occursin.(Ref("linear_extension_scale"), string.(coral_params.fieldname)))
 
     sample_bounds = collect(zip(coral_params.lower_bound, coral_params.upper_bound))
-    # Anchor the dist_mean box to the :legacy literature values, not the spec default: the
-    # :calib defaults are themselves a calibration output, so anchoring to them would let the
-    # search box drift with the ADRIA pin and re-centre on each round's own answer. dist_std
-    # has no :legacy variant and needs none - its default is literature-derived.
-    dist_mean_anchor = ADRIA.dist_mean(; version=:legacy, n_sizes=N_SIZE_CLASSES)
-    sample_bounds[dhw_tol_mean_idx] .= collect(zip(
-        dist_mean_anchor .* DHW_TOL_LB_FACTOR,
-        dist_mean_anchor .* DHW_TOL_UB_FACTOR
-    ))
-    sample_bounds[dhw_tol_std_idx] .= collect(zip(
-        coral_params[dhw_tol_std_idx, :val] .* DHW_TOL_LB_FACTOR,
-        coral_params[dhw_tol_std_idx, :val] .* DHW_TOL_UB_FACTOR
-    ))
     set_bounds!(sample_bounds, lin_ext_idx, lin_ext_lb, lin_ext_ub)
     set_bounds!(sample_bounds, mbrate_idx, mb_rate_lb, mb_rate_ub)
 
@@ -86,10 +85,50 @@ function CalibConfig(dom)::CalibConfig
     append!(sample_bounds, fill((SC_DIST_LB, SC_DIST_UB), n_biogroups))
     sc_dist_end_idx = length(sample_bounds)
 
+    # Depth attenuation of surface DHW: two GBR-wide scalars, appended last so the existing
+    # blocks keep their indices. Order must match DEPTH_ATTEN_PARAM_NAMES.
+    depth_atten_start_idx = sc_dist_end_idx + 1
+    append!(sample_bounds, [EFF_DHW_BASE_BOUNDS, EFF_DHW_MIX_BOUNDS])
+    depth_atten_end_idx = length(sample_bounds)
+
+    # DHW tolerance mean and std: one value per functional group each. Both ADRIA defaults
+    # are already constant within a group, so taking every N_SIZE_CLASSES-th element recovers
+    # the 5 distinct group values.
+    #
+    # Anchor `dist_mean` to the :legacy literature values, not the spec default: the :calib
+    # defaults are themselves a calibration output, so anchoring to them would let the search
+    # box drift with the ADRIA pin and re-centre on each round's own answer. `dist_std` has no
+    # :legacy variant and needs none - its default is literature-derived.
+    dist_std_anchor = ADRIA.dist_std(; n_sizes=N_SIZE_CLASSES)[1:N_SIZE_CLASSES:end]
+    dist_mean_anchor =
+        ADRIA.dist_mean(; version=:legacy, n_sizes=N_SIZE_CLASSES)[1:N_SIZE_CLASSES:end]
+    @assert length(dist_std_anchor) == N_DIST_STD_PARAMS &&
+        length(dist_mean_anchor) == N_DIST_MEAN_PARAMS (
+        "Expected $(N_DIST_MEAN_PARAMS) group-level dist_mean/dist_std anchors, got " *
+        "$(length(dist_mean_anchor))/$(length(dist_std_anchor))"
+    )
+
+    dist_std_start_idx = depth_atten_end_idx + 1
+    append!(sample_bounds, collect(zip(
+        dist_std_anchor .* DHW_TOL_STD_LB_FACTOR,
+        dist_std_anchor .* DHW_TOL_STD_UB_FACTOR
+    )))
+    dist_std_end_idx = length(sample_bounds)
+
+    dist_mean_start_idx = dist_std_end_idx + 1
+    append!(sample_bounds, collect(zip(
+        dist_mean_anchor .* DHW_TOL_MEAN_LB_FACTOR,
+        dist_mean_anchor .* DHW_TOL_MEAN_UB_FACTOR
+    )))
+    dist_mean_end_idx = length(sample_bounds)
+
     param_idxs = [
         coral_start_idx, coral_end_idx,
         growth_acc_start_idx, growth_acc_end_idx,
-        sc_dist_start_idx, sc_dist_end_idx
+        sc_dist_start_idx, sc_dist_end_idx,
+        depth_atten_start_idx, depth_atten_end_idx,
+        dist_std_start_idx, dist_std_end_idx,
+        dist_mean_start_idx, dist_mean_end_idx
     ]
 
     coral_param_names = coral_params.fieldname
@@ -97,8 +136,19 @@ function CalibConfig(dom)::CalibConfig
         generate_growth_accel_names(collect(1:n_biogroups))
     )
 
+    # Fail loudly if ADRIA's DepthAttenuation factor names drift from the ones this package
+    # writes into the parameter vector and the exported NetCDF - a silent mismatch would
+    # leave the calibrated values unused, with the ADRIA defaults quietly standing in.
+    adria_depth_names = string.(
+        ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.DepthAttenuation).fieldname
+    )
+    @assert sort(adria_depth_names) == sort(DEPTH_ATTEN_PARAM_NAMES) (
+        "ADRIA's DepthAttenuation factors $(adria_depth_names) do not match " *
+        "DEPTH_ATTEN_PARAM_NAMES $(DEPTH_ATTEN_PARAM_NAMES)"
+    )
+
     return CalibConfig(
         sample_bounds, biogroups_ordering, param_idxs, coral_param_names,
-        growth_accel_names
+        growth_accel_names, copy(DEPTH_ATTEN_PARAM_NAMES), dist_std_names, dist_mean_names
     )
 end
