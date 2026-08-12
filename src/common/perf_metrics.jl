@@ -318,10 +318,10 @@ end
 function rmse_diff(
     rs_raw::Array{Float64,4}, observations::LocationDataStore, dom
 )::Vector{Float64}
-    n_validation_locs = length(observations.ltmp_cover_to_domain)
-    model_rmse = zeros(Float64, n_validation_locs)
-    benchmark_rmse = zeros(Float64, n_validation_locs)
-    for i in 1:n_validation_locs
+    n_test_locs = length(observations.ltmp_cover_to_domain)
+    model_rmse = zeros(Float64, n_test_locs)
+    benchmark_rmse = zeros(Float64, n_test_locs)
+    for i in 1:n_test_locs
         error_stats = collect_error_stats(rs_raw, i, dom; observations=observations)
         model_rmse[i] = error_stats.rmse_model
         benchmark_rmse[i] = error_stats.rmse_benchmark

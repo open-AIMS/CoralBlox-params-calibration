@@ -1,28 +1,28 @@
 """
-    save_location_timeseries_plots(raw_data, dom, calibration_store, validation_store, out_dir,
+    save_location_timeseries_plots(raw_data, dom, calibration_store, test_store, out_dir,
         dhw_scens, cyc_scens, disturbances)
 
 Generate and save per-location time-series comparison plots for all calibration and
-validation locations under `out_dir/calibration_locations/` and `out_dir/validation_locations/`.
+test locations under `out_dir/calibration_locations/` and `out_dir/test_locations/`.
 """
 function save_location_timeseries_plots(
     raw_data::Array{Float64,4},
     dom,
     calibration_store::LocationDataStore,
-    validation_store::LocationDataStore,
+    test_store::LocationDataStore,
     out_dir::String,
     dhw_scens,
     cyc_scens,
     disturbances,
 )::Nothing
     calibration_save_dir = joinpath(out_dir, "calibration_locations")
-    validation_save_dir = joinpath(out_dir, "validation_locations")
+    test_save_dir = joinpath(out_dir, "test_locations")
     mkpath(calibration_save_dir)
-    mkpath(validation_save_dir)
+    mkpath(test_save_dir)
 
-    plot_type = ["calibration", "validation"]
-    plot_stores = [calibration_store, validation_store]
-    plot_save_dirs = [calibration_save_dir, validation_save_dir]
+    plot_type = ["calibration", "test"]
+    plot_stores = [calibration_store, test_store]
+    plot_save_dirs = [calibration_save_dir, test_save_dir]
 
     for (idx_n_locs, store) in enumerate(plot_stores)
         n_locs = length(store.ltmp_cover_to_domain)
@@ -66,6 +66,6 @@ function save_location_timeseries_plots(
         end
     end
 
-    @info "Location time series plots saved to: $calibration_save_dir and $validation_save_dir"
+    @info "Location time series plots saved to: $calibration_save_dir and $test_save_dir"
     return nothing
 end

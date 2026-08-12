@@ -161,15 +161,15 @@ function legend_regional_comparison!(
 end
 function legend_regional_comparison!(
     fig::Union{GridPosition,GridLayout,Figure},
-    opts_validation::Dict{Symbol,Any},
+    opts_test::Dict{Symbol,Any},
     opts_calibration::Dict{Symbol,Any})::Nothing
-    model_leg_element_valid = [
-        LineElement(color=opts_validation[:model_line_color]),
-        PolyElement(color=opts_validation[:model_band_color])
+    model_leg_element_test = [
+        LineElement(color=opts_test[:model_line_color]),
+        PolyElement(color=opts_test[:model_band_color])
     ]
-    historic_leg_element_valid = [
-        LineElement(color=opts_validation[:historic_line_color]),
-        PolyElement(color=opts_validation[:historic_band_color])
+    historic_leg_element_test = [
+        LineElement(color=opts_test[:historic_line_color]),
+        PolyElement(color=opts_test[:historic_band_color])
     ]
     model_leg_element_calib = [
         LineElement(color=opts_calibration[:model_line_color]),
@@ -181,14 +181,14 @@ function legend_regional_comparison!(
     ]
 
     leg_labels = [
-        "CoralBlox validation Reefs",
-        "LTMP validation Reefs",
+        "CoralBlox test Reefs",
+        "LTMP test Reefs",
         "CoralBlox calibration Reefs",
         "LTMP calibration Reefs"]
 
     leg_elements = [
-        model_leg_element_valid,
-        historic_leg_element_valid,
+        model_leg_element_test,
+        historic_leg_element_test,
         model_leg_element_calib,
         historic_leg_element_calib
     ]
@@ -244,19 +244,19 @@ function plot_all_regions(
 
     plot_region!(
         f[1, 1],
-        "North GBR\n$(size(north_results, 2)) validation locations",
+        "North GBR\n$(size(north_results, 2)) test locations",
         north_obs,
         north_results
     )
     plot_region!(
         f[1, 2],
-        "Central GBR\n$(size(central_results, 2)) validation locations",
+        "Central GBR\n$(size(central_results, 2)) test locations",
         central_obs,
         central_results
     )
     plot_region!(
         f[1, 3],
-        "South GBR\n$(size(south_results, 2)) validation locations",
+        "South GBR\n$(size(south_results, 2)) test locations",
         south_obs,
         south_results
     )

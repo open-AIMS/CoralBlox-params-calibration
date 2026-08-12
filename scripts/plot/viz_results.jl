@@ -79,7 +79,7 @@ mkpath(OUT_DIR)
 # ----- Generate plots ---------------------------------------------------------
 
 # Observation locations map
-f_obs_loc_map = viz.plot_observation_locs(calib_data.calibration_store, calib_data.validation_store)
+f_obs_loc_map = viz.plot_observation_locs(calib_data.calibration_store, calib_data.test_store)
 save(joinpath(OUT_DIR, "obs_loc_map.png"), f_obs_loc_map)
 
 # Functional group cover proportions
@@ -93,29 +93,29 @@ f_size_class = viz.temporal_size_class_proportions(rs_raw.raw; fig_size=(900, 60
 save(joinpath(OUT_DIR, "locs_size.png"), f_size_class)
 
 # Summary stats
-n_validation_locs = length(calib_data.validation_store.ltmp_unique_ids)
-validation_sccs = [
-    viz.collect_error_stats(rs_raw.raw, id, dom; observations=calib_data.validation_store).srcc
-    for id in 1:n_validation_locs
+n_test_locs = length(calib_data.test_store.ltmp_unique_ids)
+test_sccs = [
+    viz.collect_error_stats(rs_raw.raw, id, dom; observations=calib_data.test_store).srcc
+    for id in 1:n_test_locs
 ]
-validation_sccs_sortperm = sortperm(validation_sccs)
-@info "Three highest SCC validation reefs: $(calib_data.validation_store.ltmp_unique_ids[validation_sccs_sortperm][end-2:end])"
-@info "Three lowest  SCC validation reefs: $(calib_data.validation_store.ltmp_unique_ids[validation_sccs_sortperm][1:3])"
+test_sccs_sortperm = sortperm(test_sccs)
+@info "Three highest SCC test reefs: $(calib_data.test_store.ltmp_unique_ids[test_sccs_sortperm][end-2:end])"
+@info "Three lowest  SCC test reefs: $(calib_data.test_store.ltmp_unique_ids[test_sccs_sortperm][1:3])"
 
 stats_calib = viz.collect_error_stats(rs_raw.raw, dom; observations=calib_data.calibration_store)
-stats_valid = viz.collect_error_stats(rs_raw.raw, dom; observations=calib_data.validation_store)
+stats_test = viz.collect_error_stats(rs_raw.raw, dom; observations=calib_data.test_store)
 n_calib = length(calib_data.calibration_store.ltmp_unique_ids)
-n_valid = length(calib_data.validation_store.ltmp_unique_ids)
+n_test = length(calib_data.test_store.ltmp_unique_ids)
 @info "Calibration locations where model outperforms benchmark: $(sum(stats_calib.rmse_model .< stats_calib.rmse_benchmark)) / $n_calib"
-@info "Validation  locations where model outperforms benchmark: $(sum(stats_valid.rmse_model .< stats_valid.rmse_benchmark)) / $n_valid"
+@info "Test  locations where model outperforms benchmark: $(sum(stats_test.rmse_model .< stats_test.rmse_benchmark)) / $n_test"
 @info "Mean model calib. RMSE: $(mean(stats_calib.rmse_model))"
-@info "Mean model valid.  RMSE: $(mean(stats_valid.rmse_model))"
+@info "Mean model test.  RMSE: $(mean(stats_test.rmse_model))"
 @info "Mean model calib. SRCC: $(mean(stats_calib.srcc))"
-@info "Mean model valid.  SRCC: $(mean(stats_valid.srcc))"
+@info "Mean model test.  SRCC: $(mean(stats_test.srcc))"
 
 # Regional comparison plots (03_b)
 viz.save_regional_analysis_plots(
-    rs_raw.raw, dom, calib_data.calibration_store, calib_data.validation_store, OUT_DIR,
+    rs_raw.raw, dom, calib_data.calibration_store, calib_data.test_store, OUT_DIR,
     regional_data.ltmp_north, regional_data.ltmp_central, regional_data.ltmp_south,
     regional_data.north_mask, regional_data.central_mask, regional_data.south_mask
 )
@@ -123,11 +123,11 @@ viz.save_regional_analysis_plots(
 @info "Plotting metrics"
 # Metric analysis plots (03_c)
 viz.save_metric_analysis_plots(
-    rs_raw.raw, dom, calib_data.calibration_store, calib_data.validation_store, OUT_DIR
+    rs_raw.raw, dom, calib_data.calibration_store, calib_data.test_store, OUT_DIR
 )
 @info "Finished plotting metrics"
 
-# Extreme-score reef tables (RMSE diff, PCC, SRCC; validation & calibration)
+# Extreme-score reef tables (RMSE diff, PCC, SRCC; test & calibration)
 function _extremes_table(ids, names, scores; n::Int=2)
     order = sortperm(scores)
     lo, hi = order[1:n], order[(end - n + 1):end]
@@ -141,7 +141,7 @@ function _extremes_table(ids, names, scores; n::Int=2)
 end
 
 for (store, store_label) in (
-    (calib_data.calibration_store, "Calibration"), (calib_data.validation_store, "Validation")
+    (calib_data.calibration_store, "Calibration"), (calib_data.test_store, "Test")
 )
     ids = store.ltmp_unique_ids
     names = dom.loc_data.GBRMPA_ID[store.ltmp_cover_to_domain]
@@ -167,7 +167,7 @@ disturbances = open_dataset(
 ).layer
 
 viz.save_location_timeseries_plots(
-    rs_raw.raw, dom, calib_data.calibration_store, calib_data.validation_store, OUT_DIR,
+    rs_raw.raw, dom, calib_data.calibration_store, calib_data.test_store, OUT_DIR,
     dhw_scens, cyc_scens, disturbances
 )
 nothing

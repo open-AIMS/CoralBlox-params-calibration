@@ -34,7 +34,7 @@ isdefined(Main, :LTMP_REEF_DATA_PATH) || (global LTMP_REEF_DATA_PATH = get(
 ))
 
 """
-Ids of every calibration+validation location - every reef mortality needs to be computed for.
+Ids of every calibration+test location - every reef mortality needs to be computed for.
 """
 function _target_loc_ids(calib_split_path)::Vector{String}
     calib_split = CSV.read(calib_split_path, DataFrame)
@@ -42,7 +42,7 @@ function _target_loc_ids(calib_split_path)::Vector{String}
 end
 
 """
-Ids of CALIBRATION-only locations. Used for growth-rate estimation, so validation reefs are
+Ids of CALIBRATION-only locations. Used for growth-rate estimation, so test reefs are
 never used to fit the correction their own mortality is later evaluated against.
 """
 function _calibration_loc_ids(calib_split_path)::Vector{String}

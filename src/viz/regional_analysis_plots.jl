@@ -1,5 +1,5 @@
 """
-    save_regional_analysis_plots(raw_data, dom, calibration_store, validation_store, out_dir,
+    save_regional_analysis_plots(raw_data, dom, calibration_store, test_store, out_dir,
         ltmp_north, ltmp_central, ltmp_south, north_mask, central_mask, south_mask)
 
 Generate and save all regional comparison plots under `out_dir/regional_analysis/`.
@@ -8,7 +8,7 @@ function save_regional_analysis_plots(
     raw_data::Array{Float64,4},
     dom,
     calibration_store::LocationDataStore,
-    validation_store::LocationDataStore,
+    test_store::LocationDataStore,
     out_dir::String,
     ltmp_north::DataFrame,
     ltmp_central::DataFrame,
@@ -31,20 +31,20 @@ function save_regional_analysis_plots(
     region_masks = [north_mask, central_mask, south_mask]
     regions = [:North, :Central, :South]
 
-    region_stats_validation = region_stats(
-        regions, region_masks, raw_data, dom; observations=validation_store
+    region_stats_test = region_stats(
+        regions, region_masks, raw_data, dom; observations=test_store
     )
     region_stats_calibration = region_stats(
         regions, region_masks, raw_data, dom; observations=calibration_store
     )
 
-    fig_regions_valid = plot_regional_comparison(
-        region_stats_validation,
-        keys(region_stats_validation);
-        opts=merge(base_opts, Dict{Symbol,Any}(:title => "Regional comparison - Validation")),
+    fig_regions_test = plot_regional_comparison(
+        region_stats_test,
+        keys(region_stats_test);
+        opts=merge(base_opts, Dict{Symbol,Any}(:title => "Regional comparison - Test")),
         fig_opts=Dict{Symbol,Any}(:size => (1000, 400))
     )
-    save(joinpath(regional_analysis_save_dir, "regional__regions__validation.png"), fig_regions_valid)
+    save(joinpath(regional_analysis_save_dir, "regional__regions__test.png"), fig_regions_test)
 
     fig_regions_calib = plot_regional_comparison(
         region_stats_calibration,
@@ -56,23 +56,23 @@ function save_regional_analysis_plots(
 
     mareas = unique(canonical_reefs.management_area_short)
     marea_masks = [canonical_reefs.management_area_short .== area for area in mareas]
-    r_stats_validation = region_stats(
-        Symbol.(mareas), marea_masks, raw_data, dom; observations=validation_store
+    r_stats_test = region_stats(
+        Symbol.(mareas), marea_masks, raw_data, dom; observations=test_store
     )
     r_stats_calibration = region_stats(
         Symbol.(mareas), marea_masks, raw_data, dom; observations=calibration_store
     )
 
     fig_mang_area = plot_regional_comparison(
-        r_stats_validation,
-        keys(r_stats_validation);
+        r_stats_test,
+        keys(r_stats_test);
         opts=merge(
             base_opts,
-            Dict{Symbol,Any}(:title => "Management areas comparison\nValidation Locations")
+            Dict{Symbol,Any}(:title => "Management areas comparison\nTest Locations")
         ),
         fig_opts=Dict{Symbol,Any}(:size => (1000, 400))
     )
-    save(joinpath(regional_analysis_save_dir, "regional__management_areas__validation.png"), fig_mang_area)
+    save(joinpath(regional_analysis_save_dir, "regional__management_areas__test.png"), fig_mang_area)
 
     fig_mang_area = plot_regional_comparison(
         r_stats_calibration,
@@ -89,20 +89,20 @@ function save_regional_analysis_plots(
         Symbol.("Group " .* string.(spatial_groups)), spatial_group_masks, raw_data, dom;
         observations=calibration_store
     )
-    spatial_group_stats_valid = region_stats(
+    spatial_group_stats_test = region_stats(
         Symbol.("Group " .* string.(spatial_groups)), spatial_group_masks, raw_data, dom;
-        observations=validation_store
+        observations=test_store
     )
 
-    keys_sort = sortperm(collect(parse.(Int, getindex.(split.(string.(keys(spatial_group_stats_valid)), " "), 2))))
+    keys_sort = sortperm(collect(parse.(Int, getindex.(split.(string.(keys(spatial_group_stats_test)), " "), 2))))
 
     fig_spat_gps = plot_regional_comparison(
-        spatial_group_stats_valid,
-        keys(spatial_group_stats_valid)[keys_sort];
-        opts=merge(base_opts, Dict{Symbol,Any}(:title => "Reef groups (validation reefs)", :invert_positions => true)),
+        spatial_group_stats_test,
+        keys(spatial_group_stats_test)[keys_sort];
+        opts=merge(base_opts, Dict{Symbol,Any}(:title => "Reef groups (test reefs)", :invert_positions => true)),
         fig_opts=Dict{Symbol,Any}(:size => (1000, 800))
     )
-    save(joinpath(regional_analysis_save_dir, "regional__spatial_grouping__validation.png"), fig_spat_gps)
+    save(joinpath(regional_analysis_save_dir, "regional__spatial_grouping__test.png"), fig_spat_gps)
 
     fig_spat_gps = plot_regional_comparison(
         spatial_group_stats_calib,
@@ -120,19 +120,19 @@ function save_regional_analysis_plots(
     )
     save(joinpath(regional_analysis_save_dir, "locs_reg.png"), f_all_regions)
 
-    loc_ids = validation_store.domain_gpkg.UNIQUE_ID
-    validation_mask = (loc_ids .∈ Ref(validation_store.ltmp_unique_ids))
-    north_validation_mask = north_mask .&& validation_mask
-    central_validation_mask = central_mask .&& validation_mask
-    south_validation_mask = south_mask .&& validation_mask
+    loc_ids = test_store.domain_gpkg.UNIQUE_ID
+    test_mask = (loc_ids .∈ Ref(test_store.ltmp_unique_ids))
+    north_test_mask = north_mask .&& test_mask
+    central_test_mask = central_mask .&& test_mask
+    south_test_mask = south_mask .&& test_mask
 
-    f_all_regions_validation = plot_all_regions(
+    f_all_regions_test = plot_all_regions(
         dom, raw_data, ltmp_north, ltmp_central, ltmp_south;
-        region_masks=[north_validation_mask, central_validation_mask, south_validation_mask],
-        fig_title="Regional comparison (modelled LTMP data)\nValidation reefs",
+        region_masks=[north_test_mask, central_test_mask, south_test_mask],
+        fig_title="Regional comparison (modelled LTMP data)\nTest reefs",
         fig_size=(900, 400)
     )
-    save(joinpath(regional_analysis_save_dir, "locs_reg_validation.png"), f_all_regions_validation)
+    save(joinpath(regional_analysis_save_dir, "locs_reg_test.png"), f_all_regions_test)
 
     return nothing
 end

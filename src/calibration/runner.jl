@@ -251,7 +251,7 @@ Run BlackBoxOptim to calibrate coral parameters. Calls `construct_cover!` on `do
 # Arguments
 - `dom` : ADRIA domain
 - `cfg` : `CalibConfig` describing the parameter search space
-- `calib_data` : `CalibrationData` holding the calibration/validation observation split
+- `calib_data` : `CalibrationData` holding the calibration/test observation split
 - `location_classification` : per-location classification vector used to construct initial cover
 - `stagnation_patience` : stop once this many steps pass without a new best fitness (fully
   replaces the old fixed-`MaxSteps` budget; see `_stagnation_shutdown_check!`)
