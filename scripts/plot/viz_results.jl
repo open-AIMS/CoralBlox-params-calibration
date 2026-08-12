@@ -1,13 +1,15 @@
 # Result analysis and plot generation script.
 #
-# Read-only: loads the calibration products written by scripts/run_loc_calib.jl and writes
-# plots only. Prerequisites are config.out_dir/params/calibrated_params.nc and
-# config.out_dir/params/historic_init_cover.nc.
+# Loads the calibration products written by scripts/run_loc_calib.jl and writes plots. If
+# config.out_dir/params/{calibrated_params.nc,historic_init_cover.nc} are missing but
+# config.out_dir/results.dat is present, they are regenerated from results.dat (via
+# export_calibration_products) without re-running the BlackBoxOptim search.
 
 using ADRIA
 using Statistics
 using YAXArrays
 using DataFrames
+using Serialization: deserialize
 
 using CoralBloxCalib
 import CoralBloxCalib.viz
@@ -22,8 +24,30 @@ PARAMS_DIR = joinpath(OUT_DIR, "params")
 CALIB_PARAMS_FN = joinpath(PARAMS_DIR, "calibrated_params.nc")
 INIT_COVER_FN = joinpath(PARAMS_DIR, "historic_init_cover.nc")
 
-for fn in (CALIB_PARAMS_FN, INIT_COVER_FN)
-    isfile(fn) || error("Missing calibration product $fn - run scripts/run_loc_calib.jl first.")
+if !isfile(CALIB_PARAMS_FN) || !isfile(INIT_COVER_FN)
+    results_fn = joinpath(OUT_DIR, "results.dat")
+    isfile(results_fn) || error(
+        "Missing calibration product(s) under $PARAMS_DIR and no $results_fn to rebuild " *
+        "them from - run scripts/run_loc_calib.jl first."
+    )
+
+    @info "Calibration products missing; rebuilding from $results_fn"
+    rebuild_dom = load_domain(config)
+    location_classification = load_location_classification(config.loc_class_path)
+    cfg = CalibConfig(rebuild_dom)
+    calib_data = build_calibration_data(
+        rebuild_dom, config.ltmp_reef_data_path, config.composition_path;
+        out_dir=OUT_DIR
+    )
+    init_cover = deserialize(config.init_cover_path)
+    best_params = load_calibrated_params(results_fn, length(cfg.sample_bounds))
+
+    export_calibration_products(
+        rebuild_dom, init_cover, location_classification.consecutive_classification,
+        best_params, cfg.param_idxs, cfg.coral_param_names, cfg.growth_accel_names,
+        cfg.depth_atten_names, calib_data.combined_store, cfg.biogroups_ordering;
+        out_dir=OUT_DIR
+    )
 end
 
 # ADRIA folds calibrated_params.nc into the domain's model spec, so param_table returns the
