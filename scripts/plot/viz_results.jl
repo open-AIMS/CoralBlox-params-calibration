@@ -73,7 +73,7 @@ calib_data = build_calibration_data(
 # ----- Run model --------------------------------------------------------------
 
 scen = ADRIA.param_table(dom)
-rs_raw = ADRIA.run_model(dom, scen[1, :])
+rs_raw = ADRIA.run_model(dom, scen[1, :]; apply_allee_effect=false)
 mkpath(OUT_DIR)
 
 # ----- Generate plots ---------------------------------------------------------

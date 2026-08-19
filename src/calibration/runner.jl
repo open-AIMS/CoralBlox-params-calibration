@@ -80,7 +80,7 @@ function _obj_func(
 
     res = nothing
     try
-        res = ADRIA.run_model(local_dom, scen[1, :])
+        res = ADRIA.run_model(local_dom, scen[1, :]; apply_allee_effect=false)
     catch err
         _param_assert_patterns = (
             "!any(recruits_scale_factor .<= 0)",

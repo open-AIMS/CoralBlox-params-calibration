@@ -48,7 +48,8 @@ function progress_run(
 
     calib_res = ADRIA.run_model(
         new_dom,
-        new_scen[1, :],
+        new_scen[1, :];
+        apply_allee_effect=false,
     )
 
     return calib_res

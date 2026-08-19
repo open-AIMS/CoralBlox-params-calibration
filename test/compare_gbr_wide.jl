@@ -43,7 +43,7 @@ growth_accel_params = ones(Float64, length(unique_biogroups), 3)
 growth_accel_params[:, 2] .= 0.0
 scens[!, new_col_names]   .= ADRIA.accel_params_array_to_vec(growth_accel_params)'
 
-rs_raw = ADRIA.run_model(dom, scens[1, :])
+rs_raw = ADRIA.run_model(dom, scens[1, :]; apply_allee_effect=false)
 
 using CairoMakie
 
@@ -140,7 +140,7 @@ growth_accel_params = ADRIA.accel_params_array_to_vec(growth_accel_params)
 insertcols!(scens, (new_col_names .=> Ref([1.0]))...)
 scens[!, new_col_names] .= growth_accel_params'
 
-rs_raw = ADRIA.run_model(dom, scens[1, :])
+rs_raw = ADRIA.run_model(dom, scens[1, :]; apply_allee_effect=false)
 
 using CairoMakie
 
