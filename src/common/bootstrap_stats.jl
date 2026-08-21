@@ -128,3 +128,23 @@ function bootstrap_median_ci(
     _, lo, hi = only(confint(bs, PercentileConfInt(ci_level)))
     return (median=only(original(bs)), lo=lo, hi=hi, se=only(stderror(bs)))
 end
+
+"""
+    bootstrap_mean_ci(point_estimates; B=2000, ci_level=0.95)::NamedTuple
+
+Second-level bootstrap over a group of point estimates: resample which estimates are
+included (with replacement, same count as `point_estimates`), take the mean of each
+resample, repeat `B` times. Same resampling scheme as [`bootstrap_median_ci`](@ref), with
+`mean` in place of `median` — used for aggregates where the magnitude (not the signed
+central tendency) of the point estimates is of interest, e.g. mean absolute bias. Returns
+a `NamedTuple` with `mean`, `lo`, `hi`, `se`.
+"""
+function bootstrap_mean_ci(
+    point_estimates::AbstractVector{<:Real};
+    B::Int=2000,
+    ci_level::Float64=0.95,
+)::NamedTuple
+    bs = bootstrap(mean, point_estimates, BasicSampling(B))
+    _, lo, hi = only(confint(bs, PercentileConfInt(ci_level)))
+    return (mean=only(original(bs)), lo=lo, hi=hi, se=only(stderror(bs)))
+end

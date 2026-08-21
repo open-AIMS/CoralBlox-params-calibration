@@ -334,6 +334,11 @@ function _rmse_diff_statistic(rows::AbstractMatrix)
     return rmse(fill(mean(o), length(o)), o) - rmse(s, o)
 end
 
+function _bias_statistic(rows::AbstractMatrix)
+    s, o = rows[:, 1], rows[:, 2]
+    return bias(s, o)
+end
+
 function _nse_statistic(rows::AbstractMatrix)
     s, o = rows[:, 1], rows[:, 2]
     rmse_benchmark = rmse(fill(mean(o), length(o)), o)
@@ -427,6 +432,51 @@ function rmse_diff_stats(
         n_years=stats.n_years, block_eligible=stats.block_eligible,
         median=stats.median, median_lo=stats.median_lo, median_hi=stats.median_hi,
         median_se=stats.median_se,
+    )
+end
+
+"""
+    bias_stats(rs_raw, observations, dom; B=2000, rng_seed=1, ci_level=0.95)::NamedTuple
+
+Per-reef bias `mean(modelled - observed)` with bootstrap CIs — see
+[`_per_reef_bootstrap_stats`](@ref) for the resampling/aggregation method. Positive values
+indicate the model overpredicts coral cover on average, negative values indicate
+underprediction. Bootstrap CIs computed identically to [`rmse_diff_stats`](@ref).
+
+In addition to the signed median (shared with the other `*_stats` functions), this also
+returns the mean *absolute* per-reef bias (`mean_abs_bias`, with its own bootstrap CI via
+[`bootstrap_mean_ci`](@ref)). The signed median can be near zero even when every reef has a
+substantial bias, if roughly as many reefs over- as underpredict — the signed aggregate
+answers "is there a net directional error across reefs" (relevant for regional-scale use),
+while `mean_abs_bias` answers "how far off is a typical individual reef" (relevant since
+the model is not intended as a precise per-reef predictor). Both are needed together; the
+signed median alone can misleadingly read as "the model has almost no bias."
+
+Returns a `NamedTuple` with `bias`, `ci_lo`, `ci_hi`, `se`, `n_years`, `block_eligible`,
+`median`/`median_lo`/`median_hi`/`median_se`, and
+`mean_abs_bias`/`mean_abs_bias_lo`/`mean_abs_bias_hi`/`mean_abs_bias_se`.
+"""
+function bias_stats(
+    rs_raw::Array{Float64,4},
+    observations::LocationDataStore,
+    dom;
+    B::Int=2000,
+    rng_seed::Int=1,
+    ci_level::Float64=0.95,
+)::NamedTuple
+    stats = _per_reef_bootstrap_stats(
+        rs_raw, observations, dom, _bias_statistic; B=B, rng_seed=rng_seed, ci_level=ci_level
+    )
+    abs_agg = bootstrap_mean_ci(
+        abs.(stats.estimate[stats.block_eligible]); B=B, ci_level=ci_level
+    )
+    return (
+        bias=stats.estimate, ci_lo=stats.ci_lo, ci_hi=stats.ci_hi, se=stats.se,
+        n_years=stats.n_years, block_eligible=stats.block_eligible,
+        median=stats.median, median_lo=stats.median_lo, median_hi=stats.median_hi,
+        median_se=stats.median_se,
+        mean_abs_bias=abs_agg.mean, mean_abs_bias_lo=abs_agg.lo, mean_abs_bias_hi=abs_agg.hi,
+        mean_abs_bias_se=abs_agg.se,
     )
 end
 
