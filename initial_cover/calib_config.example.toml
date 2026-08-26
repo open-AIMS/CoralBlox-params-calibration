@@ -5,19 +5,21 @@
 # (reefmod_domain path).
 #
 # Run scripts from within the initial_cover/ directory.
+#
+# Copy this file to calib_config.toml (gitignored) and fill in the paths for your machine.
 
 [data_paths]
 # Path to a ReefModDomain dataset (used when reefmod_domain = true in common.jl)
-reefmod_domain = "C:/AIMS/Datasets/ADRIA DataPackages/rme_ml_2025_09_03"
+reefmod_domain = "path/to/ADRIA DataPackages/rme_ml_YYYY_MM_DD"
 
 # Path to an RMEDomain dataset (used when reefmod_domain = false in common.jl)
-rme_domain = "C:/AIMS/Datasets/ADRIA DataPackages/rme_ml_2025_09_03"
+rme_domain = "path/to/ADRIA DataPackages/rme_ml_YYYY_MM_DD"
 
 # LTMP regional shapefile — already present in initial_cover/data/
 ltmp_shp = "data/gbr_3Zone 2.shp"
 
 # Canonical GBR geopackage
-canonical_path = "C:/AIMS/Datasets/rrap_canonical_2025-07-15-T10-48-29.gpkg"
+canonical_path = "path/to/rrap_canonical_YYYY-MM-DD-Thh-mm-ss.gpkg"
 
 # Location classification CSV — already present in initial_cover/data/
 classification_path = "data/location_classification_MPA.csv"

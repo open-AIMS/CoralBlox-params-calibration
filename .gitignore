@@ -15,6 +15,7 @@ JuliaSysimage.dll
 docs/build/
 
 config.toml
+calib_config.toml
 
 Outputs/*
 initial_cover/Outputs/
