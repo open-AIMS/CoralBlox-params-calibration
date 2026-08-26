@@ -444,17 +444,21 @@ indicate the model overpredicts coral cover on average, negative values indicate
 underprediction. Bootstrap CIs computed identically to [`rmse_diff_stats`](@ref).
 
 In addition to the signed median (shared with the other `*_stats` functions), this also
-returns the mean *absolute* per-reef bias (`mean_abs_bias`, with its own bootstrap CI via
-[`bootstrap_mean_ci`](@ref)). The signed median can be near zero even when every reef has a
-substantial bias, if roughly as many reefs over- as underpredict — the signed aggregate
-answers "is there a net directional error across reefs" (relevant for regional-scale use),
-while `mean_abs_bias` answers "how far off is a typical individual reef" (relevant since
-the model is not intended as a precise per-reef predictor). Both are needed together; the
-signed median alone can misleadingly read as "the model has almost no bias."
+returns the median *absolute* per-reef bias (`median_abs_bias`, with its own bootstrap CI
+via [`bootstrap_median_ci`](@ref)). The signed median can be near zero even when every reef
+has a substantial bias, if roughly as many reefs over- as underpredict — the signed
+aggregate answers "is there a net directional error across reefs" (relevant for
+regional-scale use), while `median_abs_bias` answers "how far off is a typical individual
+reef" (relevant since the model is not intended as a precise per-reef predictor). Both are
+needed together; the signed median alone can misleadingly read as "the model has almost no
+bias." Median (not mean) is used for the absolute-value aggregate too, consistent with every
+other aggregate in this module — `|bias|` is right-skewed (a few poorly-fit reefs create a
+long tail), so the mean would be inflated by those outliers relative to what's typical;
+empirically the mean ran ~20-40% above the median on this project's calibration/test sets.
 
 Returns a `NamedTuple` with `bias`, `ci_lo`, `ci_hi`, `se`, `n_years`, `block_eligible`,
 `median`/`median_lo`/`median_hi`/`median_se`, and
-`mean_abs_bias`/`mean_abs_bias_lo`/`mean_abs_bias_hi`/`mean_abs_bias_se`.
+`median_abs_bias`/`median_abs_bias_lo`/`median_abs_bias_hi`/`median_abs_bias_se`.
 """
 function bias_stats(
     rs_raw::Array{Float64,4},
@@ -467,7 +471,7 @@ function bias_stats(
     stats = _per_reef_bootstrap_stats(
         rs_raw, observations, dom, _bias_statistic; B=B, rng_seed=rng_seed, ci_level=ci_level
     )
-    abs_agg = bootstrap_mean_ci(
+    abs_agg = bootstrap_median_ci(
         abs.(stats.estimate[stats.block_eligible]); B=B, ci_level=ci_level
     )
     return (
@@ -475,8 +479,8 @@ function bias_stats(
         n_years=stats.n_years, block_eligible=stats.block_eligible,
         median=stats.median, median_lo=stats.median_lo, median_hi=stats.median_hi,
         median_se=stats.median_se,
-        mean_abs_bias=abs_agg.mean, mean_abs_bias_lo=abs_agg.lo, mean_abs_bias_hi=abs_agg.hi,
-        mean_abs_bias_se=abs_agg.se,
+        median_abs_bias=abs_agg.median, median_abs_bias_lo=abs_agg.lo,
+        median_abs_bias_hi=abs_agg.hi, median_abs_bias_se=abs_agg.se,
     )
 end
 

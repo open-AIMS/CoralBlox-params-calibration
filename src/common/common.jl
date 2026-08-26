@@ -1,7 +1,7 @@
 module common
 
 using ADRIA
-using ADRIA: RMEDomain
+using ADRIA: RMEDomain, GDF
 using DataFrames
 using StatsBase
 using Statistics
