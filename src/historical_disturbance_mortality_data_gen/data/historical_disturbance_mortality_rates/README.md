@@ -2,8 +2,8 @@
 
 - **Version** : 1.0.0
 - **Dataset custodian** : Pedro Ribeiro de Almeida
-- **Contact** : p.ribeirodealmeida@aims.gov.
-- **Purpose**: This dataset is for academic research purposes only. This dataset was generated as part of the CoralBlox-ADRIA calibration process.
+- **Contact** : p.ribeirodealmeida@aims.gov.au
+- **Purpose**: Generated as part of the CoralBlox-ADRIA calibration process.
 - **Date published** :  2025 11 05
 
 ---
@@ -80,4 +80,7 @@ reef/disturbance is filled with either average across all reefs or within bioreg
 (missing benthic disturbance cover data) happened on 24 of the 154 pairs reef/disturbance.
 
 # License
-[Copyright - All rights reserved](https://docs.provena.io/licenses.html#copyright-all-rights-reserved)
+
+CC-BY 4.0. Derived from AIMS Long-Term Monitoring Program disturbance and coral cover data
+(<https://www.aims.gov.au/cc-attribution>); attribute as "Based on data supplied by:
+Australian Institute of Marine Science".
