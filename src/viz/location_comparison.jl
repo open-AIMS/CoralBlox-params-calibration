@@ -487,17 +487,17 @@ end
 
 """
     plot_observation_locs(
-        calibration_store::LocationDataStore, validation_store::LocationDataStore
+        calibration_store::LocationDataStore, test_store::LocationDataStore
     )::Figure
 
-Map showing calibration and valiration locations with different colors.
+Map showing calibration and test locations with different colors.
 """
 function plot_observation_locs(
-    calibration_store::LocationDataStore, validation_store::LocationDataStore
+    calibration_store::LocationDataStore, test_store::LocationDataStore
 )::Figure
     domain_gpkg = calibration_store.domain_gpkg
     calib_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈Ref(calibration_store.ltmp_unique_ids), :]
-    valid_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈Ref(validation_store.ltmp_unique_ids), :]
+    test_gpkg = domain_gpkg[domain_gpkg.UNIQUE_ID.∈Ref(test_store.ltmp_unique_ids), :]
 
     f = Figure(size=FIG_SIZE[:map])
     ax = GeoAxis(
@@ -512,14 +512,14 @@ function plot_observation_locs(
         poly!(ax, domain_gpkg.geometry, color=:black)
     end
 
-    obs = (Calibration=:red, Validation=:blue)
+    obs = (Calibration=:red, Test=:blue)
 
     try
         scatter!(ax, calib_gpkg.X_COORD, calib_gpkg.Y_COORD; markersize=10, color=obs.Calibration, alpha=0.5)
-        scatter!(ax, valid_gpkg.X_COORD, valid_gpkg.Y_COORD; markersize=10, color=obs.Validation, alpha=0.5)
+        scatter!(ax, test_gpkg.X_COORD, test_gpkg.Y_COORD; markersize=10, color=obs.Test, alpha=0.5)
     catch
         scatter!(ax, calib_gpkg.LON, calib_gpkg.LAT; markersize=10, color=obs.Calibration, alpha=0.5)
-        scatter!(ax, valid_gpkg.LON, valid_gpkg.LAT; markersize=10, color=obs.Validation, alpha=0.5)
+        scatter!(ax, test_gpkg.LON, test_gpkg.LAT; markersize=10, color=obs.Test, alpha=0.5)
     end
 
 

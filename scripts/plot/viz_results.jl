@@ -1,13 +1,15 @@
 # Result analysis and plot generation script.
 #
-# Read-only: loads the calibration products written by scripts/run_loc_calib.jl and writes
-# plots only. Prerequisites are config.out_dir/params/calibrated_params.nc and
-# config.out_dir/params/historic_init_cover.nc.
+# Loads the calibration products written by scripts/run_loc_calib.jl and writes plots. If
+# config.out_dir/params/{calibrated_params.nc,historic_init_cover.nc} are missing but
+# config.out_dir/results.dat is present, they are regenerated from results.dat (via
+# export_calibration_products) without re-running the BlackBoxOptim search.
 
 using ADRIA
 using Statistics
 using YAXArrays
 using DataFrames
+using Serialization: deserialize
 
 using CoralBloxCalib
 import CoralBloxCalib.viz
@@ -22,8 +24,30 @@ PARAMS_DIR = joinpath(OUT_DIR, "params")
 CALIB_PARAMS_FN = joinpath(PARAMS_DIR, "calibrated_params.nc")
 INIT_COVER_FN = joinpath(PARAMS_DIR, "historic_init_cover.nc")
 
-for fn in (CALIB_PARAMS_FN, INIT_COVER_FN)
-    isfile(fn) || error("Missing calibration product $fn - run scripts/run_loc_calib.jl first.")
+if !isfile(CALIB_PARAMS_FN) || !isfile(INIT_COVER_FN)
+    results_fn = joinpath(OUT_DIR, "results.dat")
+    isfile(results_fn) || error(
+        "Missing calibration product(s) under $PARAMS_DIR and no $results_fn to rebuild " *
+        "them from - run scripts/run_loc_calib.jl first."
+    )
+
+    @info "Calibration products missing; rebuilding from $results_fn"
+    rebuild_dom = load_domain(config)
+    location_classification = load_location_classification(config.loc_class_path)
+    cfg = CalibConfig(rebuild_dom)
+    calib_data = build_calibration_data(
+        rebuild_dom, config.ltmp_reef_data_path, config.composition_path;
+        out_dir=OUT_DIR
+    )
+    init_cover = deserialize(config.init_cover_path)
+    best_params = load_calibrated_params(results_fn, length(cfg.sample_bounds))
+
+    export_calibration_products(
+        rebuild_dom, init_cover, location_classification.consecutive_classification,
+        best_params, cfg.param_idxs, cfg.coral_param_names, cfg.growth_accel_names,
+        cfg.depth_atten_names, calib_data.combined_store, cfg.biogroups_ordering;
+        out_dir=OUT_DIR
+    )
 end
 
 # ADRIA folds calibrated_params.nc into the domain's model spec, so param_table returns the
@@ -49,13 +73,13 @@ calib_data = build_calibration_data(
 # ----- Run model --------------------------------------------------------------
 
 scen = ADRIA.param_table(dom)
-rs_raw = ADRIA.run_model(dom, scen[1, :])
+rs_raw = ADRIA.run_model(dom, scen[1, :]; apply_allee_effect=false)
 mkpath(OUT_DIR)
 
 # ----- Generate plots ---------------------------------------------------------
 
 # Observation locations map
-f_obs_loc_map = viz.plot_observation_locs(calib_data.calibration_store, calib_data.validation_store)
+f_obs_loc_map = viz.plot_observation_locs(calib_data.calibration_store, calib_data.test_store)
 save(joinpath(OUT_DIR, "obs_loc_map.png"), f_obs_loc_map)
 
 # Functional group cover proportions
@@ -69,29 +93,29 @@ f_size_class = viz.temporal_size_class_proportions(rs_raw.raw; fig_size=(900, 60
 save(joinpath(OUT_DIR, "locs_size.png"), f_size_class)
 
 # Summary stats
-n_validation_locs = length(calib_data.validation_store.ltmp_unique_ids)
-validation_sccs = [
-    viz.collect_error_stats(rs_raw.raw, id, dom; observations=calib_data.validation_store).srcc
-    for id in 1:n_validation_locs
+n_test_locs = length(calib_data.test_store.ltmp_unique_ids)
+test_sccs = [
+    viz.collect_error_stats(rs_raw.raw, id, dom; observations=calib_data.test_store).srcc
+    for id in 1:n_test_locs
 ]
-validation_sccs_sortperm = sortperm(validation_sccs)
-@info "Three highest SCC validation reefs: $(calib_data.validation_store.ltmp_unique_ids[validation_sccs_sortperm][end-2:end])"
-@info "Three lowest  SCC validation reefs: $(calib_data.validation_store.ltmp_unique_ids[validation_sccs_sortperm][1:3])"
+test_sccs_sortperm = sortperm(test_sccs)
+@info "Three highest SCC test reefs: $(calib_data.test_store.ltmp_unique_ids[test_sccs_sortperm][end-2:end])"
+@info "Three lowest  SCC test reefs: $(calib_data.test_store.ltmp_unique_ids[test_sccs_sortperm][1:3])"
 
 stats_calib = viz.collect_error_stats(rs_raw.raw, dom; observations=calib_data.calibration_store)
-stats_valid = viz.collect_error_stats(rs_raw.raw, dom; observations=calib_data.validation_store)
+stats_test = viz.collect_error_stats(rs_raw.raw, dom; observations=calib_data.test_store)
 n_calib = length(calib_data.calibration_store.ltmp_unique_ids)
-n_valid = length(calib_data.validation_store.ltmp_unique_ids)
+n_test = length(calib_data.test_store.ltmp_unique_ids)
 @info "Calibration locations where model outperforms benchmark: $(sum(stats_calib.rmse_model .< stats_calib.rmse_benchmark)) / $n_calib"
-@info "Validation  locations where model outperforms benchmark: $(sum(stats_valid.rmse_model .< stats_valid.rmse_benchmark)) / $n_valid"
+@info "Test  locations where model outperforms benchmark: $(sum(stats_test.rmse_model .< stats_test.rmse_benchmark)) / $n_test"
 @info "Mean model calib. RMSE: $(mean(stats_calib.rmse_model))"
-@info "Mean model valid.  RMSE: $(mean(stats_valid.rmse_model))"
+@info "Mean model test.  RMSE: $(mean(stats_test.rmse_model))"
 @info "Mean model calib. SRCC: $(mean(stats_calib.srcc))"
-@info "Mean model valid.  SRCC: $(mean(stats_valid.srcc))"
+@info "Mean model test.  SRCC: $(mean(stats_test.srcc))"
 
 # Regional comparison plots (03_b)
 viz.save_regional_analysis_plots(
-    rs_raw.raw, dom, calib_data.calibration_store, calib_data.validation_store, OUT_DIR,
+    rs_raw.raw, dom, calib_data.calibration_store, calib_data.test_store, OUT_DIR,
     regional_data.ltmp_north, regional_data.ltmp_central, regional_data.ltmp_south,
     regional_data.north_mask, regional_data.central_mask, regional_data.south_mask
 )
@@ -99,11 +123,11 @@ viz.save_regional_analysis_plots(
 @info "Plotting metrics"
 # Metric analysis plots (03_c)
 viz.save_metric_analysis_plots(
-    rs_raw.raw, dom, calib_data.calibration_store, calib_data.validation_store, OUT_DIR
+    rs_raw.raw, dom, calib_data.calibration_store, calib_data.test_store, OUT_DIR
 )
 @info "Finished plotting metrics"
 
-# Extreme-score reef tables (RMSE diff, PCC, SRCC; validation & calibration)
+# Extreme-score reef tables (RMSE diff, PCC, SRCC; test & calibration)
 function _extremes_table(ids, names, scores; n::Int=2)
     order = sortperm(scores)
     lo, hi = order[1:n], order[(end - n + 1):end]
@@ -117,7 +141,7 @@ function _extremes_table(ids, names, scores; n::Int=2)
 end
 
 for (store, store_label) in (
-    (calib_data.calibration_store, "Calibration"), (calib_data.validation_store, "Validation")
+    (calib_data.calibration_store, "Calibration"), (calib_data.test_store, "Test")
 )
     ids = store.ltmp_unique_ids
     names = dom.loc_data.GBRMPA_ID[store.ltmp_cover_to_domain]
@@ -143,7 +167,7 @@ disturbances = open_dataset(
 ).layer
 
 viz.save_location_timeseries_plots(
-    rs_raw.raw, dom, calib_data.calibration_store, calib_data.validation_store, OUT_DIR,
+    rs_raw.raw, dom, calib_data.calibration_store, calib_data.test_store, OUT_DIR,
     dhw_scens, cyc_scens, disturbances
 )
 nothing

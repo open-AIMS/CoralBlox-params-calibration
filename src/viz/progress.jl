@@ -15,8 +15,8 @@ end
 
 """
     progress_run(
-        interm_params, dom, param_names, growth_accel_names, param_idxs,
-        observations, biogroup_ord
+        interm_params, dom, param_names, growth_accel_names, depth_atten_names,
+        dist_std_names, dist_mean_names, param_idxs, observations, biogroup_ord
     )
 
 Run ADRIA-CoralBlox with calibrated parameters.
@@ -26,6 +26,9 @@ function progress_run(
     dom,
     param_names::Vector{Symbol},
     growth_accel_names::Vector{String},
+    depth_atten_names::Vector{String},
+    dist_std_names::Vector{String},
+    dist_mean_names::Vector{String},
     param_idxs::Vector{Int64},
     observations::LocationDataStore,
     biogroup_ord::Vector{Int64}
@@ -35,6 +38,9 @@ function progress_run(
         interm_params;
         param_names=param_names,
         growth_accel_names=growth_accel_names,
+        depth_atten_names=depth_atten_names,
+        dist_std_names=dist_std_names,
+        dist_mean_names=dist_mean_names,
         param_idxs=param_idxs,
         observations=observations,
         biogroup_ord=biogroup_ord,
@@ -42,7 +48,8 @@ function progress_run(
 
     calib_res = ADRIA.run_model(
         new_dom,
-        new_scen[1, :],
+        new_scen[1, :];
+        apply_allee_effect=false,
     )
 
     return calib_res

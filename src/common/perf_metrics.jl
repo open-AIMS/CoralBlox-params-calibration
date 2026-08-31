@@ -318,10 +318,10 @@ end
 function rmse_diff(
     rs_raw::Array{Float64,4}, observations::LocationDataStore, dom
 )::Vector{Float64}
-    n_validation_locs = length(observations.ltmp_cover_to_domain)
-    model_rmse = zeros(Float64, n_validation_locs)
-    benchmark_rmse = zeros(Float64, n_validation_locs)
-    for i in 1:n_validation_locs
+    n_test_locs = length(observations.ltmp_cover_to_domain)
+    model_rmse = zeros(Float64, n_test_locs)
+    benchmark_rmse = zeros(Float64, n_test_locs)
+    for i in 1:n_test_locs
         error_stats = collect_error_stats(rs_raw, i, dom; observations=observations)
         model_rmse[i] = error_stats.rmse_model
         benchmark_rmse[i] = error_stats.rmse_benchmark
@@ -332,6 +332,11 @@ end
 function _rmse_diff_statistic(rows::AbstractMatrix)
     s, o = rows[:, 1], rows[:, 2]
     return rmse(fill(mean(o), length(o)), o) - rmse(s, o)
+end
+
+function _bias_statistic(rows::AbstractMatrix)
+    s, o = rows[:, 1], rows[:, 2]
+    return bias(s, o)
 end
 
 function _nse_statistic(rows::AbstractMatrix)
@@ -427,6 +432,55 @@ function rmse_diff_stats(
         n_years=stats.n_years, block_eligible=stats.block_eligible,
         median=stats.median, median_lo=stats.median_lo, median_hi=stats.median_hi,
         median_se=stats.median_se,
+    )
+end
+
+"""
+    bias_stats(rs_raw, observations, dom; B=2000, rng_seed=1, ci_level=0.95)::NamedTuple
+
+Per-reef bias `mean(modelled - observed)` with bootstrap CIs — see
+[`_per_reef_bootstrap_stats`](@ref) for the resampling/aggregation method. Positive values
+indicate the model overpredicts coral cover on average, negative values indicate
+underprediction. Bootstrap CIs computed identically to [`rmse_diff_stats`](@ref).
+
+In addition to the signed median (shared with the other `*_stats` functions), this also
+returns the median *absolute* per-reef bias (`median_abs_bias`, with its own bootstrap CI
+via [`bootstrap_median_ci`](@ref)). The signed median can be near zero even when every reef
+has a substantial bias, if roughly as many reefs over- as underpredict — the signed
+aggregate answers "is there a net directional error across reefs" (relevant for
+regional-scale use), while `median_abs_bias` answers "how far off is a typical individual
+reef" (relevant since the model is not intended as a precise per-reef predictor). Both are
+needed together; the signed median alone can misleadingly read as "the model has almost no
+bias." Median (not mean) is used for the absolute-value aggregate too, consistent with every
+other aggregate in this module — `|bias|` is right-skewed (a few poorly-fit reefs create a
+long tail), so the mean would be inflated by those outliers relative to what's typical;
+empirically the mean ran ~20-40% above the median on this project's calibration/test sets.
+
+Returns a `NamedTuple` with `bias`, `ci_lo`, `ci_hi`, `se`, `n_years`, `block_eligible`,
+`median`/`median_lo`/`median_hi`/`median_se`, and
+`median_abs_bias`/`median_abs_bias_lo`/`median_abs_bias_hi`/`median_abs_bias_se`.
+"""
+function bias_stats(
+    rs_raw::Array{Float64,4},
+    observations::LocationDataStore,
+    dom;
+    B::Int=2000,
+    rng_seed::Int=1,
+    ci_level::Float64=0.95,
+)::NamedTuple
+    stats = _per_reef_bootstrap_stats(
+        rs_raw, observations, dom, _bias_statistic; B=B, rng_seed=rng_seed, ci_level=ci_level
+    )
+    abs_agg = bootstrap_median_ci(
+        abs.(stats.estimate[stats.block_eligible]); B=B, ci_level=ci_level
+    )
+    return (
+        bias=stats.estimate, ci_lo=stats.ci_lo, ci_hi=stats.ci_hi, se=stats.se,
+        n_years=stats.n_years, block_eligible=stats.block_eligible,
+        median=stats.median, median_lo=stats.median_lo, median_hi=stats.median_hi,
+        median_se=stats.median_se,
+        median_abs_bias=abs_agg.median, median_abs_bias_lo=abs_agg.lo,
+        median_abs_bias_hi=abs_agg.hi, median_abs_bias_se=abs_agg.se,
     )
 end
 

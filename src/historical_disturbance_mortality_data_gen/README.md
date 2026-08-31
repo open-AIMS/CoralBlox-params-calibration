@@ -112,11 +112,11 @@ new before merging it in. Not needed just to rerun the pipeline on already-curat
   each row so every reef contributes equal total weight regardless of its interval count
   (weights fixed from the unresampled data, so the cluster bootstrap's resampling multiplicity
   is preserved rather than normalized away).
-- **The growth-rate fit uses CALIBRATION reefs only, not calibration + validation.**
+- **The growth-rate fit uses CALIBRATION reefs only, not calibration + test.**
   `_target_loc_ids` in [base.jl](base.jl) covers every reef (both `USAGE` values, since
-  mortality itself must be computed for validation reefs too), but using it to build the growth
-  intervals meant validation reefs were feeding the correction their own mortality is later
-  judged against - 146 of 530 growth observations (≈28%) came from validation reefs before this
+  mortality itself must be computed for test reefs too), but using it to build the growth
+  intervals meant test reefs were feeding the correction their own mortality is later
+  judged against - 146 of 530 growth observations (≈28%) came from test reefs before this
   was caught. Fixed by adding a separate `_calibration_loc_ids` (filtered on
   `USAGE == "calibration"`), used only by
   [base/generate_clean_growth_intervals.jl](base/generate_clean_growth_intervals.jl); every

@@ -39,7 +39,8 @@ params = load_calibrated_params(
 
 res = progress_run(
     params, dom,
-    cfg.coral_param_names, cfg.growth_accel_names, cfg.param_idxs,
+    cfg.coral_param_names, cfg.growth_accel_names, cfg.depth_atten_names,
+    cfg.dist_std_names, cfg.dist_mean_names, cfg.param_idxs,
     calib_data.calibration_store, cfg.biogroups_ordering
 )
 

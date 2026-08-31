@@ -1,7 +1,10 @@
 # Writes data/unmapped_disturbance_years.csv: every ReefMonitoring "unknown" ("u") disturbance
 # on a target reef that carries NO mortality forcing in the datacube, paired with the survey
-# year its impact first shows up in. Consumed by the calibration to down-weight those
-# (reef, year) observations - see UNMAPPED_DISTURBANCE_WEIGHT in src/common/constants.jl.
+# year its impact first shows up in.
+#
+# NOT currently consumed anywhere - the calibration does not down-weight these observations.
+# See https://github.com/open-AIMS/CoralBlox-params-calibration/issues/26 for the proposed
+# down-weighting design; this file only identifies the affected (reef, year) cells.
 #
 # Storms ("s"), COTS ("c") and "multiple" ("m") are deliberately NOT here: they already carry
 # forcing via historical_disturbance_mortality_rates.nc. Bleaching ("b") is not here either -
@@ -141,7 +144,8 @@ out_path = joinpath(DATA_DIR, "unmapped_disturbance_years.csv")
 open(out_path, "w") do io
     println(io, "# ReefMonitoring \"unknown\"-type disturbances with NO mortality forcing in")
     println(io, "# historical_disturbance_mortality_rates.nc. `affected_year` is the first LTMP survey")
-    println(io, "# year at or after `ddate` - the (reef, year) observation the calibration down-weights.")
+    println(io, "# year at or after `ddate`. Not currently consumed by the calibration - see")
+    println(io, "# https://github.com/open-AIMS/CoralBlox-params-calibration/issues/26.")
     println(io, "# Generated: $(now())")
 end
 CSV.write(out_path, results; append=true, writeheader=true)

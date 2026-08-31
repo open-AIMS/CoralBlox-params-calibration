@@ -1,7 +1,7 @@
 module common
 
 using ADRIA
-using ADRIA: RMEDomain
+using ADRIA: RMEDomain, GDF
 using DataFrames
 using StatsBase
 using Statistics
@@ -61,9 +61,11 @@ export LocationDataStore,
        rmse_diff_stats,
        nse_stats,
        correlation_stats,
+       bias_stats,
        block_bootstrap_ci,
        iid_bootstrap_ci,
        bootstrap_median_ci,
+       bootstrap_mean_ci,
        average_cc,
        reef_taxa_error,
        bray_curtis,
@@ -91,8 +93,16 @@ export LocationDataStore,
        GROWTH_ACCEL_MIDPOINT_BOUNDS,
        SC_DIST_LB,
        SC_DIST_UB,
-       DHW_TOL_LB_FACTOR,
-       DHW_TOL_UB_FACTOR,
+       DHW_TOL_MEAN_LB_FACTOR,
+       DHW_TOL_MEAN_UB_FACTOR,
+       DHW_TOL_STD_LB_FACTOR,
+       DHW_TOL_STD_UB_FACTOR,
+       N_DIST_MEAN_PARAMS,
+       N_DIST_STD_PARAMS,
+       DEPTH_ATTEN_PARAM_NAMES,
+       N_DEPTH_ATTEN_PARAMS,
+       EFF_DHW_BASE_BOUNDS,
+       EFF_DHW_MIX_BOUNDS,
        scale_factor_vec_to_array,
        scale_factor_array_to_vec,
        generate_scale_factor_names,

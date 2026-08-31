@@ -37,10 +37,20 @@ end
 Load a serialised calibration-result parameter vector, erroring if it was not written under
 the current `PARAM_SCHEMA_VERSION`.
 
-Vectors from older schemas cannot be upgraded in place. Schema v3 moved `dist_std` from a
-trailing block of 5 group-level scale factors into the coral parameter block as 35 absolute
-per-group/size-class values, which shifts the meaning of every index after the coral block.
-Padding or truncating to match lengths would silently reinterpret unrelated parameters.
+Vectors from older schemas cannot be upgraded in place:
+
+- **v3** moved `dist_std` from a trailing block of 5 group-level scale factors into the
+  coral parameter block as 35 absolute per-group/size-class values, shifting the meaning of
+  every index after the coral block.
+- **v4** appended a two-element depth-attenuation block (`eff_dhw_base`, `eff_dhw_mix`).
+- **v5** removed those 35 `dist_std` values from the coral block and appended 5 absolute
+  per-functional-group values instead, again shifting every index after the coral block.
+- **v6** did the same for `dist_mean` (35 → 5 per functional group), and tightened the
+  `dist_std` bounds from ±50% to ±25% of the ADRIA default.
+
+Padding or truncating to match lengths would silently reinterpret unrelated parameters — a
+v3 vector padded to v4 length would run with `eff_dhw_base = 0`, silently disabling the
+depth refuge rather than falling back to the ADRIA default.
 
 A vector of the expected length whose `.meta.toml` sidecar is missing is accepted with a
 warning: every schema so far has had a distinct parameter count, so length alone identifies

@@ -1,4 +1,4 @@
-# Generates data/clean_growth_intervals.csv: for every CALIBRATION reef (validation reefs
+# Generates data/clean_growth_intervals.csv: for every CALIBRATION reef (test reefs
 # excluded - they must never feed the growth-rate fit their own mortality is evaluated
 # against), every pair of surveyed years (gap 1-6) with NO disturbance of any type reported
 # between them, paired with per-functional-group cover at both ends (manta tow total x

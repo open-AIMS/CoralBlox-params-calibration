@@ -291,8 +291,8 @@ function plot_correlation_map!(
     axis_opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
     opts::Dict{Symbol,Any}=Dict{Symbol,Any}(),
 )::Nothing
-    n_validation_obs = length(observations.ltmp_unique_ids)
-    ltmp_loc_indexes = collect(1:n_validation_obs)
+    n_test_obs = length(observations.ltmp_unique_ids)
+    ltmp_loc_indexes = collect(1:n_test_obs)
 
     error_stats = collect_error_stats(raw_data, dom; observations=observations)
     cc_ = error_stats.pcc
@@ -406,14 +406,14 @@ function plot_metrics_heatmap(rs_raw, dom; fig_size=(500, 700), observations::Lo
     error_stats = collect_error_stats(rs_raw, dom; observations=observations)
     Δrmse = error_stats.rmse_benchmark .- error_stats.rmse_model
 
-    validation_ids = [
+    test_ids = [
         findfirst(id .== observations.domain_gpkg.UNIQUE_ID)
         for id in observations.ltmp_unique_ids
     ]
     y_coords = try
-        observations.domain_gpkg[validation_ids, "Y_COORD"]
+        observations.domain_gpkg[test_ids, "Y_COORD"]
     catch
-        observations.domain_gpkg[validation_ids, "LAT"]
+        observations.domain_gpkg[test_ids, "LAT"]
     end
     y_coords_sortperm = sortperm(y_coords, rev=false)
 

@@ -58,6 +58,9 @@ function _obj_func(
         dom, init_values;
         param_names=cfg.coral_param_names,
         growth_accel_names=cfg.growth_accel_names,
+        depth_atten_names=cfg.depth_atten_names,
+        dist_std_names=cfg.dist_std_names,
+        dist_mean_names=cfg.dist_mean_names,
         param_idxs=cfg.param_idxs,
         observations=observations,
         biogroup_ord=cfg.biogroups_ordering,
@@ -77,7 +80,7 @@ function _obj_func(
 
     res = nothing
     try
-        res = ADRIA.run_model(local_dom, scen[1, :])
+        res = ADRIA.run_model(local_dom, scen[1, :]; apply_allee_effect=false)
     catch err
         _param_assert_patterns = (
             "!any(recruits_scale_factor .<= 0)",
@@ -209,8 +212,9 @@ function _save_results_callback(
 
     interim_res = progress_run(
         best_state, dom,
-        cfg.coral_param_names, cfg.growth_accel_names, cfg.param_idxs,
-        observations, cfg.biogroups_ordering
+        cfg.coral_param_names, cfg.growth_accel_names, cfg.depth_atten_names,
+        cfg.dist_std_names, cfg.dist_mean_names, cfg.param_idxs, observations,
+        cfg.biogroups_ordering
     )
     CairoMakie.save(
         joinpath(out_dir, "taxa_cover", "calib_progress_taxa_cover_$(start_time)_$(elapsed).png"),
@@ -247,7 +251,7 @@ Run BlackBoxOptim to calibrate coral parameters. Calls `construct_cover!` on `do
 # Arguments
 - `dom` : ADRIA domain
 - `cfg` : `CalibConfig` describing the parameter search space
-- `calib_data` : `CalibrationData` holding the calibration/validation observation split
+- `calib_data` : `CalibrationData` holding the calibration/test observation split
 - `location_classification` : per-location classification vector used to construct initial cover
 - `stagnation_patience` : stop once this many steps pass without a new best fitness (fully
   replaces the old fixed-`MaxSteps` budget; see `_stagnation_shutdown_check!`)
@@ -345,8 +349,8 @@ function run_calibration(
 
     export_calibration_products(
         dom, init_cover, location_classification, best_params, cfg.param_idxs,
-        cfg.coral_param_names, cfg.growth_accel_names, calib_data.combined_store,
-        cfg.biogroups_ordering;
+        cfg.coral_param_names, cfg.growth_accel_names, cfg.depth_atten_names,
+        calib_data.combined_store, cfg.biogroups_ordering;
         out_dir=out_dir
     )
 

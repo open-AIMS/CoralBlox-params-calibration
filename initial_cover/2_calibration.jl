@@ -154,7 +154,7 @@ function obj_func(
         dom2 = deepcopy(dom)
         dom2.init_coral_cover .= gen_init_cover
         scen = ADRIA.param_table(dom2)
-        res = ADRIA.run_model(dom2, scen[1, :])
+        res = ADRIA.run_model(dom2, scen[1, :]; apply_allee_effect=false)
     catch err
         @error "obj_func failed" exception = (err, catch_backtrace())
         return sum(start_score) + 5e5

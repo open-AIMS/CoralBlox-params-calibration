@@ -74,7 +74,7 @@ julia> run_calibration(
 `load_config` parses `config.toml` and resolves every calibration input/output path (see
 `src/common/calib_setup.jl`); `load_domain` loads the ADRIA RME domain and attaches historical
 DHW/cyclone data. `CalibConfig` builds parameter bounds/ordering and `build_calibration_data`
-splits LTMP/composition data into calibration/validation/combined `LocationDataStore`s before
+splits LTMP/composition data into calibration/test/combined `LocationDataStore`s before
 `CoralBloxCalib.calibration.run_calibration` runs BlackBoxOptim. See `scripts/run_loc_calib.jl`
 for the equivalent non-interactive entry point.
 
@@ -93,7 +93,7 @@ need `CalibConfig`/`setup_run`: `calibrated_params.nc` is handed to ADRIA as
 calibrated scenario. It errors up front if either product is missing.
 
 Outputs are organised into subdirectories under `out_dir`: `regional_analysis/`, `metrics/`,
-`calibration_locations/`, `validation_locations/`. Any plots already in those directories
+`calibration_locations/`, `test_locations/`. Any plots already in those directories
 will be **overwritten**.
 
 ## Initial Coral Cover
@@ -122,7 +122,7 @@ After Phase 1, cover is overwritten at locations where observations exist:
   replaced with observed values; only the total cover magnitude is retained from Phase 1.
 
 The index vectors `ltmp_cover_to_domain` and `composition_to_domain` inside each
-`LocationDataStore` (`calib_data.calibration_store`, `calib_data.validation_store`,
+`LocationDataStore` (`calib_data.calibration_store`, `calib_data.test_store`,
 `calib_data.combined_store` — see [Useful Variables](#useful-variables)) are the sole
 record of which domain locations have observed data. Everything outside these index sets
 retains its Phase 1 cover unchanged.
@@ -163,8 +163,9 @@ After additionally building `cfg = CalibConfig(dom)` and
 (both exported from `CoralBloxCalib.calibration`):
 
 - `cfg.sample_bounds`, `cfg.biogroups_ordering`, `cfg.param_idxs`, `cfg.coral_param_names`,
-  `cfg.growth_accel_names` — parameter bounds and ordering used by `setup_run`
-- `calib_data.calibration_store`, `calib_data.validation_store`, `calib_data.combined_store`
+  `cfg.growth_accel_names`, `cfg.depth_atten_names`, `cfg.dist_std_names`,
+  `cfg.dist_mean_names` — parameter bounds and ordering used by `setup_run`
+- `calib_data.calibration_store`, `calib_data.test_store`, `calib_data.combined_store`
   — `LocationDataStore` instances indexing LTMP reef data and coral composition data
 
 ## Error Functions
@@ -206,9 +207,11 @@ Expects total cover of shape `[timesteps x location]`
 `results.dat`, so a completed calibration run writes two files to `{out_dir}/params/`:
 
 - **`calibrated_params.nc`** — Calibrated coral parameters as a YAXArray `Dataset` with
-  labelled `functional_group`, `size_class`, `cb_calib_group`, and `accel_param` axes.
-  Variables: `linear_extension`, `mb_rate`, `dist_mean`, `dist_std`,
-  `linear_extension_scale`, `mb_rate_scale`, `growth_acceleration`.
+  labelled `functional_group`, `size_class`, `cb_calib_group`, `accel_param`, and
+  `depth_atten_param` axes. Variables: `linear_extension`, `mb_rate`, `dist_mean`,
+  `dist_std`, `linear_extension_scale`, `mb_rate_scale`, `growth_acceleration`,
+  `depth_attenuation`. Note `dist_mean` and `dist_std` are 1-D over `functional_group` only
+  — both are calibrated per group and shared by that group's size classes.
 - **`historic_init_cover.nc`** — GBR-wide historical initial coral cover with
   observation-based overrides applied at LTMP and photogrammetry sites
   (see [Initial Coral Cover](#initial-coral-cover)).

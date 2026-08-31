@@ -1,6 +1,6 @@
 struct CalibrationData
     calibration_store::LocationDataStore
-    validation_store::LocationDataStore
+    test_store::LocationDataStore
     combined_store::LocationDataStore
 end
 
@@ -25,15 +25,15 @@ function _sufficient_data(df_row::DataFrameRow)::Bool
 end
 
 function _split_indices(location_idxs::Vector{Int64}; calibration_proportion::Float64=0.75)
-    n_validation = max(2, Int(floor((1 - calibration_proportion) * length(location_idxs))))
+    n_test = max(2, Int(floor((1 - calibration_proportion) * length(location_idxs))))
     shuffled = shuffle(location_idxs)
-    return shuffled[1:n_validation], shuffled[n_validation+1:end]
+    return shuffled[1:n_test], shuffled[n_test+1:end]
 end
 
 """
     build_calibration_data(dom, ltmp_reef_data_path, composition_path; out_dir, rng_seed)
 
-Load and split LTMP manta-tow and coral composition data into calibration, validation, and
+Load and split LTMP manta-tow and coral composition data into calibration, test, and
 combined `LocationDataStore`s. Writes `calibration_split.csv` to `out_dir` when provided.
 """
 function build_calibration_data(
@@ -96,37 +96,37 @@ function build_calibration_data(
 
     Random.seed!(rng_seed)
     biogroup_data_splits = _split_indices.(biogroup_ltmp_idxs; calibration_proportion=0.75)
-    validation_splits = vcat(first.(biogroup_data_splits)...)
+    test_splits = vcat(first.(biogroup_data_splits)...)
     calibration_splits = vcat(last.(biogroup_data_splits)...)
 
     select!(ltmp_reef_data, Not(:BIOGROUP_IDS))
-    validation_df = ltmp_reef_data[validation_splits, :]
+    test_df = ltmp_reef_data[test_splits, :]
     calibration_df = ltmp_reef_data[calibration_splits, :]
 
     cal_ltmp_to_domain = [
         findfirst(dom.loc_data.UNIQUE_ID .== id) for id in calibration_df.RME_UNIQUE_ID
     ]
-    val_ltmp_to_domain = [
-        findfirst(dom.loc_data.UNIQUE_ID .== id) for id in validation_df.RME_UNIQUE_ID
+    test_ltmp_to_domain = [
+        findfirst(dom.loc_data.UNIQUE_ID .== id) for id in test_df.RME_UNIQUE_ID
     ]
     all_ltmp_to_domain = [
         findfirst(dom.loc_data.UNIQUE_ID .== id) for id in ltmp_reef_data.RME_UNIQUE_ID
     ]
 
     calibration_comp_ids = [
-        id for id in composition_data.location if !(id in validation_df.RME_UNIQUE_ID)
+        id for id in composition_data.location if !(id in test_df.RME_UNIQUE_ID)
     ]
-    validation_comp_ids = [
-        id for id in composition_data.location if id in validation_df.RME_UNIQUE_ID
+    test_comp_ids = [
+        id for id in composition_data.location if id in test_df.RME_UNIQUE_ID
     ]
-    calibration_mask = (!).(in.(composition_data.location, Ref(validation_df.RME_UNIQUE_ID)))
-    validation_mask = in.(composition_data.location, Ref(validation_df.RME_UNIQUE_ID))
+    calibration_mask = (!).(in.(composition_data.location, Ref(test_df.RME_UNIQUE_ID)))
+    test_mask = in.(composition_data.location, Ref(test_df.RME_UNIQUE_ID))
 
     cal_composition_to_domain = [
         findfirst(dom.loc_data.UNIQUE_ID .== id) for id in calibration_comp_ids
     ]
-    val_composition_to_domain = [
-        findfirst(dom.loc_data.UNIQUE_ID .== id) for id in validation_comp_ids
+    test_composition_to_domain = [
+        findfirst(dom.loc_data.UNIQUE_ID .== id) for id in test_comp_ids
     ]
     all_composition_to_domain = [
         findfirst(dom.loc_data.UNIQUE_ID .== id) for id in composition_data.location
@@ -134,21 +134,21 @@ function build_calibration_data(
 
     if !isnothing(out_dir)
         calibration_unique_ids = dom.loc_data.UNIQUE_ID[cal_ltmp_to_domain]
-        validation_unique_ids = dom.loc_data.UNIQUE_ID[val_ltmp_to_domain]
-        calib_valid_split = DataFrame(
-            :UNIQUE_IDS => vcat(calibration_unique_ids, validation_unique_ids),
+        test_unique_ids = dom.loc_data.UNIQUE_ID[test_ltmp_to_domain]
+        calib_test_split = DataFrame(
+            :UNIQUE_IDS => vcat(calibration_unique_ids, test_unique_ids),
             :BIOGROUP => vcat(
                 dom.loc_data.CB_CALIB_GROUPS[cal_ltmp_to_domain],
-                dom.loc_data.CB_CALIB_GROUPS[val_ltmp_to_domain]
+                dom.loc_data.CB_CALIB_GROUPS[test_ltmp_to_domain]
             ),
             :USAGE => vcat(
                 fill("calibration", length(cal_ltmp_to_domain)),
-                fill("validation", length(val_ltmp_to_domain))
+                fill("test", length(test_ltmp_to_domain))
             )
         )
         split_path = joinpath(out_dir, "calibration_split.csv")
-        CSV.write(split_path, calib_valid_split)
-        @info "Saving calibration/validation split to $split_path"
+        CSV.write(split_path, calib_test_split)
+        @info "Saving calibration/test split to $split_path"
     end
 
     calibration_store = LocationDataStore(
@@ -159,13 +159,13 @@ function build_calibration_data(
         cal_ltmp_to_domain,
         cal_composition_to_domain
     )
-    validation_store = LocationDataStore(
+    test_store = LocationDataStore(
         dom.loc_data,
-        validation_df.RME_UNIQUE_ID,
-        Matrix(validation_df[:, 2:end]),
-        composition_data.mean[location=validation_mask, timestep=At(START_YEAR:END_YEAR)].data[:, :, :],
-        val_ltmp_to_domain,
-        val_composition_to_domain
+        test_df.RME_UNIQUE_ID,
+        Matrix(test_df[:, 2:end]),
+        composition_data.mean[location=test_mask, timestep=At(START_YEAR:END_YEAR)].data[:, :, :],
+        test_ltmp_to_domain,
+        test_composition_to_domain
     )
     combined_store = LocationDataStore(
         dom.loc_data,
@@ -176,5 +176,5 @@ function build_calibration_data(
         all_composition_to_domain
     )
 
-    return CalibrationData(calibration_store, validation_store, combined_store)
+    return CalibrationData(calibration_store, test_store, combined_store)
 end

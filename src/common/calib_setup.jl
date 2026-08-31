@@ -129,8 +129,8 @@ ADRIA's default projected scenarios.
 
 `calib_params_fn` is passed through to ADRIA: given a `calibrated_params.nc` written by
 `export_calibration_products`, the returned domain's model spec already carries the
-calibrated coral and growth-acceleration values, so `ADRIA.param_table(dom)` yields a
-calibrated scenario without going through `setup_run`.
+calibrated coral, growth-acceleration and depth-attenuation values, so
+`ADRIA.param_table(dom)` yields a calibrated scenario without going through `setup_run`.
 """
 function load_domain(config::CalibrationConfig; calib_params_fn::String="")
     @info "Loading RMEDomain"
@@ -147,7 +147,72 @@ function load_domain(config::CalibrationConfig; calib_params_fn::String="")
         open_dataset(config.historical_cyclone_mortality_path).disturbance_mortality_scens
     dom.cyclone_mortality_scens .= read(new_cyclone_mortality_scens[:, :, :, [1]])
 
+    @info "Overwriting location classification/identity data from canonical geopackage"
+    _attach_canonical_loc_data!(dom, config.canonical_path)
+
     return dom
+end
+
+"""
+    _attach_canonical_loc_data!(dom::RMEDomain, canonical_path::String)::Nothing
+
+Overwrite `dom.loc_data`'s reef classification/identity columns (`UNIQUE_ID`, `GBRMPA_ID`,
+`management_area_short`, `GBRMPA_BIOREGION`, `CB_CALIB_GROUPS`, `k`, `area`, `cluster_id`)
+with values read fresh from the canonical geopackage at `canonical_path`, keyed by
+`dom.loc_ids`.
+
+These columns are otherwise baked into the RME domain package's own `reefmod_gbr.gpkg` at
+whatever time that package was built, giving two independently-updatable copies of the same
+source-of-truth reef data. Sourcing them from `canonical_path` on every load removes that
+drift risk. Physical/simulation-only columns (`depth_med`, `mean_to_neighbor`, `zone_type`)
+are untouched: they either have no canonical equivalent or are deliberately RME-specific
+(e.g. `depth_med` is flattened to a constant 7.0 by ADRIA's RME domain loader).
+
+Fails loudly (rather than silently producing `missing`/`NaN` columns) if `canonical_path`
+is missing a required source column or a location id present in `dom.loc_ids`.
+"""
+function _attach_canonical_loc_data!(dom::RMEDomain, canonical_path::String)::Nothing
+    canonical_gdf = GDF.read(canonical_path)
+
+    required_cols = (
+        dom.loc_id_col, "UNIQUE_ID", "GBRMPA_ID", "management_area_short",
+        "GBRMPA_BIOREGION", "CB_CALIB_GROUPS", "ReefMod_habitable_proportion",
+        "ReefMod_area_m2", "reef_name"
+    )
+    missing_cols = setdiff(required_cols, names(canonical_gdf))
+    if !isempty(missing_cols)
+        error(
+            "canonical geopackage at $(canonical_path) is missing required column(s): " *
+            "$(join(missing_cols, ", "))"
+        )
+    end
+
+    # `dom.loc_ids` (from the domain's DHW dataset) is keyed by `dom.loc_id_col`
+    # (e.g. "RME_UNIQUE_ID"), which is NOT always identical to the geopackage's own
+    # `UNIQUE_ID` column row-for-row - join on the id column the domain actually uses.
+    join_col = canonical_gdf[!, dom.loc_id_col]
+    row_idx = [findfirst(==(id), join_col) for id in dom.loc_ids]
+    missing_mask = isnothing.(row_idx)
+    if any(missing_mask)
+        missing_ids = dom.loc_ids[missing_mask]
+        error(
+            "canonical geopackage at $(canonical_path) is missing " *
+            "$(length(missing_ids)) location id(s) present in the RME domain, " *
+            "e.g. $(first(missing_ids, min(5, length(missing_ids))))"
+        )
+    end
+    canon = canonical_gdf[row_idx, :]
+
+    dom.loc_data[:, :UNIQUE_ID] = canon.UNIQUE_ID
+    dom.loc_data[:, :GBRMPA_ID] = canon.GBRMPA_ID
+    dom.loc_data[:, :management_area_short] = canon.management_area_short
+    dom.loc_data[:, :GBRMPA_BIOREGION] = canon.GBRMPA_BIOREGION
+    dom.loc_data[:, :CB_CALIB_GROUPS] = canon.CB_CALIB_GROUPS
+    dom.loc_data[:, :k] = canon.ReefMod_habitable_proportion
+    dom.loc_data[:, :area] = canon.ReefMod_area_m2
+    dom.loc_data[:, :cluster_id] = canon.reef_name
+
+    return nothing
 end
 
 """
