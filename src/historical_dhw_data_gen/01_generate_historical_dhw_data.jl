@@ -33,6 +33,6 @@ begin
     dhw_scens .= data
 
     # Save as NetCDF
-    output_path = "data/dhw_scens.nc"
+    output_path = "data/historical_dhw.nc"
     savedataset(Dataset(; dhw_scens), path=output_path, driver=:netcdf)
 end

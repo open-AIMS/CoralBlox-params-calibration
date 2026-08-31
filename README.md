@@ -232,10 +232,10 @@ calibrated domain without ever touching `results.dat`.
 ## Historical DHW
 
 The script `src/historical_dhw_data_gen/01_generate_historical_dhw_data.jl` takes a file
-containing observed NOAA maximum DHWs at each of the reefs, selects the timeframe used in
-this calibration (2008-2022) and saves the result as a NetCDF file in
-`src/historical_dhw_data_gen/data/historical_dhw.nc`. Before running this script, the input
-file `CoralSea_GBR_coraltempv3p1_dhw_1985-2024-reefs.mat` must be placed at
+containing observed NOAA maximum DHWs at each of the reefs (1985-2024) and saves it as a
+NetCDF file at `src/historical_dhw_data_gen/data/historical_dhw.nc`. The calibration
+timeframe is selected from this at load time, not here. Before running this script, the
+input file `CoralSea_GBR_coraltempv3p1_dhw_1985-2024-reefs.mat` must be placed at
 `src/historical_dhw_data_gen/data/`. This file can be found in the M&DS IS Store.
 
 The data in the input file is stored in a MATLAB structure array ‘R’. From this file, we
