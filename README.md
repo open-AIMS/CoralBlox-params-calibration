@@ -165,7 +165,7 @@ After `config = load_config()` and `dom = load_domain(config)` (both exported fr
 Region masks/regional LTMP data (`NORTH_MASK`/`CENTRAL_MASK`/`SOUTH_MASK`,
 `ltmp_north`/`ltmp_central`/`ltmp_south`) are analysis-only and no longer loaded for
 calibration runs — see `viz.load_regional_analysis_data(dom, config.ltmp_modelled_obs_path,
-config.ltmp_shp_path)`, called from `scripts/plot/03_result_analysis.jl`.
+config.ltmp_shp_path)`, called from `scripts/plot/viz_results.jl`.
 
 After additionally building `cfg = CalibConfig(dom)` and
 `calib_data = build_calibration_data(dom, config.ltmp_reef_data_path, config.composition_path)`
@@ -196,14 +196,6 @@ For each target location calculate the correlation between ADRIA-mod coral compo
 the target composition contained in the coral_composition netcdf.
 
 Expects cover of shape `[timesteps x taxa x size_class x location]`
-
-### Location Class Error
-
-`class_error(cover)` ~ calculates the average number of standard deviations a class is away
-from the target cover for a given location class. The 'standard deviations' is based on the
-spread of ltmp locations for a given year with a set of locations (class).
-
-Expects total cover of shape `[timesteps x location]`
 
 ## Parameter Extraction
 
