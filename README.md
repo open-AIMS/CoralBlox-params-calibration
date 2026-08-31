@@ -266,3 +266,10 @@ is run. To our knowledge, there is no automatic way of determining which year is
 after a disturbance.
 
 More details about this dataset can be found in `src\historical_disturbance_mortality_data_gen\data\historical_disturbance_mortality_rates\README.md`
+
+## License
+
+Source code is licensed under the [MIT License](LICENSE). Bundled datasets are **not**
+covered by MIT — they are CC-BY 4.0 unless a co-located README says otherwise. See
+[NOTICE](NOTICE) for required attributions and [docs/data_sources.md](docs/data_sources.md)
+for per-dataset origin and licensing.
