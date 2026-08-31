@@ -173,27 +173,6 @@ function collect_error_stats(
 end
 
 """
-    average_class_cover(cover; loc_classes)::Array{Float64}
-
-Calculate the average cover for each location classification.
-"""
-function average_class_cover(
-    cover;
-    loc_classes
-)::Matrix{Float64}
-    classes = sort(unique(loc_classes))
-    n_tsteps, n_locs = size(cover)
-    class_cover::Matrix{Float64} = zeros(Float64, n_tsteps, length(classes))
-    class_mask::BitVector = Vector(repeat([true], n_locs))
-    for class in classes
-        class_mask .= loc_classes .== class
-        class_cover[:, class] .= dropdims(mean(cover[:, class_mask]; dims=2); dims=2)
-    end
-
-    return class_cover
-end
-
-"""
 Bray-Curtis dissimilarity between two composition vectors, in [0, 1] (0 = identical, 1 =
 fully disjoint).
 """
@@ -274,43 +253,6 @@ function reef_error(
         @debug "No reef level observation data for some years."
         err_counts[err_counts .== 0] .= 1
     end
-
-    return err_series ./ err_counts
-end
-
-"""
-    class_error(cover; manta_tow_mean, manta_tow_std, loc_classes)::Vector{Float64}
-
-Calculate the average class level error per year.
-"""
-function class_error(
-    cover;
-    manta_tow_mean,
-    manta_tow_std,
-    loc_classes
-)::Vector{Float64}
-    # Preallocations
-    err_series::Vector{Float64} = zeros(Float64, 15)
-    err_counts::Vector{Int64} = zeros(Int64, 15)
-    not_missing::BitVector = BitVector(repeat([true], 15))
-
-    # Dims ~ [timesteps ⋅ classes]
-    class_cover::Matrix{Float64} = average_class_cover(cover; loc_classes=loc_classes)
-
-    for (idx, class) in enumerate(manta_tow_mean.class)
-        if class == -1
-            continue
-        end
-        not_missing .= (!).(ismissing.(manta_tow_mean[idx, :]))
-        err_series[not_missing] .+=
-            abs.(
-                (
-                    manta_tow_mean[idx, not_missing] .- class_cover[not_missing, class]
-                ) ./ manta_tow_std[idx, not_missing]
-            )
-        err_counts[not_missing] .+= 1
-    end
-    err_counts[err_counts .== 0] .= 1
 
     return err_series ./ err_counts
 end
