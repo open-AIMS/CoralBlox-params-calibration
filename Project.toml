@@ -36,8 +36,10 @@ Typst_jll = "eb4b1da6-20f6-5c66-9826-fdb8ad410d0e"
 YAXArrays = "c21b50f5-aa40-41ea-b809-c0f5e47bfa5c"
 
 [compat]
-ADRIA = "0.17.0"
+julia = "1.11"
+ADRIA = "0.17"
 Bootstrap = "2.4.0"
+CoralBlox = "1"
 Random = "1.11.0"
-ReefMonitoring = "0.1.0"
+ReefMonitoring = "0.1"
 Serialization = "1.11.0"
